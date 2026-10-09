@@ -201,6 +201,12 @@ namespace MUnique.OpenMU.Web.Shared.Properties {
             }
         }
         
+        public static string ItemsWithoutDefinition {
+            get {
+                return ResourceManager.GetString("ItemsWithoutDefinition", resourceCulture);
+            }
+        }
+        
         public static string Duplicate {
             get {
                 return ResourceManager.GetString("Duplicate", resourceCulture);
