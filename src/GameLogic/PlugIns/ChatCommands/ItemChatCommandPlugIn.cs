@@ -122,13 +122,18 @@ public class ItemChatCommandPlugIn : ChatCommandPlugInBase<ItemChatCommandArgs>
         }
     }
 
+    /// <remarks>
+    /// Wings have no excellent options, but their own wing options (e.g. "ignore defense" of the
+    /// third wings). They are transmitted in the same bits as the excellent options, so the
+    /// <see cref="ItemChatCommandArgs.ExcellentNumber"/> selects them the same way.
+    /// </remarks>
     private static void AddExcellentOptions(TemporaryItem item, ItemChatCommandArgs arguments)
     {
         if (item.Definition != null && arguments.ExcellentNumber > 0)
         {
             var excellentOptions = item.Definition.PossibleItemOptions
                 .SelectMany(o => o.PossibleOptions)
-                .Where(o => o.OptionType == ItemOptionTypes.Excellent)
+                .Where(o => o.OptionType == ItemOptionTypes.Excellent || o.OptionType == ItemOptionTypes.Wing)
                 .Where(o => ((1 << (o.Number - 1)) & arguments.ExcellentNumber) > 0)
                 .ToList();
 

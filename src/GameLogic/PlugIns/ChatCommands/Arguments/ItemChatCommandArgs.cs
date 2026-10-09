@@ -30,6 +30,10 @@ public class ItemChatCommandArgs : ArgumentsBase
     /// <summary>
     /// Gets or sets the excellent number.
     /// </summary>
+    /// <remarks>
+    /// A bit mask of the excellent options, where bit 0 selects the option with number 1.
+    /// For wings, it selects their wing options instead.
+    /// </remarks>
     [Argument("ex", false)]
     public byte ExcellentNumber { get; set; }
 
