@@ -8,8 +8,10 @@ using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.PlayerActions;
 using MUnique.OpenMU.GameLogic.Views.Character;
+using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.GameLogic.Views.Login;
 using MUnique.OpenMU.GameLogic.Views.NPC;
+using MUnique.OpenMU.GameLogic.Views.World;
 
 /// <summary>
 /// Action to reset a character.
@@ -85,18 +87,21 @@ public class ResetCharacterAction
         this._player.Attributes[Stats.Level] = configuration.LevelAfterReset;
         this._player.SelectedCharacter.Experience = 0;
         this.UpdateStats(configuration, resetProgression);
-        if (configuration.MoveHome)
-        {
-            await this.MoveHomeAsync(configuration.LogOut).ConfigureAwait(false);
-        }
-
         if (configuration.LogOut)
         {
+            if (configuration.MoveHome && await this.GetHomeGateAsync().ConfigureAwait(false) is { } homeGate)
+            {
+                this._player.SelectedCharacter.PositionX = (byte)Rand.NextInt(homeGate.X1, homeGate.X2);
+                this._player.SelectedCharacter.PositionY = (byte)Rand.NextInt(homeGate.Y1, homeGate.Y2);
+                this._player.SelectedCharacter.CurrentMap = homeGate.Map;
+                this._player.Rotation = homeGate.Direction;
+            }
+
             await this._logoutAction.LogoutAsync(this._player, LogoutType.BackToCharacterSelection).ConfigureAwait(false);
         }
         else
         {
-            await this.UpdateClientStatsAsync(configuration).ConfigureAwait(false);
+            await this.UpdateClientAndWarpAsync(configuration).ConfigureAwait(false);
         }
     }
 
@@ -197,44 +202,60 @@ public class ResetCharacterAction
     }
 
     /// <summary>
-    /// Moves the player to the safezone of the home map of its character class.
+    /// Gets the gate in the safezone of the home map of the character class.
     /// </summary>
-    /// <param name="isLoggingOut">
-    /// If set to <c>true</c>, the player is about to be logged out, so it's enough to change the stored position.
-    /// Otherwise, the player is warped, so that the client and the server agree on the position.
-    /// </param>
-    private async ValueTask MoveHomeAsync(bool isLoggingOut)
+    private async ValueTask<ExitGate?> GetHomeGateAsync()
     {
         var homeMapDef = this._player.SelectedCharacter!.CharacterClass!.HomeMap;
-        if (homeMapDef is null
-            || await this._player.GameContext.GetMapAsync((ushort)homeMapDef.Number).ConfigureAwait(false) is not { SafeZoneSpawnGate: { } spawnGate })
+        if (homeMapDef is null)
         {
-            return;
+            return null;
         }
 
-        if (!isLoggingOut)
-        {
-            await this._player.WarpToAsync(spawnGate).ConfigureAwait(false);
-            return;
-        }
-
-        this._player.SelectedCharacter.PositionX = (byte)Rand.NextInt(spawnGate.X1, spawnGate.X2);
-        this._player.SelectedCharacter.PositionY = (byte)Rand.NextInt(spawnGate.Y1, spawnGate.Y2);
-        this._player.SelectedCharacter.CurrentMap = spawnGate.Map;
-        this._player.Rotation = spawnGate.Direction;
+        return (await this._player.GameContext.GetMapAsync((ushort)homeMapDef.Number).ConfigureAwait(false))?.SafeZoneSpawnGate;
     }
 
-    private async ValueTask UpdateClientStatsAsync(ResetConfiguration configuration)
+    /// <summary>
+    /// Updates the client of a player who stays in the game after the reset, and warps the
+    /// player home or to its current position.
+    /// </summary>
+    /// <remarks>
+    /// Clients of season 6 and older don't get to know their new stats through the base stats
+    /// update, which is only implemented for the extended client. They have to get the character
+    /// information again, which makes them create the own character anew. To not end up with a
+    /// second, stale copy of the character, the client is told first that the character is out of
+    /// scope, and the warp afterwards brings it back at its (new) position.
+    /// </remarks>
+    private async ValueTask UpdateClientAndWarpAsync(ResetConfiguration configuration)
     {
-        if (configuration.ResetStats)
+        var player = this._player;
+        var targetGate = configuration.MoveHome ? await this.GetHomeGateAsync().ConfigureAwait(false) : null;
+        if (targetGate is null)
         {
-            await this._player.InvokeViewPlugInAsync<IUpdateCharacterBaseStatsPlugIn>(p => p.UpdateCharacterBaseStatsAsync()).ConfigureAwait(false);
+            if (player.CurrentMap is not { } currentMap)
+            {
+                return;
+            }
+
+            targetGate = new Persistence.BasicModel.ExitGate
+            {
+                Map = currentMap.Definition,
+                X1 = player.Position.X,
+                X2 = player.Position.X,
+                Y1 = player.Position.Y,
+                Y2 = player.Position.Y,
+            };
         }
 
-        await this._player.InvokeViewPlugInAsync<IUpdateLevelPlugIn>(p => p.UpdateLevelAsync()).ConfigureAwait(false);
+        if (configuration.ResetStats)
+        {
+            await player.InvokeViewPlugInAsync<IUpdateCharacterBaseStatsPlugIn>(p => p.UpdateCharacterBaseStatsAsync()).ConfigureAwait(false);
+        }
 
-        // The base stats update above is only implemented for the extended client. Clients of
-        // season 6 and older get to know their new stats through the character information.
-        await this._player.InvokeViewPlugInAsync<IUpdateCharacterStatsPlugIn>(p => p.UpdateCharacterStatsAsync()).ConfigureAwait(false);
+        await player.InvokeViewPlugInAsync<IUpdateLevelPlugIn>(p => p.UpdateLevelAsync()).ConfigureAwait(false);
+        await player.InvokeViewPlugInAsync<IObjectsOutOfScopePlugIn>(p => p.ObjectsOutOfScopeAsync(player.GetAsEnumerable())).ConfigureAwait(false);
+        await player.InvokeViewPlugInAsync<IUpdateCharacterStatsPlugIn>(p => p.UpdateCharacterStatsAsync()).ConfigureAwait(false);
+        await player.InvokeViewPlugInAsync<IUpdateInventoryListPlugIn>(p => p.UpdateInventoryListAsync()).ConfigureAwait(false);
+        await player.WarpToAsync(targetGate).ConfigureAwait(false);
     }
 }
