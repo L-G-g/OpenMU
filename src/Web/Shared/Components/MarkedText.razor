@@ -32,20 +32,22 @@ else
             return;
         }
 
+        // Blazor passes null when the bound value is null, e.g. for a plugin without a name.
+        var text = this.Text ?? string.Empty;
         this._elements ??= new List<(bool, string)>();
         var currentIndex = 0;
-        while (currentIndex < this.Text.Length)
+        while (currentIndex < text.Length)
         {
-            var nextMarkStart = this.Text.IndexOf(this.Marked, currentIndex, StringComparison.InvariantCultureIgnoreCase);
+            var nextMarkStart = text.IndexOf(this.Marked, currentIndex, StringComparison.InvariantCultureIgnoreCase);
             if (nextMarkStart >= 0) {
                 var end = nextMarkStart + this.Marked.Length;
-                _elements.Add((false, this.Text.Substring(currentIndex, nextMarkStart - currentIndex)));
-                _elements.Add((true, this.Text.Substring(nextMarkStart, end - nextMarkStart)));
+                _elements.Add((false, text.Substring(currentIndex, nextMarkStart - currentIndex)));
+                _elements.Add((true, text.Substring(nextMarkStart, end - nextMarkStart)));
                 currentIndex = end;
             }
             else
             {
-                var rest = this.Text.Substring(currentIndex);
+                var rest = text.Substring(currentIndex);
                 _elements.Add((false, rest));
                 currentIndex += rest.Length;
             }
