@@ -55,4 +55,18 @@ addimport.exe main.exe main_camera3d.exe
 
 y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`.
 
-No se suben al repositorio los binarios compilados ni el `main.exe` (es de Webzen).
+No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
+El cliente completo, con estos archivos ya instalados, está respaldado en el repositorio privado
+`L-G-g/mu-cliente`.
+
+## Versión en uso (v1.0)
+
+Huellas SHA-256 para verificar que un archivo es exactamente el de esta versión:
+
+| Archivo | SHA-256 |
+|---|---|
+| `main.exe` original (1.04d, parche OpenMU) | `A942F2D77639C1E2138689EB69C22B05E62B7AC2DFA0B51253E57FAFA39930FE` |
+| `main.exe` con cámara (`addimport` sobre el original) | `53500D16DD8DC6E1B5F222DBA8A1B2F1D40B1E15C72D075BD0344308C01A4A54` |
+| `camera3d.dll` | `902A42DFC24A839AABBB5F494871259948A318CBF98721B39237D0DC7371E953` |
+
+`addimport` es determinista: aplicado al `main.exe` original produce siempre el mismo archivo.
