@@ -27,7 +27,8 @@ else
     {
         base.OnParametersSet();
         this._elements?.Clear();
-        if (string.IsNullOrEmpty(this.Marked))
+        // The text may be null, e.g. for a plugin without a display name.
+        if (string.IsNullOrEmpty(this.Marked) || string.IsNullOrEmpty(this.Text))
         {
             return;
         }
