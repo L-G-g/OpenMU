@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <share.h>
+#include "mods.h"
 
 namespace
 {
@@ -94,20 +95,6 @@ namespace
         }
     }
 
-    bool WriteCode(DWORD address, const void* data, size_t length)
-    {
-        DWORD oldProtect;
-        if (!VirtualProtect(reinterpret_cast<void*>(address), length, PAGE_EXECUTE_READWRITE, &oldProtect))
-        {
-            return false;
-        }
-
-        memcpy(reinterpret_cast<void*>(address), data, length);
-        VirtualProtect(reinterpret_cast<void*>(address), length, oldProtect, &oldProtect);
-        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(address), length);
-        return true;
-    }
-
     // Cuanto hay que agrandar el area de terreno que se dibuja (y la distancia de vision) para la
     // vista actual: alejando se ve mas terreno, y mirando mas horizontal se ve mas lejos.
     float ViewScale()
@@ -175,6 +162,9 @@ namespace
     char __cdecl CameraHook()
     {
         using CameraFunctionType = char(__cdecl*)();
+
+        // La camara se calcula al empezar a dibujar cada cuadro.
+        RightClickBeforeRender();
 
         // 1) Giro: la funcion original calcula la posicion de la camara a partir del angulo de giro,
         //    asi que alcanza con fijarlo antes. Si el juego cambio el angulo por su cuenta (escenas
@@ -262,6 +252,11 @@ namespace
 
     LRESULT CALLBACK WndProcHook(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
     {
+        if (RightClickFilterMessage(message))
+        {
+            return 0;
+        }
+
         switch (message)
         {
         case WM_MOUSEWHEEL:
@@ -388,6 +383,8 @@ namespace
         {
             return 0;
         }
+
+        InstallRightClick(&Log);
 
         // Esperar a que exista la ventana del juego y engancharse a sus mensajes.
         for (int i = 0; i < 600 && *MainWindow == nullptr; i++)
