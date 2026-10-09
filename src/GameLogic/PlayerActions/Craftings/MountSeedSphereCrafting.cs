@@ -82,7 +82,7 @@ public class MountSeedSphereCrafting : SimpleItemCraftingHandler
             .SelectMany(o => o.PossibleOptions)
             .Single(o => o.OptionType == ItemOptionTypes.SocketOption
                          && o.Number == seedSphere.Level);
-        sphereOption.Level = seedSphere.Level;
+        sphereOption.Level = GetSphereLevel(seedSphere.Definition);
         sphereOption.Index = socketSlot;
         socketItem.ItemOptions.Add(sphereOption);
 
@@ -97,6 +97,22 @@ public class MountSeedSphereCrafting : SimpleItemCraftingHandler
         }
 
         return new List<Item> { socketItem };
+    }
+
+    /// <summary>
+    /// Gets the level (1 to 5) of the sphere a seed sphere was made of.
+    /// </summary>
+    /// <remarks>
+    /// The level of the seed sphere item selects its option, so the level of the sphere has to be
+    /// taken from the item number instead: the seed spheres are numbered in blocks of one entry per
+    /// seed type, one block per sphere level (see <see cref="SeedSphereCrafting"/>). The socket option
+    /// level of a mounted seed sphere is this sphere level.
+    /// </remarks>
+    private static int GetSphereLevel(ItemDefinition seedSphereDefinition)
+    {
+        const int seedTypes = 6;
+        const int seedSphereNumberStart = 100;
+        return ((seedSphereDefinition.Number - seedSphereNumberStart) / seedTypes) + 1;
     }
 
     private IncreasableItemOption? GetPossibleBonusOption(Item socketItem)
