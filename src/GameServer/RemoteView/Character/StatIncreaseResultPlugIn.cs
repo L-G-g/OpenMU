@@ -9,8 +9,6 @@ using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.Views.Character;
-using MUnique.OpenMU.GameLogic.Views.Inventory;
-using MUnique.OpenMU.GameLogic.Views.World;
 using MUnique.OpenMU.Network.Packets.ServerToClient;
 using MUnique.OpenMU.PlugIns;
 
@@ -31,6 +29,13 @@ public class StatIncreaseResultPlugIn : IStatIncreaseResultPlugIn
     public StatIncreaseResultPlugIn(RemotePlayer player) => this._player = player;
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The response packet of older clients can only express one added point. When
+    /// multiple points were added at once (e.g. by the <c>/add</c> chat command), we
+    /// send one response per point, so that the client adds them one by one.
+    /// The previous workaround re-sent the character information and warped the
+    /// player, which made the client of season 6 jump to the start of the map.
+    /// </remarks>
     public async ValueTask StatIncreaseResultAsync(AttributeDefinition attribute, ushort addedPoints)
     {
         var connection = this._player.Connection;
@@ -39,39 +44,24 @@ public class StatIncreaseResultPlugIn : IStatIncreaseResultPlugIn
             return;
         }
 
-        if (addedPoints <= 1)
+        var statType = attribute.GetStatType();
+        var updatedDependentMaximumStat = attribute == Stats.BaseEnergy
+            ? (ushort)this._player.Attributes![Stats.MaximumMana]
+            : attribute == Stats.BaseVitality
+                ? (ushort)this._player.Attributes![Stats.MaximumHealth]
+                : default;
+        var updatedMaximumShield = (ushort)this._player.Attributes![Stats.MaximumShield];
+        var updatedMaximumAbility = (ushort)this._player.Attributes[Stats.MaximumAbility];
+
+        if (addedPoints == 0)
         {
-#pragma warning disable SA1118 // Parameter should not span multiple lines
-            await connection.SendCharacterStatIncreaseResponseAsync(
-                addedPoints > 0,
-                attribute.GetStatType(),
-                attribute == Stats.BaseEnergy
-                    ? (ushort)this._player.Attributes![Stats.MaximumMana]
-                    : attribute == Stats.BaseVitality
-                        ? (ushort)this._player.Attributes![Stats.MaximumHealth]
-                        : default,
-                (ushort)this._player.Attributes![Stats.MaximumShield],
-                (ushort)this._player.Attributes[Stats.MaximumAbility]).ConfigureAwait(false);
-#pragma warning restore SA1118 // Parameter should not span multiple lines
+            await connection.SendCharacterStatIncreaseResponseAsync(false, statType, updatedDependentMaximumStat, updatedMaximumShield, updatedMaximumAbility).ConfigureAwait(false);
             return;
         }
 
-        // Workaround with multiple points for older clients
-        var player = this._player;
-        var map = player.CurrentMap!;
-
-        await player.InvokeViewPlugInAsync<IObjectsOutOfScopePlugIn>(p => p.ObjectsOutOfScopeAsync(player.GetAsEnumerable())).ConfigureAwait(false);
-        await player.InvokeViewPlugInAsync<IUpdateCharacterStatsPlugIn>(p => p.UpdateCharacterStatsAsync()).ConfigureAwait(false);
-        await player.InvokeViewPlugInAsync<IUpdateInventoryListPlugIn>(p => p.UpdateInventoryListAsync()).ConfigureAwait(false);
-        var currentGate = new Persistence.BasicModel.ExitGate
+        for (var i = 0; i < addedPoints; i++)
         {
-            Map = map.Definition,
-            X1 = player.Position.X,
-            X2 = player.Position.X,
-            Y1 = player.Position.Y,
-            Y2 = player.Position.Y,
-        };
-
-        await player.WarpToAsync(currentGate).ConfigureAwait(false);
+            await connection.SendCharacterStatIncreaseResponseAsync(true, statType, updatedDependentMaximumStat, updatedMaximumShield, updatedMaximumAbility).ConfigureAwait(false);
+        }
     }
 }
