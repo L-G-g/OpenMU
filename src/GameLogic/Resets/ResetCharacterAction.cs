@@ -87,7 +87,7 @@ public class ResetCharacterAction
         this.UpdateStats(configuration, resetProgression);
         if (configuration.MoveHome)
         {
-            await this.MoveHomeAsync().ConfigureAwait(false);
+            await this.MoveHomeAsync(configuration.LogOut).ConfigureAwait(false);
         }
 
         if (configuration.LogOut)
@@ -196,17 +196,32 @@ public class ResetCharacterAction
         }
     }
 
-    private async ValueTask MoveHomeAsync()
+    /// <summary>
+    /// Moves the player to the safezone of the home map of its character class.
+    /// </summary>
+    /// <param name="isLoggingOut">
+    /// If set to <c>true</c>, the player is about to be logged out, so it's enough to change the stored position.
+    /// Otherwise, the player is warped, so that the client and the server agree on the position.
+    /// </param>
+    private async ValueTask MoveHomeAsync(bool isLoggingOut)
     {
         var homeMapDef = this._player.SelectedCharacter!.CharacterClass!.HomeMap;
-        if (homeMapDef is { }
-            && await this._player.GameContext.GetMapAsync((ushort)homeMapDef.Number).ConfigureAwait(false) is { SafeZoneSpawnGate: { } spawnGate })
+        if (homeMapDef is null
+            || await this._player.GameContext.GetMapAsync((ushort)homeMapDef.Number).ConfigureAwait(false) is not { SafeZoneSpawnGate: { } spawnGate })
         {
-            this._player.SelectedCharacter.PositionX = (byte)Rand.NextInt(spawnGate.X1, spawnGate.X2);
-            this._player.SelectedCharacter.PositionY = (byte)Rand.NextInt(spawnGate.Y1, spawnGate.Y2);
-            this._player.SelectedCharacter.CurrentMap = spawnGate.Map;
-            this._player.Rotation = spawnGate.Direction;
+            return;
         }
+
+        if (!isLoggingOut)
+        {
+            await this._player.WarpToAsync(spawnGate).ConfigureAwait(false);
+            return;
+        }
+
+        this._player.SelectedCharacter.PositionX = (byte)Rand.NextInt(spawnGate.X1, spawnGate.X2);
+        this._player.SelectedCharacter.PositionY = (byte)Rand.NextInt(spawnGate.Y1, spawnGate.Y2);
+        this._player.SelectedCharacter.CurrentMap = spawnGate.Map;
+        this._player.Rotation = spawnGate.Direction;
     }
 
     private async ValueTask UpdateClientStatsAsync(ResetConfiguration configuration)
@@ -217,5 +232,9 @@ public class ResetCharacterAction
         }
 
         await this._player.InvokeViewPlugInAsync<IUpdateLevelPlugIn>(p => p.UpdateLevelAsync()).ConfigureAwait(false);
+
+        // The base stats update above is only implemented for the extended client. Clients of
+        // season 6 and older get to know their new stats through the character information.
+        await this._player.InvokeViewPlugInAsync<IUpdateCharacterStatsPlugIn>(p => p.UpdateCharacterStatsAsync()).ConfigureAwait(false);
     }
 }
