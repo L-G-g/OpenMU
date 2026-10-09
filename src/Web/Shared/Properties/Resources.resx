@@ -195,6 +195,9 @@
   <data name="PleaseSelectItemDefinition" xml:space="preserve">
     <value>&lt;Please select a definition&gt;</value>
   </data>
+  <data name="ItemsWithoutDefinition" xml:space="preserve">
+    <value>{0} item(s) have no definition. Select a definition for them or delete them before saving.</value>
+  </data>
   <data name="Duplicate" xml:space="preserve">
     <value>Duplicate</value>
   </data>

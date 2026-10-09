@@ -102,6 +102,8 @@
 
     private InventoryPlacementService? _placementService;
 
+    private ValidationMessageStore? _validationMessageStore;
+
     /// <summary>
     /// Gets or sets the label which should be displayed. If it's not explicitly provided, the component shows the
     /// Name defined in the <see cref="DisplayAttribute"/>. If there is no Name in a <see cref="DisplayAttribute"/>, it shows the property name instead.
@@ -151,6 +153,23 @@
         }
 
         this._placementService = new InventoryPlacementService(this._storageType, this._numberOfExtensions);
+
+        if (this._validationMessageStore is null)
+        {
+            this._validationMessageStore = new ValidationMessageStore(this.EditContext);
+            this.EditContext.OnValidationRequested += this.OnValidationRequested;
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void Dispose(bool disposing)
+    {
+        if (this._validationMessageStore is not null)
+        {
+            this.EditContext.OnValidationRequested -= this.OnValidationRequested;
+        }
+
+        base.Dispose(disposing);
     }
 
     /// <inheritdoc />
@@ -163,6 +182,20 @@
     protected override string FormatValueAsString(ItemStorage? value)
     {
         return value is null ? string.Empty : string.Join(';', value);
+    }
+
+    /// <summary>
+    /// Prevents saving items without a definition. The game server can't load them, and the
+    /// game client doesn't show them, so they would block an inventory slot invisibly.
+    /// </summary>
+    private void OnValidationRequested(object? sender, ValidationRequestedEventArgs e)
+    {
+        this._validationMessageStore!.Clear(this.FieldIdentifier);
+        var itemsWithoutDefinition = this.Value?.Items.Count(item => item.Definition is null) ?? 0;
+        if (itemsWithoutDefinition > 0)
+        {
+            this._validationMessageStore.Add(this.FieldIdentifier, string.Format(Resources.ItemsWithoutDefinition, itemsWithoutDefinition));
+        }
     }
 
     private void OnSelectedItemChanged(Item? item)
