@@ -113,8 +113,8 @@ map or a player is added.
 
 **Being hard-coded in the game client is not an exemption.** It is a reason the
 server's value has to *match* the client, which you note in the doc comment — it
-is not a reason to hard-code it on the server. The client is a moving target
-(see rule 9), and configuration may eventually be served to it from here.
+is not a reason to hard-code it on the server. The client is a moving target,
+and configuration may eventually be served to it from here.
 
 A magic number that StyleCop happily accepts is still a magic number.
 
@@ -300,38 +300,7 @@ already exists.
   make it mean two things and require touching every place that consumes it. A
   new, properly named type is the honest change — in its own pull request.
 
-## 9. Sources for game behaviour: inspiration, not facts
-
-Third-party server sources (`zTeamS6.3`, `emu-server`, and similar) were **not
-written by Webzen** and routinely contain their authors' own customizations.
-Treat them as **inspiration, not as facts** — they tell you what somebody did,
-not what the original did. They frequently disagree with each other and with the
-client.
-
-* Cross-check against the original client's behaviour for anything the **client**
-  computes or displays.
-* Where a value is computed **only on the server** (maximum mana, for example),
-  comparing with the client proves nothing.
-* In-game observation and the network analyzer beat both.
-* Where sources conflict and none is clearly right, prefer the variant which is
-  **consistent with the rest of our configuration** over a literal transcription.
-  In attribute relationships that usually means the `Total…` attributes —
-  `Stats.TotalStrength`, `Stats.TotalAgility`, `Stats.TotalLevel` — rather than
-  the base stats.
-* **Never port or transliterate code** from any of them. Reimplement the
-  behaviour in OpenMU's own terms: configuration, attribute relationships,
-  plugins. This is what `CONTRIBUTING.md` means.
-
-The same caution applies to the open source client
-([MuMain](https://github.com/sven-n/MuMain)): useful for observing behaviour and
-protocol facts, but it is being actively refactored, and its legacy code
-hard-codes a great deal without so much as a constant name. **It is not a design
-or style reference for the server.**
-
-Document the *why* of a non-obvious formula next to it, and note where the
-original behaved differently from what we do.
-
-## 10. No user-facing literals
+## 9. No user-facing literals
 
 Text a player can see is localized. Don't put English strings in the code.
 
@@ -345,7 +314,7 @@ Text a player can see is localized. Don't put English strings in the code.
 * Admin panel and web: the `Resources.resx` of the project.
 * Log messages are *not* localized — they are for operators, and stay English.
 
-## 11. Async and concurrency
+## 10. Async and concurrency
 
 * Asynchronous methods return `ValueTask` / `ValueTask<T>` and are named with an
   `Async` suffix.
@@ -363,7 +332,7 @@ Text a player can see is localized. Don't put English strings in the code.
   pooling that exists (`IObjectPool`, `PathFinderPoolingPolicy`) instead of
   allocating per call. Don't micro-optimize startup or configuration code.
 
-## 12. Style
+## 11. Style
 
 The project uses [StyleCop.Analyzers](https://www.nuget.org/packages/StyleCop.Analyzers/)
 and the Visual Studio threading analyzers, configured in
@@ -395,7 +364,7 @@ members and one type per file — the warnings tell you what to fix. Beyond that
 * Give a chat command the minimum character status it actually needs, and be able
   to say why it needs it.
 
-## 13. Test it, and document what a user would notice
+## 12. Test it, and document what a user would notice
 
 **Run your change before submitting it.** For anything non-trivial, say in the
 pull request what you ran.
