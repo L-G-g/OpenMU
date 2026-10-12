@@ -24,13 +24,10 @@ of the surrounding code where the rules don't speak.
 ## Contributing
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) is the front door: what we accept, how to
-open a pull request, and where to start. Two points from it are worth repeating
-here because they are easy to miss:
-
-* **No code copied or converted from the decompiled source of the original
-  server.**
-* **Test your change yourself.** Don't submit AI generated code you haven't run.
-  See rule 12 for what that means in this repository.
+open a pull request, and where to start. One point from it is worth repeating
+here because it is easy to miss: **test your change yourself.** Don't submit AI
+generated code you haven't run. See rule 12 for what that means in this
+repository.
 
 ## Orientation
 
