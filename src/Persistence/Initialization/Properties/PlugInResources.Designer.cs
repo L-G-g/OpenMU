@@ -611,6 +611,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized FixItemRequirementsPlugIn_Description text.</summary>
         public static string FixItemRequirementsPlugIn_Description => ResourceManager.GetString("FixItemRequirementsPlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized FixItemDataFromClientPlugIn_Name text.</summary>
+        public static string FixItemDataFromClientPlugIn_Name => ResourceManager.GetString("FixItemDataFromClientPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FixItemDataFromClientPlugIn_Description text.</summary>
+        public static string FixItemDataFromClientPlugIn_Description => ResourceManager.GetString("FixItemDataFromClientPlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized AddCastleSiegeDataUpdatePlugIn_Name text.</summary>
         public static string AddCastleSiegeDataUpdatePlugIn_Name => ResourceManager.GetString("AddCastleSiegeDataUpdatePlugIn_Name", resourceCulture)!;
 
