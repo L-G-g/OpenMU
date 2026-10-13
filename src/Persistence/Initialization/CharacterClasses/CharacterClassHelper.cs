@@ -46,6 +46,12 @@ public static class CharacterClassHelper
     /// <param name="summonerClass">Class rank of the summoner class.</param>
     /// <param name="ragefighterClass">Class rank of the ragefighter class.</param>
     /// <returns>The corresponding <see cref="CharacterClass"/>es of the provided class ranks.</returns>
+    /// <remarks>
+    /// A rank is the minimum class step, as the original client checks it before it lets a character
+    /// equip an item: 1 = any class of the line, 2 = from the second class on, 3 = only the third class.
+    /// Lines without a second class (magic gladiator, dark lord, rage fighter) only have their third class
+    /// above the first one, so a rank of 2 leaves only the third class.
+    /// </remarks>
     [Obsolete("Use the overload with the CharacterClasses enum instead.")]
     public static IEnumerable<CharacterClass> DetermineCharacterClasses(this GameConfiguration gameConfiguration, int wizardClass, int knightClass, int elfClass, int magicGladiatorClass, int darkLordClass, int summonerClass, int ragefighterClass)
     {
@@ -59,17 +65,14 @@ public static class CharacterClassHelper
                     yield return master;
                 }
 
-                if (classValue < 3)
+                if (classValue < 3 && secondClass is { } && characterClasses.FirstOrDefault(c => c.Number == (int)secondClass) is { } second)
                 {
-                    if (secondClass is { } && characterClasses.FirstOrDefault(c => c.Number == (int)secondClass) is { } second)
-                    {
-                        yield return second;
-                    }
+                    yield return second;
+                }
 
-                    if (characterClasses.FirstOrDefault(c => c.Number == (int)firstClass) is { } first)
-                    {
-                        yield return first;
-                    }
+                if (classValue < 2 && characterClasses.FirstOrDefault(c => c.Number == (int)firstClass) is { } first)
+                {
+                    yield return first;
                 }
             }
         }
