@@ -62,6 +62,7 @@ to its code with the details; this page is the map.
 | `Network/Analyzer` | The platform independent part of the network analysis: captured connections and their packet analysis — [Readme](https://github.com/MUnique/OpenMU/blob/master/src/Network/Analyzer/Readme.md) |
 | `Network/Analyzer.WinForms` | The tool which captures the traffic between client and server by acting as a proxy — [Readme](https://github.com/MUnique/OpenMU/blob/master/src/Network/Analyzer.WinForms/Readme.md) |
 | `ClientErrorLogDecryptor` | Decrypts the client's error logs — [Readme](https://github.com/MUnique/OpenMU/blob/master/src/ClientErrorLogDecryptor/Readme.md) |
+| `ClientDataExporter` | Exports the data tables (`item.bmd`) of an original game client to CSV — [Readme](https://github.com/MUnique/OpenMU/blob/master/src/ClientDataExporter/Readme.md) |
 | `SimpleModulusKeyGenerator` | Generates keys for the SimpleModulus encryption |
 | `ChatServer/ExDbConnector` | Connector for the ExDB protocol — [Readme](https://github.com/MUnique/OpenMU/blob/master/src/ChatServer/ExDbConnector/Readme.md) |
 
