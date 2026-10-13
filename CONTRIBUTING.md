@@ -9,9 +9,6 @@ Contributions are welcome if they meet the following criteria:
 
 * Coding style (naming, etc.) and quality should fit to the current state.
 
-* No code copied/converted from the well-known decompiled source of the
-  original server.
-
 If you want to contribute, please create a new issue for the feature or bug (if
 the issue doesn't exist yet) so we can see who is working on something and can
 discuss possible solutions. If it's a small thing, you can also just send a

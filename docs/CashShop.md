@@ -25,8 +25,7 @@ Using a storage item puts its items into the inventory.
 
 These facts come from the open source client
 [MuMain](https://github.com/sven-n/MuMain) (`src/source/GameShop`,
-`src/source/Network/Server/WSclient.cpp`), as protocol facts — see rule 9 of the
-[coding rules](CODING_RULES.md).
+`src/source/Network/Server/WSclient.cpp`), as protocol facts.
 
 ### The catalog is local
 
