@@ -17,11 +17,6 @@ using System.IO;
 /// </remarks>
 public static class ItemFileReader
 {
-    /// <summary>
-    /// The file name of the item definitions.
-    /// </summary>
-    public const string FileName = "item.bmd";
-
     private const int GroupCount = 16;
     private const int NumbersPerGroup = 512;
     private const ushort ChecksumKey = 0xE2F1;
@@ -39,9 +34,10 @@ public static class ItemFileReader
     /// Reads the defined items of the file. Empty slots are skipped.
     /// </summary>
     /// <param name="path">The path of the file.</param>
+    /// <param name="nameEncoding">The encoding of the item names, which depends on the language of the file.</param>
     /// <returns>The defined items, ordered by group and number.</returns>
     /// <exception cref="InvalidDataException">The file is damaged or has an unknown layout.</exception>
-    public static IReadOnlyList<ItemRecord> Read(string path)
+    public static IReadOnlyList<ItemRecord> Read(string path, Encoding nameEncoding)
     {
         var (records, recordSize) = BmdFile.ReadRecords(path, GroupCount * NumbersPerGroup, ChecksumKey);
         if (recordSize != SeasonSixRecordSize)
@@ -53,7 +49,7 @@ public static class ItemFileReader
         for (var index = 0; index < GroupCount * NumbersPerGroup; index++)
         {
             var record = records.AsSpan(index * recordSize, recordSize);
-            var name = ReadName(record[..NameLength]);
+            var name = ReadName(record[..NameLength], nameEncoding);
             if (name.Length == 0)
             {
                 continue;
@@ -109,7 +105,7 @@ public static class ItemFileReader
         return BinaryPrimitives.ReadUInt16LittleEndian(record[offset..]);
     }
 
-    private static string ReadName(ReadOnlySpan<byte> bytes)
+    private static string ReadName(ReadOnlySpan<byte> bytes, Encoding encoding)
     {
         var end = bytes.IndexOf((byte)0);
         if (end >= 0)
@@ -117,6 +113,6 @@ public static class ItemFileReader
             bytes = bytes[..end];
         }
 
-        return Encoding.Latin1.GetString(bytes).Trim();
+        return encoding.GetString(bytes).Trim();
     }
 }

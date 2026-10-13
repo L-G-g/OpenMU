@@ -7,24 +7,28 @@ using MUnique.OpenMU.ClientDataExporter;
 
 if (args.Length < 1 || string.IsNullOrWhiteSpace(args[0]))
 {
-    Console.WriteLine("Usage: MUnique.OpenMU.ClientDataExporter <client folder> [output folder]");
-    Console.WriteLine("Exports the item definitions of the client's Data\\Local\\item.bmd into items.csv.");
+    Console.WriteLine("Usage: MUnique.OpenMU.ClientDataExporter <client folder | item file> [output folder] [language]");
+    Console.WriteLine("Exports the item definitions of the client's Data\\Local\\<language>\\item_<language>.bmd into items.csv.");
+    Console.WriteLine("The language is the name of the client's language folder, e.g. Eng (default), Spn or Por.");
     return 1;
 }
 
-var clientFolder = args[0];
+var input = args[0];
 var outputFolder = args.Length > 1 ? args[1] : Path.Combine(Environment.CurrentDirectory, "client-data");
+var language = args.Length > 2 ? args[2] : "Eng";
 
-var itemFile = FindFile(clientFolder, ItemFileReader.FileName);
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+var itemFile = File.Exists(input) ? input : FindLanguageFile(input, language);
 if (itemFile is null)
 {
-    Console.WriteLine($"{ItemFileReader.FileName} wasn't found below {clientFolder}.");
+    Console.WriteLine($"item_{language}.bmd wasn't found in the language folder {language} of {input}.");
     return 2;
 }
 
 try
 {
-    var items = ItemFileReader.Read(itemFile);
+    var items = ItemFileReader.Read(itemFile, GetNameEncoding(itemFile));
     Directory.CreateDirectory(outputFolder);
     var outputFile = Path.Combine(outputFolder, "items.csv");
     ItemCsvWriter.Write(outputFile, items);
@@ -37,22 +41,28 @@ catch (InvalidDataException ex)
     return 3;
 }
 
-// The client keeps its tables in Data\Local; the file name casing differs between client versions.
-static string? FindFile(string folder, string fileName)
+// The client reads its items from the language folder, e.g. Data\Local\Eng\item_eng.bmd.
+// The other item files in the client folder are leftovers: Data\Local\item.bmd has Japanese
+// names and fewer items, Data\Local\Eng\item.bmd is outdated as well.
+// The casing of the file names differs between client versions.
+static string? FindLanguageFile(string clientFolder, string language)
 {
-    if (File.Exists(folder))
-    {
-        return folder;
-    }
-
-    if (!Directory.Exists(folder))
+    if (!Directory.Exists(clientFolder))
     {
         return null;
     }
 
     var options = new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive, RecurseSubdirectories = true };
-    return Directory.EnumerateFiles(folder, fileName, options)
-        .OrderBy(f => f.Contains("Local", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-        .ThenBy(f => f.Length)
-        .FirstOrDefault();
+    return Directory.EnumerateFiles(clientFolder, $"item_{language}.bmd", options)
+        .FirstOrDefault(f => string.Equals(Path.GetFileName(Path.GetDirectoryName(f)), language, StringComparison.OrdinalIgnoreCase));
+}
+
+// The names are stored in the ANSI code page of the language; the file outside of
+// the language folders is the one of the Japanese client.
+static Encoding GetNameEncoding(string itemFile)
+{
+    var folder = Path.GetFileName(Path.GetDirectoryName(itemFile));
+    return string.Equals(folder, "Local", StringComparison.OrdinalIgnoreCase)
+        ? Encoding.GetEncoding(932)
+        : Encoding.GetEncoding(1252);
 }

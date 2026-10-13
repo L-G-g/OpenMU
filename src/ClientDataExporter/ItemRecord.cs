@@ -23,8 +23,8 @@ namespace MUnique.OpenMU.ClientDataExporter;
 /// <param name="MagicDefense">The magic defense.</param>
 /// <param name="AttackSpeed">The attack speed.</param>
 /// <param name="WalkSpeed">The walk speed.</param>
-/// <param name="Durability">The durability.</param>
-/// <param name="MagicDurability">The magic durability of a staff.</param>
+/// <param name="Durability">The durability. Staffs keep theirs in <paramref name="MagicDurability"/> instead.</param>
+/// <param name="MagicDurability">The durability of a staff or stick.</param>
 /// <param name="MagicPower">The magic power (wizardry rise) of a staff or book.</param>
 /// <param name="RequiredStrength">The required strength.</param>
 /// <param name="RequiredAgility">The required agility.</param>
