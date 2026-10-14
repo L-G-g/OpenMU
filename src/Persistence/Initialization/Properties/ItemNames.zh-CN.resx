@@ -1446,12 +1446,6 @@
   <data name="SphereTri" xml:space="preserve">
     <value>光之石（3阶）</value>
   </data>
-  <data name="Sphere4" xml:space="preserve">
-    <value>光之石（4阶）</value>
-  </data>
-  <data name="Sphere5" xml:space="preserve">
-    <value>光之石（5阶）</value>
-  </data>
   <data name="SeedSphereFire1" xml:space="preserve">
     <value>荧光宝石（火，1阶）</value>
   </data>
@@ -1505,42 +1499,6 @@
   </data>
   <data name="SeedSphereEarth3" xml:space="preserve">
     <value>荧光宝石（土，3阶）</value>
-  </data>
-  <data name="SeedSphereFire4" xml:space="preserve">
-    <value>荧光宝石（火，4阶）</value>
-  </data>
-  <data name="SeedSphereWater4" xml:space="preserve">
-    <value>荧光宝石（水，4阶）</value>
-  </data>
-  <data name="SeedSphereIce4" xml:space="preserve">
-    <value>荧光宝石（冰，4阶）</value>
-  </data>
-  <data name="SeedSphereWind4" xml:space="preserve">
-    <value>荧光宝石（风，4阶）</value>
-  </data>
-  <data name="SeedSphereLightning4" xml:space="preserve">
-    <value>荧光宝石（雷，4阶）</value>
-  </data>
-  <data name="SeedSphereEarth4" xml:space="preserve">
-    <value>荧光宝石（土，4阶）</value>
-  </data>
-  <data name="SeedSphereFire5" xml:space="preserve">
-    <value>荧光宝石（火，5阶）</value>
-  </data>
-  <data name="SeedSphereWater5" xml:space="preserve">
-    <value>荧光宝石（水，5阶）</value>
-  </data>
-  <data name="SeedSphereIce5" xml:space="preserve">
-    <value>荧光宝石（冰，5阶）</value>
-  </data>
-  <data name="SeedSphereWind5" xml:space="preserve">
-    <value>荧光宝石（风，5阶）</value>
-  </data>
-  <data name="SeedSphereLightning5" xml:space="preserve">
-    <value>荧光宝石（雷，5阶）</value>
-  </data>
-  <data name="SeedSphereEarth5" xml:space="preserve">
-    <value>荧光宝石（土，5阶）</value>
   </data>
   <data name="PackedJewelOfLife" xml:space="preserve">
     <value>生命宝石组合</value>

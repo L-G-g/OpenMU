@@ -283,7 +283,7 @@
   <data name="FixItemRequirementsPlugIn_Name" xml:space="preserve"><value>Fix Item Requirements (Elf Bows)</value></data>
   <data name="FixItemRequirementsPlugIn_Description" xml:space="preserve"><value>Updates some item requirements for elf bows which were initialized wrongly.</value></data>
   <data name="FixItemDataFromClientPlugIn_Name" xml:space="preserve"><value>Fix Item Data (Client Season 6)</value></data>
-  <data name="FixItemDataFromClientPlugIn_Description" xml:space="preserve"><value>Corrects class restrictions, level and stat requirements, defense and durability of season 6 items, so that they match the item table of the original Season 6 Episode 3 client.</value></data>
+  <data name="FixItemDataFromClientPlugIn_Description" xml:space="preserve"><value>Corrects class restrictions, level and stat requirements, defense and durability of season 6 items, and the seed spheres, so that they match the item table of the original Season 6 Episode 3 client.</value></data>
   <data name="AddCastleSiegeDataUpdatePlugIn_Name" xml:space="preserve"><value>Add Castle Siege data</value></data>
   <data name="AddCastleSiegeDataUpdatePlugIn_Description" xml:space="preserve"><value>This update adds the Castle Siege configuration and persistent state.</value></data>
   <data name="AddCashShopUpdatePlugIn_Name" xml:space="preserve"><value>Add cash shop</value></data>

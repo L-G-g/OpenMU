@@ -26,6 +26,16 @@ using MUnique.OpenMU.PlugIns;
 ///   <item>Missing vitality requirement of the Phoenix Soul set and energy requirements of some gloves.</item>
 ///   <item>The Guardian Shield has the defense skill, like the other shields.</item>
 /// </list>
+/// Version 2 corrects the seed spheres:
+/// <list type="bullet">
+///   <item>The client only knows the spheres Mono, Di and Tri (12/70 to 12/72) and their seed spheres
+///     (12/100 to 12/117). The spheres 4 and 5 (12/73, 12/74) and their seed spheres (12/118 to 12/129)
+///     can no longer drop or be used to create seed spheres. They are kept, because characters may
+///     already have them.</item>
+///   <item>The level of a seed sphere is the level of its seed (the kind of option), so a seed sphere
+///     allows the same item levels as its seed.</item>
+///   <item>The drop levels of the seed spheres are the ones of the client (1 to 3).</item>
+/// </list>
 /// </remarks>
 [PlugIn]
 [Display(Name = nameof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources.FixItemDataFromClientPlugIn_Name), Description = nameof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources.FixItemDataFromClientPlugIn_Description), ResourceType = typeof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources))]
@@ -40,9 +50,17 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "Corrects class restrictions, level and stat requirements, defense and durability of season 6 items, so that they match the item table of the original Season 6 Episode 3 client.";
+    internal const string PlugInDescription = "Corrects class restrictions, level and stat requirements, defense and durability of season 6 items, and the seed spheres, so that they match the item table of the original Season 6 Episode 3 client.";
 
     private const short DefenseSkillNumber = 18;
+
+    private const byte SocketItemGroup = 12;
+    private const short FirstSeedNumber = 60;
+    private const short FirstSphereNumber = 70;
+    private const short FirstSeedSphereNumber = 100;
+    private const int SeedTypes = 6;
+    private const int ClientSphereLevels = 3;
+    private const int OldSphereLevels = 5;
 
     private static readonly (CharacterClassNumber FirstClass, (byte Group, short Number)[] Items)[] SecondClassItems =
     [
@@ -178,6 +196,12 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
     public override DateTime CreatedAt => new(2026, 10, 13, 0, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
+    public override int Version => 2;
+
+    /// <inheritdoc />
+    public override DateTime UpdatedAt => new(2026, 10, 14, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <inheritdoc />
     protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
     {
         foreach (var (firstClassNumber, items) in SecondClassItems)
@@ -227,7 +251,58 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
             guardianShield.Skill = defenseSkill;
         }
 
+        FixSeedSpheres(gameConfiguration);
+
         return ValueTask.CompletedTask;
+    }
+
+    private static void FixSeedSpheres(GameConfiguration gameConfiguration)
+    {
+        for (var level = 0; level < OldSphereLevels; level++)
+        {
+            for (var type = 0; type < SeedTypes; type++)
+            {
+                if (FindItem(gameConfiguration, SocketItemGroup, (short)(FirstSeedSphereNumber + (level * SeedTypes) + type)) is not { } seedSphere)
+                {
+                    continue;
+                }
+
+                if (level >= ClientSphereLevels)
+                {
+                    seedSphere.DropsFromMonsters = false;
+                    continue;
+                }
+
+                seedSphere.DropLevel = (byte)(level + 1);
+                if (FindItem(gameConfiguration, SocketItemGroup, (short)(FirstSeedNumber + type)) is { } seed)
+                {
+                    seedSphere.MaximumItemLevel = seed.MaximumItemLevel;
+                }
+            }
+        }
+
+        // The spheres which the client doesn't know can't be used to create seed spheres anymore.
+        var unknownSpheres = new List<ItemDefinition>();
+        for (var level = ClientSphereLevels; level < OldSphereLevels; level++)
+        {
+            if (FindItem(gameConfiguration, SocketItemGroup, (short)(FirstSphereNumber + level)) is { } sphere)
+            {
+                sphere.DropsFromMonsters = false;
+                unknownSpheres.Add(sphere);
+            }
+        }
+
+        foreach (var requiredItem in gameConfiguration.Monsters
+                     .SelectMany(m => m.ItemCraftings)
+                     .Select(c => c.SimpleCraftingSettings)
+                     .Where(s => s is not null)
+                     .SelectMany(s => s!.RequiredItems))
+        {
+            foreach (var sphere in unknownSpheres)
+            {
+                requiredItem.PossibleItems.Remove(sphere);
+            }
+        }
     }
 
     private static ItemDefinition? FindItem(GameConfiguration gameConfiguration, byte group, short number)
