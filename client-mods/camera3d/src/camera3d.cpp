@@ -385,6 +385,15 @@ namespace
         }
 
         InstallRightClick(&Log);
+        if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
+        {
+            if (SmoothMotionEnabled())
+            {
+                InstallLooseObjectInterpolation(&Log);
+            }
+
+            InstallRenderDiagnostics(&Log);
+        }
 
         // Esperar a que exista la ventana del juego y engancharse a sus mensajes.
         for (int i = 0; i < 600 && *MainWindow == nullptr; i++)
@@ -428,6 +437,10 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         }
 
         Log("camera3d cargada.");
+        if (InstallTestMode(&Log)) // antes de cualquier conexion
+        {
+            InstallAutomation(&Log);
+        }
         const HANDLE thread = CreateThread(nullptr, 0, &InitThread, nullptr, 0, nullptr);
         if (thread != nullptr)
         {
