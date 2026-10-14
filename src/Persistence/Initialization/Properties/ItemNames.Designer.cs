@@ -3395,20 +3395,6 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
             }
         }
 
-        /// <summary>Gets Sphere4 from the item name resources.</summary>
-        public static string Sphere4 {
-            get {
-                return ResourceManager.GetString("Sphere4", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets Sphere5 from the item name resources.</summary>
-        public static string Sphere5 {
-            get {
-                return ResourceManager.GetString("Sphere5", resourceCulture);
-            }
-        }
-
         /// <summary>Gets SeedSphereFire1 from the item name resources.</summary>
         public static string SeedSphereFire1 {
             get {
@@ -3532,90 +3518,6 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         public static string SeedSphereEarth3 {
             get {
                 return ResourceManager.GetString("SeedSphereEarth3", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereFire4 from the item name resources.</summary>
-        public static string SeedSphereFire4 {
-            get {
-                return ResourceManager.GetString("SeedSphereFire4", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereWater4 from the item name resources.</summary>
-        public static string SeedSphereWater4 {
-            get {
-                return ResourceManager.GetString("SeedSphereWater4", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereIce4 from the item name resources.</summary>
-        public static string SeedSphereIce4 {
-            get {
-                return ResourceManager.GetString("SeedSphereIce4", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereWind4 from the item name resources.</summary>
-        public static string SeedSphereWind4 {
-            get {
-                return ResourceManager.GetString("SeedSphereWind4", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereLightning4 from the item name resources.</summary>
-        public static string SeedSphereLightning4 {
-            get {
-                return ResourceManager.GetString("SeedSphereLightning4", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereEarth4 from the item name resources.</summary>
-        public static string SeedSphereEarth4 {
-            get {
-                return ResourceManager.GetString("SeedSphereEarth4", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereFire5 from the item name resources.</summary>
-        public static string SeedSphereFire5 {
-            get {
-                return ResourceManager.GetString("SeedSphereFire5", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereWater5 from the item name resources.</summary>
-        public static string SeedSphereWater5 {
-            get {
-                return ResourceManager.GetString("SeedSphereWater5", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereIce5 from the item name resources.</summary>
-        public static string SeedSphereIce5 {
-            get {
-                return ResourceManager.GetString("SeedSphereIce5", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereWind5 from the item name resources.</summary>
-        public static string SeedSphereWind5 {
-            get {
-                return ResourceManager.GetString("SeedSphereWind5", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereLightning5 from the item name resources.</summary>
-        public static string SeedSphereLightning5 {
-            get {
-                return ResourceManager.GetString("SeedSphereLightning5", resourceCulture);
-            }
-        }
-
-        /// <summary>Gets SeedSphereEarth5 from the item name resources.</summary>
-        public static string SeedSphereEarth5 {
-            get {
-                return ResourceManager.GetString("SeedSphereEarth5", resourceCulture);
             }
         }
 

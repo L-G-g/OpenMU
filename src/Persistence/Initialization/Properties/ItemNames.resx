@@ -1446,12 +1446,6 @@
   <data name="SphereTri" xml:space="preserve">
     <value>Sphere (Tri)</value>
   </data>
-  <data name="Sphere4" xml:space="preserve">
-    <value>Sphere (4)</value>
-  </data>
-  <data name="Sphere5" xml:space="preserve">
-    <value>Sphere (5)</value>
-  </data>
   <data name="SeedSphereFire1" xml:space="preserve">
     <value>Seed Sphere (Fire) (1)</value>
   </data>
@@ -1505,42 +1499,6 @@
   </data>
   <data name="SeedSphereEarth3" xml:space="preserve">
     <value>Seed Sphere (Earth) (3)</value>
-  </data>
-  <data name="SeedSphereFire4" xml:space="preserve">
-    <value>Seed Sphere (Fire) (4)</value>
-  </data>
-  <data name="SeedSphereWater4" xml:space="preserve">
-    <value>Seed Sphere (Water) (4)</value>
-  </data>
-  <data name="SeedSphereIce4" xml:space="preserve">
-    <value>Seed Sphere (Ice) (4)</value>
-  </data>
-  <data name="SeedSphereWind4" xml:space="preserve">
-    <value>Seed Sphere (Wind) (4)</value>
-  </data>
-  <data name="SeedSphereLightning4" xml:space="preserve">
-    <value>Seed Sphere (Lightning) (4)</value>
-  </data>
-  <data name="SeedSphereEarth4" xml:space="preserve">
-    <value>Seed Sphere (Earth) (4)</value>
-  </data>
-  <data name="SeedSphereFire5" xml:space="preserve">
-    <value>Seed Sphere (Fire) (5)</value>
-  </data>
-  <data name="SeedSphereWater5" xml:space="preserve">
-    <value>Seed Sphere (Water) (5)</value>
-  </data>
-  <data name="SeedSphereIce5" xml:space="preserve">
-    <value>Seed Sphere (Ice) (5)</value>
-  </data>
-  <data name="SeedSphereWind5" xml:space="preserve">
-    <value>Seed Sphere (Wind) (5)</value>
-  </data>
-  <data name="SeedSphereLightning5" xml:space="preserve">
-    <value>Seed Sphere (Lightning) (5)</value>
-  </data>
-  <data name="SeedSphereEarth5" xml:space="preserve">
-    <value>Seed Sphere (Earth) (5)</value>
   </data>
   <data name="PackedJewelOfLife" xml:space="preserve">
     <value>Packed Jewel of Life</value>

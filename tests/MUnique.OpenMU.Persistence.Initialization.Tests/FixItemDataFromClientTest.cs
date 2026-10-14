@@ -30,6 +30,10 @@ internal class FixItemDataFromClientTest
         using var _ = context;
 
         AssertCorrectedData(gameConfiguration);
+        Assert.That(
+            gameConfiguration.Items.Where(i => i.Group == 12 && (i.Number is 73 or 74 || i.Number >= 118 && i.Number <= 129)),
+            Is.Empty,
+            "The spheres and seed spheres which the client doesn't know shouldn't be created.");
     }
 
     /// <summary>
@@ -50,6 +54,19 @@ internal class FixItemDataFromClientTest
         AssertCorrectedData(gameConfiguration);
         Assert.That(GetItem(gameConfiguration, 2, 16).Requirements.Count(r => r.Attribute == Stats.Level), Is.EqualTo(1));
         Assert.That(GetItem(gameConfiguration, 10, 48).Requirements.Count(r => r.Attribute == Stats.TotalEnergyRequirementValue), Is.EqualTo(1));
+
+        // The spheres which the client doesn't know are kept (characters may have them), but they
+        // can't drop or be used to create seed spheres anymore.
+        var sphere4 = GetItem(gameConfiguration, 12, 73);
+        Assert.Multiple(() =>
+        {
+            Assert.That(sphere4.DropsFromMonsters, Is.False);
+            Assert.That(GetItem(gameConfiguration, 12, 118).DropsFromMonsters, Is.False);
+            Assert.That(
+                gameConfiguration.Monsters.SelectMany(m => m.ItemCraftings).Select(c => c.SimpleCraftingSettings)
+                    .Where(s => s is not null).SelectMany(s => s!.RequiredItems).SelectMany(r => r.PossibleItems),
+                Does.Not.Contain(sphere4));
+        });
     }
 
     private static void AssertCorrectedData(GameConfiguration gameConfiguration)
@@ -76,6 +93,13 @@ internal class FixItemDataFromClientTest
 
             Assert.That(GetRequirement(GetItem(gameConfiguration, 8, 73), Stats.TotalVitalityRequirementValue), Is.EqualTo(85));
             Assert.That(GetRequirement(GetItem(gameConfiguration, 10, 48), Stats.TotalEnergyRequirementValue), Is.EqualTo(165));
+
+            // A seed sphere keeps the level of its seed, and has the drop level of the client.
+            Assert.That(GetItem(gameConfiguration, 12, 100).MaximumItemLevel, Is.EqualTo(GetItem(gameConfiguration, 12, 60).MaximumItemLevel));
+            Assert.That(GetItem(gameConfiguration, 12, 100).MaximumItemLevel, Is.GreaterThan(0));
+            Assert.That(GetItem(gameConfiguration, 12, 117).MaximumItemLevel, Is.EqualTo(GetItem(gameConfiguration, 12, 65).MaximumItemLevel));
+            Assert.That(GetItem(gameConfiguration, 12, 100).DropLevel, Is.EqualTo(1));
+            Assert.That(GetItem(gameConfiguration, 12, 112).DropLevel, Is.EqualTo(3));
         });
     }
 
@@ -110,6 +134,27 @@ internal class FixItemDataFromClientTest
         phoenixArmor.Requirements.Remove(phoenixArmor.Requirements.Single(r => r.Attribute == Stats.TotalVitalityRequirementValue));
         var gloves48 = GetItem(gameConfiguration, 10, 48);
         gloves48.Requirements.Remove(gloves48.Requirements.Single(r => r.Attribute == Stats.TotalEnergyRequirementValue));
+
+        foreach (var seedSphere in gameConfiguration.Items.Where(i => i.Group == 12 && i.Number >= 100 && i.Number <= 117))
+        {
+            seedSphere.DropLevel = (byte)((seedSphere.Number - 100) / 6);
+            seedSphere.MaximumItemLevel = 0;
+        }
+
+        // The previous data also had a fourth sphere, usable to create seed spheres, and seed spheres
+        // of the fourth level which dropped from monsters.
+        var sphere4 = context.CreateNew<ItemDefinition>();
+        sphere4.Group = 12;
+        sphere4.Number = 73;
+        gameConfiguration.Items.Add(sphere4);
+        var seedSphereCrafting = gameConfiguration.Monsters.SelectMany(m => m.ItemCraftings).Single(c => c.Name == "Seed Sphere Creation");
+        seedSphereCrafting.SimpleCraftingSettings!.RequiredItems.Single(r => r.PossibleItems.Any(i => i.Number == 70)).PossibleItems.Add(sphere4);
+
+        var seedSphere4 = context.CreateNew<ItemDefinition>();
+        seedSphere4.Group = 12;
+        seedSphere4.Number = 118;
+        seedSphere4.DropsFromMonsters = true;
+        gameConfiguration.Items.Add(seedSphere4);
     }
 
     private static ItemDefinition GetItem(GameConfiguration gameConfiguration, int group, int number)

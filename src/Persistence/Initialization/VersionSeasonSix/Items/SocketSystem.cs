@@ -27,9 +27,10 @@ public class SocketSystem : InitializerBase
     private const int SeedSphereNumberStart = 100;
 
     /// <summary>
-    /// Gets the number of sphere levels.
+    /// Gets the number of sphere levels. The client of season 6 episode 3 knows the spheres
+    /// Mono, Di and Tri (and their seed spheres) only.
     /// </summary>
-    private const int SphereLevels = 5;
+    private const int SphereLevels = 3;
 
     /// <summary>
     /// Gets the number of seed types.
@@ -72,8 +73,6 @@ public class SocketSystem : InitializerBase
                     LocalizedString.FromResource(() => ItemNames.SeedSphereFire1),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereFire2),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereFire3),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereFire4),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereFire5),
                 ],
                 this._fireOptions!),
             (LocalizedString.FromResource(() => ItemNames.SeedWater),
@@ -81,8 +80,6 @@ public class SocketSystem : InitializerBase
                     LocalizedString.FromResource(() => ItemNames.SeedSphereWater1),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereWater2),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereWater3),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereWater4),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereWater5),
                 ],
                 this._waterOptions!),
             (LocalizedString.FromResource(() => ItemNames.SeedIce),
@@ -90,8 +87,6 @@ public class SocketSystem : InitializerBase
                     LocalizedString.FromResource(() => ItemNames.SeedSphereIce1),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereIce2),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereIce3),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereIce4),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereIce5),
                 ],
                 this._iceOptions!),
             (LocalizedString.FromResource(() => ItemNames.SeedWind),
@@ -99,8 +94,6 @@ public class SocketSystem : InitializerBase
                     LocalizedString.FromResource(() => ItemNames.SeedSphereWind1),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereWind2),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereWind3),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereWind4),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereWind5),
                 ],
                 this._windOptions!),
             (LocalizedString.FromResource(() => ItemNames.SeedLightning),
@@ -108,8 +101,6 @@ public class SocketSystem : InitializerBase
                     LocalizedString.FromResource(() => ItemNames.SeedSphereLightning1),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereLightning2),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereLightning3),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereLightning4),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereLightning5),
                 ],
                 this._lightningOptions!),
             (LocalizedString.FromResource(() => ItemNames.SeedEarth),
@@ -117,8 +108,6 @@ public class SocketSystem : InitializerBase
                     LocalizedString.FromResource(() => ItemNames.SeedSphereEarth1),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereEarth2),
                     LocalizedString.FromResource(() => ItemNames.SeedSphereEarth3),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereEarth4),
-                    LocalizedString.FromResource(() => ItemNames.SeedSphereEarth5),
                 ],
                 this._earthOptions!),
         };
@@ -133,8 +122,6 @@ public class SocketSystem : InitializerBase
         this.CreateSphere(70, LocalizedString.FromResource(() => ItemNames.SphereMono), 102);
         this.CreateSphere(71, LocalizedString.FromResource(() => ItemNames.SphereDi), 122);
         this.CreateSphere(72, LocalizedString.FromResource(() => ItemNames.SphereTri), 132);
-        this.CreateSphere(73, LocalizedString.FromResource(() => ItemNames.Sphere4), null);
-        this.CreateSphere(74, LocalizedString.FromResource(() => ItemNames.Sphere5), null);
 
         for (byte level = 0; level < SphereLevels; level++)
         {
@@ -568,7 +555,10 @@ public class SocketSystem : InitializerBase
         itemDefinition.Durability = 1;
         itemDefinition.Width = 1;
         itemDefinition.Height = 1;
-        itemDefinition.DropLevel = level;
+        itemDefinition.DropLevel = (byte)(level + 1);
+
+        // The level of a seed sphere is the level of its seed, which defines the kind of option.
+        itemDefinition.MaximumItemLevel = (byte)options.PossibleOptions.Max(o => o.Number);
         itemDefinition.SetGuid(itemDefinition.Group, itemDefinition.Number);
         itemDefinition.PossibleItemOptions.Add(options);
         this.GameConfiguration.Items.Add(itemDefinition);
