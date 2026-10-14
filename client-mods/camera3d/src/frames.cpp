@@ -468,11 +468,15 @@ namespace
 
             double t = static_cast<double>(now.QuadPart - g_lastStep.QuadPart) * 1000.0 / g_frequency.QuadPart / TickMs;
             InterpolationBeforeRender(!g_extraFrame, static_cast<float>(t > 1.0 ? 1.0 : t));
+            InterpolationSetFrame(true, !g_extraFrame, static_cast<float>(t > 1.0 ? 1.0 : t));
+            TrailsBeforeRender(!g_extraFrame, static_cast<float>(t > 1.0 ? 1.0 : t));
         }
 
         const auto render = reinterpret_cast<RenderFunctionType>(Scenes[2].render);
         const char result = g_diagnostics != nullptr ? g_diagnostics(render, g_extraFrame != 0) : render();
         InterpolationAfterRender();
+        TrailsAfterRender();
+        InterpolationSetFrame(false, false, 0.0f);
         EndRender();
         return result;
     }

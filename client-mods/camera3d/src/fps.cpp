@@ -14,6 +14,7 @@
 //   FPS=60      ; cuadros por segundo; 25 o menos deja el juego como estaba
 //   ShowFps=1   ; contador en el titulo de la ventana (0 para no mostrarlo)
 //   Smooth=1    ; movimiento interpolado entre pasos de logica (0 para desactivarlo)
+//   SmoothTrails=1 ; estelas de armas y skills interpoladas (0 para desactivarlo)
 
 #include "mods.h"
 
@@ -151,6 +152,7 @@ namespace
         strcpy_s(slash + 1, MAX_PATH - (slash + 1 - path), "camera3d.ini");
         g_showFps = GetPrivateProfileIntA("Video", "ShowFps", 1, path) != 0;
         g_smooth = GetPrivateProfileIntA("Video", "Smooth", 1, path) != 0;
+        InterpolationSetSmoothTrails(GetPrivateProfileIntA("Video", "SmoothTrails", 1, path) != 0);
         return GetPrivateProfileIntA("Video", "FPS", DefaultFps, path);
     }
 }

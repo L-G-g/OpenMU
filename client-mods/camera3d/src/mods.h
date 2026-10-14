@@ -64,3 +64,13 @@ void AutomationTick(BYTE* keyStates);
 // despues de dibujar vuelve a poner las reales.
 void InterpolationBeforeRender(bool stepped, float t);
 void InterpolationAfterRender();
+
+// Objetos sueltos (cuervo del Dark Lord, mascotas nuevas): se interpolan al dibujarlos (RenderObject).
+// InterpolationSetFrame avisa si se esta dibujando la escena del juego, si hubo paso de logica y t.
+void InterpolationSetFrame(bool rendering, bool stepped, float t);
+bool InstallLooseObjectInterpolation(LogFunction log);
+
+// Estelas (uniones): los puntos de la cinta se dibujan entre su lugar anterior y el actual.
+void InterpolationSetSmoothTrails(bool smooth);
+void TrailsBeforeRender(bool stepped, float t);
+void TrailsAfterRender();

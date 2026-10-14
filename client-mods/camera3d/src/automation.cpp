@@ -250,6 +250,10 @@ namespace
         {
             SetSmoothMotion(atoi(rest) != 0); // smooth 0|1
         }
+        else if (_stricmp(name, "trails") == 0)
+        {
+            InterpolationSetSmoothTrails(atoi(rest) != 0); // trails 0|1
+        }
         else if (_stricmp(name, "block") == 0 && sscanf_s(rest, "%d %d", &x, &y) == 2)
         {
             SetCreatorBlocked(x, y != 0); // block N 0|1

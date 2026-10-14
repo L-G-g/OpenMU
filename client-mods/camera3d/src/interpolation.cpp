@@ -241,3 +241,412 @@ void InterpolationAfterRender()
         g_valid = false;
     }
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Objetos sueltos (fuera de los arreglos de arriba): el cuervo del Dark Lord, las mascotas nuevas, etc.
+// Viven en memoria dinamica, asi que se interpolan al dibujarlos: se reemplaza RenderObject
+// (0x005EBBB0), por donde pasan todos, y el estado se guarda por direccion del OBJECT.
+
+namespace
+{
+    constexpr DWORD RenderObjectFunction = 0x005EBBB0;
+    constexpr DWORD RenderObjectCheck = 0x005DDAF0; // bool (OBJECT*, bool, int, int)
+    constexpr DWORD RenderObjectDraw = 0x005DE260;
+    const BYTE RenderObjectPrologue[] = { 0x55, 0x8B, 0xEC, 0x8B, 0x45, 0x14 }; // MOV EAX,[EBP+0x14]
+
+    struct LooseObject
+    {
+        BYTE* object;
+        int step; // ultimo paso de logica en que se anoto
+        State previous;
+        State current;
+    };
+
+    constexpr int LooseCount = 8192; // tabla con direccion abierta (tambien pasan los objetos del mapa)
+    LooseObject g_loose[LooseCount];
+    int g_step = 0; // contador de pasos de logica vistos al dibujar
+    bool g_stepped = false;
+    float g_t = 0.0f;
+    bool g_inGameRender = false; // dentro del dibujo de la escena del juego
+
+    // Para el log: objetos sueltos que se movieron entre pasos (interpolados) y costo del registro.
+    LARGE_INTEGER g_looseFrequency{};
+    LONGLONG g_looseTicks = 0;
+    int g_looseMoving = 0;
+    int g_looseFrames = 0;
+    DWORD g_looseReport = 0;
+    LogFunction g_looseLog = nullptr;
+
+    // OBJECT al principio; el tipo de modelo como identidad.
+    const ObjectArray LooseArray = { "suelto", 0, 1, 0, 0, 0x30, 4 };
+
+    bool InKnownArrays(BYTE* object)
+    {
+        if (g_characters != nullptr && object >= g_characters && object < g_characters + 400 * 0x598)
+        {
+            return true;
+        }
+
+        for (const ObjectArray& array : Arrays)
+        {
+            BYTE* base = reinterpret_cast<BYTE*>(array.base);
+            if (array.base != 0 && object >= base && object < base + array.count * array.stride)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    LooseObject* FindLoose(BYTE* object)
+    {
+        int slot = static_cast<int>((reinterpret_cast<DWORD>(object) >> 4) % LooseCount);
+        for (int probe = 0; probe < LooseCount; probe++, slot = (slot + 1) % LooseCount)
+        {
+            LooseObject& entry = g_loose[slot];
+            if (entry.object == object)
+            {
+                return &entry;
+            }
+
+            // libre, o sin dibujarse hace mucho (se reutiliza)
+            if (entry.object == nullptr || g_step - entry.step > 50)
+            {
+                entry.object = object;
+                entry.step = -1;
+                return &entry;
+            }
+        }
+
+        return nullptr;
+    }
+
+    int __cdecl RenderObjectHook(BYTE* object, int flag, int a, int b)
+    {
+        using Function = int(__cdecl*)(BYTE*, int, int, int);
+        LooseObject* entry = nullptr;
+        State written{};
+        LARGE_INTEGER start{};
+        QueryPerformanceCounter(&start);
+        if (g_inGameRender && object != nullptr && !InKnownArrays(object))
+        {
+            __try
+            {
+                entry = FindLoose(object);
+                if (entry != nullptr)
+                {
+                    State now;
+                    Read(object, LooseArray, now);
+                    if (g_stepped && entry->step != g_step)
+                    {
+                        entry->previous = entry->step == g_step - 1 ? entry->current : now;
+                        entry->current = now;
+                        entry->step = g_step;
+                    }
+                    else if (memcmp(&now, &entry->current, sizeof(State)) != 0)
+                    {
+                        // lo cambio otro (el servidor, o se dejo de dibujar un rato): sin interpolar
+                        entry->previous = now;
+                        entry->current = now;
+                        entry->step = g_step;
+                    }
+
+                    Apply(object, entry->previous, entry->current, g_t);
+                    Read(object, LooseArray, written);
+                    if (memcmp(entry->previous.position, entry->current.position, sizeof(entry->current.position)) != 0)
+                    {
+                        g_looseMoving++;
+                    }
+                }
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER)
+            {
+                entry = nullptr;
+            }
+        }
+
+        LARGE_INTEGER middle{};
+        QueryPerformanceCounter(&middle);
+        g_looseTicks += middle.QuadPart - start.QuadPart;
+
+        int result = reinterpret_cast<Function>(RenderObjectCheck)(object, flag, a, b);
+        if (static_cast<BYTE>(result) != 0)
+        {
+            result = reinterpret_cast<Function>(RenderObjectDraw)(object, flag, a, b);
+        }
+
+        LARGE_INTEGER afterDraw{};
+        QueryPerformanceCounter(&afterDraw);
+        if (entry != nullptr)
+        {
+            // Se vuelven a poner los valores reales, salvo lo que el propio dibujo haya cambiado.
+            float* position = reinterpret_cast<float*>(object + PositionOffset);
+            float* angle = reinterpret_cast<float*>(object + AngleOffset);
+            for (int k = 0; k < 3; k++)
+            {
+                if (position[k] == written.position[k])
+                {
+                    position[k] = entry->current.position[k];
+                }
+
+                if (angle[k] == written.angle[k])
+                {
+                    angle[k] = entry->current.angle[k];
+                }
+            }
+
+            if (FloatAt(object, AnimationFrameOffset) == written.frame)
+            {
+                FloatAt(object, AnimationFrameOffset) = entry->current.frame;
+            }
+
+            LARGE_INTEGER end{};
+            QueryPerformanceCounter(&end);
+            g_looseTicks += end.QuadPart - afterDraw.QuadPart;
+        }
+
+        return result;
+    }
+}
+
+void InterpolationSetFrame(bool rendering, bool stepped, float t)
+{
+    if (!rendering && g_inGameRender)
+    {
+        g_looseFrames++;
+        if (g_looseLog != nullptr && GetTickCount() - g_looseReport >= 5000 && g_looseFrames > 0)
+        {
+            g_looseLog("Objetos sueltos: %.1f interpolados por cuadro, registro %.3f ms por cuadro.",
+                static_cast<double>(g_looseMoving) / g_looseFrames,
+                static_cast<double>(g_looseTicks) * 1000.0 / g_looseFrequency.QuadPart / g_looseFrames);
+            g_looseReport = GetTickCount();
+            g_looseMoving = 0;
+            g_looseFrames = 0;
+            g_looseTicks = 0;
+        }
+    }
+
+    g_inGameRender = rendering;
+    g_stepped = stepped;
+    g_t = t;
+    if (rendering && stepped)
+    {
+        g_step++;
+    }
+}
+
+bool InstallLooseObjectInterpolation(LogFunction log)
+{
+    g_looseLog = log;
+    QueryPerformanceFrequency(&g_looseFrequency);
+    if (memcmp(reinterpret_cast<const void*>(RenderObjectFunction), RenderObjectPrologue, sizeof(RenderObjectPrologue)) != 0)
+    {
+        log("Movimiento fluido: RenderObject no coincide; los objetos sueltos no se interpolan.");
+        return false;
+    }
+
+    BYTE jump[5] = { 0xE9 };
+    const DWORD to = reinterpret_cast<DWORD>(&RenderObjectHook) - (RenderObjectFunction + 5);
+    memcpy(jump + 1, &to, 4);
+    return WriteCode(RenderObjectFunction, jump, sizeof(jump));
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Estelas (uniones): cintas de luz de armas y skills. Cada una guarda hasta 50 puntos (de 4 esquinas
+// cada uno) que la logica actualiza en cada paso: los corre, los recalcula, agrega o saca alguno. Para
+// que la cinta se deslice en vez de avanzar a saltos, cada punto se dibuja entre su posicion anterior y
+// la actual (si los puntos se corren, el punto i nuevo es el i-1 viejo y la cinta entera fluye). Si la
+// cantidad de puntos cambio en mas de uno, o la estela salto lejos, se deja como esta.
+
+namespace
+{
+    BYTE* const Joints = reinterpret_cast<BYTE*>(0x087C5708);
+    constexpr int JointCount = 500;
+    constexpr int JointSize = 0xA18;
+    constexpr int JointLive = 0x00;      // byte
+    constexpr int JointType = 0x04;      // int
+    constexpr int JointHead = 0x18;      // float[3]
+    constexpr int JointTails = 0x70;     // [50][4] float[3]
+    constexpr int JointTailSize = 0x30;
+    constexpr int JointMaxTails = 50;
+    constexpr int JointTailCount = 0x9D0; // int
+
+    struct JointState
+    {
+        bool live;
+        int type;
+        int count;
+        float head[3];
+        BYTE tails[JointMaxTails * JointTailSize];
+    };
+
+    JointState* g_jointPrevious = nullptr;
+    JointState* g_jointCurrent = nullptr;
+    bool g_jointShifted[JointCount];
+    bool g_jointApplied = false;
+    bool g_smoothTrails = true;
+    int g_trailSteps = 0, g_trailLive = 0, g_trailShifted = 0; // para el log
+    DWORD g_trailReport = 0;
+
+    void ReadJoint(BYTE* joint, JointState& state)
+    {
+        state.live = joint[JointLive] != 0;
+        state.type = *reinterpret_cast<int*>(joint + JointType);
+        state.count = *reinterpret_cast<int*>(joint + JointTailCount);
+        memcpy(state.head, joint + JointHead, sizeof(state.head));
+        const int count = state.count < 0 ? 0 : state.count > JointMaxTails ? JointMaxTails : state.count;
+        memcpy(state.tails, joint + JointTails, count * JointTailSize);
+    }
+
+    bool SameJoint(BYTE* joint, const JointState& state)
+    {
+        if ((joint[JointLive] != 0) != state.live || *reinterpret_cast<int*>(joint + JointType) != state.type ||
+            *reinterpret_cast<int*>(joint + JointTailCount) != state.count ||
+            memcmp(joint + JointHead, state.head, sizeof(state.head)) != 0)
+        {
+            return false;
+        }
+
+        const int count = state.count < 0 ? 0 : state.count > JointMaxTails ? JointMaxTails : state.count;
+        return memcmp(joint + JointTails, state.tails, count * JointTailSize) == 0;
+    }
+}
+
+void InterpolationSetSmoothTrails(bool smooth)
+{
+    g_smoothTrails = smooth;
+}
+
+void TrailsBeforeRender(bool stepped, float t)
+{
+    if (!g_smoothTrails)
+    {
+        return;
+    }
+
+    if (g_jointPrevious == nullptr)
+    {
+        g_jointPrevious = static_cast<JointState*>(VirtualAlloc(nullptr, sizeof(JointState) * JointCount, MEM_COMMIT, PAGE_READWRITE));
+        g_jointCurrent = static_cast<JointState*>(VirtualAlloc(nullptr, sizeof(JointState) * JointCount, MEM_COMMIT, PAGE_READWRITE));
+        if (g_jointPrevious == nullptr || g_jointCurrent == nullptr)
+        {
+            g_smoothTrails = false;
+            return;
+        }
+    }
+
+    __try
+    {
+        for (int i = 0; i < JointCount; i++)
+        {
+            BYTE* joint = Joints + i * JointSize;
+            JointState& previous = g_jointPrevious[i];
+            JointState& current = g_jointCurrent[i];
+            if (joint[JointLive] == 0 && !current.live)
+            {
+                continue;
+            }
+
+            if (stepped)
+            {
+                memcpy(&previous, &current, sizeof(JointState));
+                ReadJoint(joint, current);
+
+                // Misma estela (viva, mismo tipo), la cantidad de puntos cambio a lo sumo en uno y la
+                // cabeza no salto lejos.
+                const float dx = current.head[0] - previous.head[0];
+                const float dy = current.head[1] - previous.head[1];
+                const int change = current.count - previous.count;
+                g_jointShifted[i] = previous.live && current.live && previous.type == current.type &&
+                    current.count >= 1 && previous.count >= 1 && current.count <= JointMaxTails &&
+                    change >= -1 && change <= 1 && dx * dx + dy * dy <= TeleportDistance * TeleportDistance;
+                g_trailLive += current.live ? 1 : 0;
+                g_trailShifted += g_jointShifted[i] ? 1 : 0;
+            }
+            else if (!SameJoint(joint, current))
+            {
+                ReadJoint(joint, current); // lo cambio otro: sin interpolar hasta el proximo paso
+                g_jointShifted[i] = false;
+            }
+
+            if (!g_jointShifted[i])
+            {
+                continue;
+            }
+
+            // Cada punto entre su lugar anterior (el punto i viejo) y el actual (el punto i nuevo).
+            // El punto 0 nuevo no tenia lugar anterior: sale de la cabeza anterior.
+            float* tails = reinterpret_cast<float*>(joint + JointTails);
+            const float* now = reinterpret_cast<const float*>(current.tails);
+            const float* before = reinterpret_cast<const float*>(previous.tails);
+            const int floatsPerTail = JointTailSize / 4;
+            for (int k = 0; k < current.count; k++)
+            {
+                for (int f = 0; f < floatsPerTail; f++)
+                {
+                    const float from = k < previous.count ? before[k * floatsPerTail + f] : now[k * floatsPerTail + f];
+                    const float to = now[k * floatsPerTail + f];
+                    tails[k * floatsPerTail + f] = from + (to - from) * t;
+                }
+            }
+
+            float* head = reinterpret_cast<float*>(joint + JointHead);
+            for (int k = 0; k < 3; k++)
+            {
+                head[k] = previous.head[k] + (current.head[k] - previous.head[k]) * t;
+            }
+        }
+
+        g_jointApplied = true;
+        if (stepped)
+        {
+            g_trailSteps++;
+        }
+
+        if (g_looseLog != nullptr && GetTickCount() - g_trailReport >= 5000 && g_trailSteps > 0)
+        {
+            g_looseLog("Estelas: %.1f vivas y %.1f interpoladas por paso de logica.",
+                static_cast<double>(g_trailLive) / g_trailSteps, static_cast<double>(g_trailShifted) / g_trailSteps);
+            g_trailReport = GetTickCount();
+            g_trailSteps = g_trailLive = g_trailShifted = 0;
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        g_jointApplied = false;
+    }
+}
+
+void TrailsAfterRender()
+{
+    if (!g_jointApplied)
+    {
+        return;
+    }
+
+    g_jointApplied = false;
+    __try
+    {
+        for (int i = 0; i < JointCount; i++)
+        {
+            if (!g_jointShifted[i])
+            {
+                continue;
+            }
+
+            BYTE* joint = Joints + i * JointSize;
+            const JointState& current = g_jointCurrent[i];
+            if (joint[JointLive] == 0)
+            {
+                continue;
+            }
+
+            memcpy(joint + JointHead, current.head, sizeof(current.head));
+            memcpy(joint + JointTails, current.tails, current.count * JointTailSize);
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+    }
+}

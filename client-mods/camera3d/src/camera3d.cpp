@@ -387,6 +387,11 @@ namespace
         InstallRightClick(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
+            if (SmoothMotionEnabled())
+            {
+                InstallLooseObjectInterpolation(&Log);
+            }
+
             InstallRenderDiagnostics(&Log);
         }
 
