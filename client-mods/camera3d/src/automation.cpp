@@ -17,6 +17,7 @@
 //   wait N                 esperar N pasos de logica (40 ms cada uno)
 //   shot RUTA.bmp [N]      captura del proximo cuadro (o N cuadros despues)
 //   burst RUTA N           captura N cuadros seguidos (RUTA_1.bmp ... RUTA_N.bmp)
+//   smooth 0|1             pruebas: movimiento interpolado
 //   block N 0|1            pruebas: bloqueo en cuadros extra de la funcion N (0 uniones, 1 particulas, 2 efectos)
 //   info                   datos del personaje (mapa, posicion, vida) en done.txt
 //
@@ -244,6 +245,10 @@ namespace
 
             strcpy_s(g_burstBase, text);
             g_burstIndex = 0;
+        }
+        else if (_stricmp(name, "smooth") == 0)
+        {
+            SetSmoothMotion(atoi(rest) != 0); // smooth 0|1
         }
         else if (_stricmp(name, "block") == 0 && sscanf_s(rest, "%d %d", &x, &y) == 2)
         {

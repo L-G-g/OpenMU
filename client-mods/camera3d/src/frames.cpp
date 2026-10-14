@@ -373,6 +373,10 @@ namespace
     float g_lastCamera[2] = {};
     double g_moveSum = 0.0, g_moveSquares = 0.0;
     int g_moveFrames = 0, g_stillFrames = 0;
+    int g_holes = 0;              // cuadros quietos entre dos cuadros con movimiento (saltos)
+    int g_movingFrames = 0;
+    bool g_movedBefore = false;    // el cuadro anterior se movio
+    bool g_stillAfterMove = false; // hay cuadros quietos despues de un movimiento
     DWORD g_moveReport = 0;
 
     void UpdateCameraStats()
@@ -388,6 +392,12 @@ namespace
             g_moveSquares += move * move;
             g_moveFrames++;
             g_stillFrames += move < 0.01 ? 1 : 0;
+            // salto: un cuadro quieto entre dos cuadros con movimiento
+            const bool moved = move >= 0.01;
+            g_movingFrames += moved ? 1 : 0;
+            g_holes += moved && !g_movedBefore && g_stillAfterMove ? 1 : 0;
+            g_stillAfterMove = moved ? false : g_movedBefore || g_stillAfterMove;
+            g_movedBefore = moved;
         }
 
         if (GetTickCount() - g_moveReport >= 5000 && g_moveFrames > 0)
@@ -396,8 +406,10 @@ namespace
             const double variance = g_moveSquares / g_moveFrames - mean * mean;
             if (mean > 0.01)
             {
-                g_log("Camara: %.2f por cuadro, variacion %.0f%%, %d de %d cuadros quieta.", mean,
-                    100.0 * sqrt(variance > 0.0 ? variance : 0.0) / mean, g_stillFrames, g_moveFrames);
+                g_log("Camara: %.2f por cuadro, variacion %.0f%%, %d de %d cuadros quieta; %d saltos en %d cuadros con movimiento.",
+                    mean, 100.0 * sqrt(variance > 0.0 ? variance : 0.0) / mean, g_stillFrames, g_moveFrames, g_holes,
+                    g_movingFrames);
+                g_holes = g_movingFrames = 0;
             }
 
             g_log("Azar en cuadros extra: %d repetidos, %d sin coincidencia.", g_randReplayed, g_randFallback);
@@ -439,11 +451,28 @@ namespace
         }
     }
 
+    // Momento del ultimo cuadro con paso de logica (para la interpolacion de personajes).
+    LARGE_INTEGER g_lastStep{};
+
     char __cdecl RenderGame()
     {
         BeginRender();
+        if (g_smooth)
+        {
+            LARGE_INTEGER now;
+            QueryPerformanceCounter(&now);
+            if (!g_extraFrame)
+            {
+                g_lastStep = now;
+            }
+
+            double t = static_cast<double>(now.QuadPart - g_lastStep.QuadPart) * 1000.0 / g_frequency.QuadPart / TickMs;
+            InterpolationBeforeRender(!g_extraFrame, static_cast<float>(t > 1.0 ? 1.0 : t));
+        }
+
         const auto render = reinterpret_cast<RenderFunctionType>(Scenes[2].render);
         const char result = g_diagnostics != nullptr ? g_diagnostics(render, g_extraFrame != 0) : render();
+        InterpolationAfterRender();
         EndRender();
         return result;
     }
@@ -566,6 +595,12 @@ namespace
         memcpy(patch + 1, &call, 4);
         WriteCode(site, patch, sizeof(patch));
     }
+}
+
+void SetSmoothMotion(bool smooth)
+{
+    g_smooth = smooth;
+    g_log("Movimiento fluido %s.", smooth ? "activado" : "desactivado");
 }
 
 void SetCreatorBlocked(int index, bool blocked)

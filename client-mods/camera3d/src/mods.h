@@ -49,6 +49,7 @@ void SetRenderDiagnostics(RenderWrapper wrapper);
 
 // Pruebas: activa o desactiva el bloqueo en cuadros extra de una funcion (0 uniones, 1 particulas, 2 efectos).
 void SetCreatorBlocked(int index, bool blocked);
+void SetSmoothMotion(bool smooth);
 
 // Diagnostico (pruebas): anota que cambia el dibujo. Necesita InstallExtraFrames.
 bool InstallRenderDiagnostics(LogFunction log);
@@ -57,3 +58,9 @@ bool InstallRenderDiagnostics(LogFunction log);
 // cada paso de logica, despues de que el juego actualiza sus teclas.
 bool InstallAutomation(LogFunction log);
 void AutomationTick(BYTE* keyStates);
+
+// Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
+// de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
+// despues de dibujar vuelve a poner las reales.
+void InterpolationBeforeRender(bool stepped, float t);
+void InterpolationAfterRender();
