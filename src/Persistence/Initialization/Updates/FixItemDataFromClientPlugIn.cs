@@ -30,12 +30,14 @@ using MUnique.OpenMU.PlugIns;
 /// <list type="bullet">
 ///   <item>The client only knows the spheres Mono, Di and Tri (12/70 to 12/72) and their seed spheres
 ///     (12/100 to 12/117). The spheres 4 and 5 (12/73, 12/74) and their seed spheres (12/118 to 12/129)
-///     can no longer drop or be used to create seed spheres. They are kept, because characters may
-///     already have them.</item>
+///     can no longer be used to create seed spheres.</item>
 ///   <item>The level of a seed sphere is the level of its seed (the kind of option), so a seed sphere
 ///     allows the same item levels as its seed.</item>
 ///   <item>The drop levels of the seed spheres are the ones of the client (1 to 3).</item>
 /// </list>
+/// Version 3 removes the spheres 4 and 5 and their seed spheres. Version 2 only kept them from
+/// dropping, in case characters owned some. The database refuses to delete a definition which an
+/// item still uses, so the update fails without changes while a character owns one of them.
 /// </remarks>
 [PlugIn]
 [Display(Name = nameof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources.FixItemDataFromClientPlugIn_Name), Description = nameof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources.FixItemDataFromClientPlugIn_Description), ResourceType = typeof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources))]
@@ -196,10 +198,10 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
     public override DateTime CreatedAt => new(2026, 10, 13, 0, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
-    public override int Version => 2;
+    public override int Version => 3;
 
     /// <inheritdoc />
-    public override DateTime UpdatedAt => new(2026, 10, 14, 0, 0, 0, DateTimeKind.Utc);
+    public override DateTime UpdatedAt => new(2026, 10, 14, 23, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
     protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
@@ -258,6 +260,7 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
 
     private static void FixSeedSpheres(GameConfiguration gameConfiguration)
     {
+        var unknownItems = new List<ItemDefinition>();
         for (var level = 0; level < OldSphereLevels; level++)
         {
             for (var type = 0; type < SeedTypes; type++)
@@ -269,7 +272,7 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
 
                 if (level >= ClientSphereLevels)
                 {
-                    seedSphere.DropsFromMonsters = false;
+                    unknownItems.Add(seedSphere);
                     continue;
                 }
 
@@ -281,14 +284,11 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
             }
         }
 
-        // The spheres which the client doesn't know can't be used to create seed spheres anymore.
-        var unknownSpheres = new List<ItemDefinition>();
         for (var level = ClientSphereLevels; level < OldSphereLevels; level++)
         {
             if (FindItem(gameConfiguration, SocketItemGroup, (short)(FirstSphereNumber + level)) is { } sphere)
             {
-                sphere.DropsFromMonsters = false;
-                unknownSpheres.Add(sphere);
+                unknownItems.Add(sphere);
             }
         }
 
@@ -298,10 +298,18 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
                      .Where(s => s is not null)
                      .SelectMany(s => s!.RequiredItems))
         {
-            foreach (var sphere in unknownSpheres)
+            foreach (var item in unknownItems)
             {
-                requiredItem.PossibleItems.Remove(sphere);
+                requiredItem.PossibleItems.Remove(item);
             }
+        }
+
+        // The items which the client doesn't know are removed. If a character still owns one, the
+        // database refuses to delete its definition, so the update fails without changing anything
+        // and can be applied again after the item is gone.
+        foreach (var item in unknownItems)
+        {
+            gameConfiguration.Items.Remove(item);
         }
     }
 

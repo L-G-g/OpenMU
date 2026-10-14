@@ -55,17 +55,14 @@ internal class FixItemDataFromClientTest
         Assert.That(GetItem(gameConfiguration, 2, 16).Requirements.Count(r => r.Attribute == Stats.Level), Is.EqualTo(1));
         Assert.That(GetItem(gameConfiguration, 10, 48).Requirements.Count(r => r.Attribute == Stats.TotalEnergyRequirementValue), Is.EqualTo(1));
 
-        // The spheres which the client doesn't know are kept (characters may have them), but they
-        // can't drop or be used to create seed spheres anymore.
-        var sphere4 = GetItem(gameConfiguration, 12, 73);
+        // The spheres and seed spheres which the client doesn't know are removed, also from the crafting.
         Assert.Multiple(() =>
         {
-            Assert.That(sphere4.DropsFromMonsters, Is.False);
-            Assert.That(GetItem(gameConfiguration, 12, 118).DropsFromMonsters, Is.False);
+            Assert.That(gameConfiguration.Items.Where(i => i.Group == 12 && i.Number is 73 or 118), Is.Empty);
             Assert.That(
                 gameConfiguration.Monsters.SelectMany(m => m.ItemCraftings).Select(c => c.SimpleCraftingSettings)
                     .Where(s => s is not null).SelectMany(s => s!.RequiredItems).SelectMany(r => r.PossibleItems),
-                Does.Not.Contain(sphere4));
+                Has.None.Matches<ItemDefinition>(i => i.Group == 12 && i.Number == 73));
         });
     }
 
