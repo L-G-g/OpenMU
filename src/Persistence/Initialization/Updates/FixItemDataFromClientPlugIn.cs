@@ -35,9 +35,11 @@ using MUnique.OpenMU.PlugIns;
 ///     allows the same item levels as its seed.</item>
 ///   <item>The drop levels of the seed spheres are the ones of the client (1 to 3).</item>
 /// </list>
-/// Version 3 removes the spheres 4 and 5 and their seed spheres. Version 2 only kept them from
-/// dropping, in case characters owned some. The database refuses to delete a definition which an
-/// item still uses, so the update fails without changes while a character owns one of them.
+/// Version 3 removes the spheres 4 and 5 and their seed spheres from the configuration. Version 2 only
+/// kept them from dropping, in case characters owned some. The relation between the configuration and
+/// its items is optional, so the definitions are only detached, not deleted: an item which a character
+/// still owns keeps its definition. A running server keeps its loaded configuration, so the items
+/// disappear from it after a restart.
 /// </remarks>
 [PlugIn]
 [Display(Name = nameof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources.FixItemDataFromClientPlugIn_Name), Description = nameof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources.FixItemDataFromClientPlugIn_Description), ResourceType = typeof(MUnique.OpenMU.Persistence.Initialization.Properties.PlugInResources))]
@@ -304,9 +306,8 @@ public class FixItemDataFromClientPlugIn : UpdatePlugInBase
             }
         }
 
-        // The items which the client doesn't know are removed. If a character still owns one, the
-        // database refuses to delete its definition, so the update fails without changing anything
-        // and can be applied again after the item is gone.
+        // The items which the client doesn't know are removed from the configuration. Their definitions
+        // are only detached (the relation is optional), so an item which a character still owns keeps it.
         foreach (var item in unknownItems)
         {
             gameConfiguration.Items.Remove(item);
