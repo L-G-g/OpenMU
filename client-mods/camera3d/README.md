@@ -108,10 +108,10 @@ Todo se activa además con `camera3d.ini`:
   | Comando | Qué hace | Resultado |
   |---|---|---|
   | `state` | Estado del personaje | `map x y hp mp sd ag level class skill selected target moving attacking dead safezone action` |
-  | `objects [RADIO]` | Objetos vivos cerca (15 baldosas por defecto) | una línea `objects:` y una `object:` por objeto: `index kind model key name x y dist live dead` |
+  | `objects [RADIO]` | Objetos vivos cerca (15 baldosas por defecto) | una línea `objects:` y una `object:` por objeto: `index kind type model key name x y dist live dead` (`type`: número de monstruo o NPC, como en el servidor) |
   | `walk X Y [wait]` | Caminar a la baldosa, como un click en el terreno | `result=sent`, o con `wait`: `arrived`, `stuck`, `nopath` o `timeout` y la posición final |
   | `attack N [untildead [SEGUNDOS]]` | Ataque normal al objeto `N`, como un click sostenido sobre el monstruo (se acerca y ataca) | `result=hit`, `killed`, `gone`, `timeout` o `herodead`, `hits` (ataques mandados) |
-  | `skill S [N \| X Y]` | Habilidad número `S` sobre el objeto `N`, una baldosa o uno mismo | `result=sent` con el paquete, o `timeout` |
+  | `skill S [N \| X Y]` | Habilidad número `S` sobre el objeto `N` (si está lejos, se acerca), una baldosa o uno mismo | `result=sent` con el paquete, o `timeout` |
   | `target N` | Estado del objeto `N` | como una línea de `objects` |
   | `peek DIRECCIÓN [BYTES]` | Bytes de la memoria del juego, para investigar | hexadecimal |
 
@@ -144,7 +144,7 @@ Todo se activa además con `camera3d.ini`:
   | `0x08128ABC` | Tabla de habilidades (`0x58` bytes, nombre al principio) | Nombres |
 
   Campos del personaje (`CHARACTER`): `+0x0E` zona segura, `+0x13` clase, `+0x24` muerto, `+0x32`
-  habilidad elegida, `+0x38` nombre, `+0x78` caminando, `+0x7E` número en el servidor, `+0xAC`/`+0xB0`
+  habilidad elegida, `+0x38` nombre, `+0x78` caminando, `+0x7E` número en el servidor, `+0x84` número de monstruo o NPC, `+0xAC`/`+0xB0`
   baldosa, `+0x308` objeto (`+0x30C` vivo, `+0x31A` acción, `+0x320` tipo: 1 jugador, 2 monstruo,
   4 NPC, `+0x338` modelo, `+0x404` posición). Atributos: `+0x0B` clase, `+0x0E` nivel, `+0x22`/`+0x26`
   vida, `+0x24`/`+0x28` mana, `+0x2A`/`+0x2C` SD, `+0x40`/`+0x42` AG, `+0x78` lista de habilidades.

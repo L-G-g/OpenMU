@@ -18,7 +18,8 @@
 //
 // Datos de los personajes (CHARACTER, 0x598 bytes, 400 en [[0x00E7C224]+8]; el propio en [0x07BC4F04]):
 //   +0x0E en zona segura, +0x13 clase, +0x24 muerto, +0x32 habilidad elegida (indice en la lista),
-//   +0x38 nombre, +0x78 caminando, +0x79 tipo de movimiento, +0x7E numero en el servidor,
+//   +0x38 nombre, +0x78 caminando, +0x79 tipo de movimiento, +0x7E numero en el servidor, +0x84 numero de
+//   monstruo o NPC (como en el servidor, 3 = Spider),
 //   +0xAC/+0xB0 baldosa x/y, +0x308 objeto: +0x30C vivo, +0x31A accion, +0x320 tipo (1 jugador,
 //   2 monstruo, 4 NPC), +0x338 modelo, +0x404 posicion.
 // Atributos del personaje propio ([0x08128AC8]): +0x0B clase, +0x0E nivel, +0x22/+0x26 vida y maxima,
@@ -68,7 +69,8 @@ namespace
 
     // Campos del personaje (CHARACTER) y de los atributos.
     constexpr DWORD CharSafeZone = 0x0E, CharClass = 0x13, CharDead = 0x24, CharCurrentSkill = 0x32;
-    constexpr DWORD CharName = 0x38, CharMoving = 0x78, CharKey = 0x7E, CharTileX = 0xAC, CharTileY = 0xB0;
+    constexpr DWORD CharName = 0x38, CharMoving = 0x78, CharKey = 0x7E, CharMonsterType = 0x84;
+    constexpr DWORD CharTileX = 0xAC, CharTileY = 0xB0;
     constexpr DWORD CharLive = 0x30C, CharAction = 0x31A, CharKind = 0x320, CharModel = 0x338;
     constexpr DWORD AttrClass = 0x0B, AttrLevel = 0x0E, AttrLife = 0x22, AttrMana = 0x24, AttrLifeMax = 0x26;
     constexpr DWORD AttrManaMax = 0x28, AttrShield = 0x2A, AttrShieldMax = 0x2C, AttrAg = 0x40, AttrAgMax = 0x42;
@@ -550,6 +552,20 @@ namespace
             return false;
         }
 
+        // Si el objetivo esta lejos el juego no lanza la habilidad: cada tanto, un click en su baldosa
+        // para acercarse (como haria el jugador) y despues se vuelve a intentar.
+        const DWORD target = Character(c.target);
+        if (target != 0 && c.ticks % 12 == 0
+            && Distance(Read<int>(target + CharTileX), Read<int>(target + CharTileY), Read<int>(hero + CharTileX),
+                   Read<int>(hero + CharTileY)) > 1)
+        {
+            ReleaseFlags(RightButtonFlags);
+            Select(-1);
+            Pick(Read<int>(target + CharTileX), Read<int>(target + CharTileY));
+            SetFlags(LeftButtonFlags, true, false);
+            return false;
+        }
+
         // Click derecho sostenido con la habilidad elegida y el objetivo bajo el mouse.
         *reinterpret_cast<BYTE*>(hero + CharCurrentSkill) = static_cast<BYTE>(c.skillIndex);
         Select(c.target);
@@ -593,8 +609,10 @@ namespace
         const int x = Read<int>(character + CharTileX);
         const int y = Read<int>(character + CharTileY);
         const int kind = Read<BYTE>(character + CharKind);
-        return Format("%s: index=%d kind=%s kindraw=%d model=%d key=%d name=%s x=%d y=%d dist=%d live=%d dead=%d hp=na",
-            prefix, index, KindName(kind), kind, Read<int>(character + CharModel), Read<WORD>(character + CharKey),
+        return Format("%s: index=%d kind=%s kindraw=%d type=%d model=%d key=%d name=%s x=%d y=%d dist=%d live=%d dead=%d "
+                      "hp=na",
+            prefix, index, KindName(kind), kind, Read<short>(character + CharMonsterType), Read<int>(character + CharModel),
+            Read<WORD>(character + CharKey),
             Word(character + CharName, 24).c_str(), x, y, Distance(x, y, heroX, heroY), Read<BYTE>(character + CharLive),
             Read<BYTE>(character + CharDead));
     }
@@ -848,7 +866,7 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
             return true;
         }
 
-        Begin(Kind::Skill, 5 * TicksPerSecond);
+        Begin(Kind::Skill, 8 * TicksPerSecond);
         g_command.skill = a;
         g_command.skillIndex = index;
         g_command.target = count == 2 ? b : -1;
