@@ -8,7 +8,7 @@
 //   [Debug]
 //   RenderDiff=1
 
-#include "mods.h"
+#include "muauto.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -223,7 +223,7 @@ bool InstallRenderDiagnostics(LogFunction log)
         }
     }
 
-    SetRenderDiagnostics(g_mode == 2 ? &RenderDataHook : &RenderHook);
+    Host().setRenderDiagnostics(g_mode == 2 ? &RenderDataHook : &RenderHook);
     g_log("Diagnostico del dibujo activo.");
     return true;
 }

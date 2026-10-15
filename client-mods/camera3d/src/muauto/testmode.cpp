@@ -11,7 +11,7 @@
 
 #include <winsock2.h>
 
-#include "mods.h"
+#include "muauto.h"
 #include <stdio.h>
 #include <stdlib.h>
 

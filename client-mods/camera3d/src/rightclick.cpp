@@ -480,7 +480,7 @@ namespace
     {
         using KeyUpdateType = void(__fastcall*)(BYTE*);
         reinterpret_cast<KeyUpdateType>(KeyUpdateFunction)(keyStates);
-        AutomationTick(keyStates);
+        TestToolsTick(keyStates);
 
         const BYTE right = keyStates[VK_RBUTTON];
         if (g_rightConsumed)

@@ -391,8 +391,6 @@ namespace
             {
                 InstallLooseObjectInterpolation(&Log);
             }
-
-            InstallRenderDiagnostics(&Log);
         }
 
         // Esperar a que exista la ventana del juego y engancharse a sus mensajes.
@@ -437,10 +435,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         }
 
         Log("camera3d cargada.");
-        if (InstallTestMode(&Log)) // antes de cualquier conexion
-        {
-            InstallAutomation(&Log);
-        }
+        LoadTestTools(module, &Log); // antes de cualquier conexion (modo de prueba)
         const HANDLE thread = CreateThread(nullptr, 0, &InitThread, nullptr, 0, nullptr);
         if (thread != nullptr)
         {

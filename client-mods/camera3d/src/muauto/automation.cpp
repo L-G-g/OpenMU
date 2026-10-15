@@ -21,12 +21,23 @@
 //   block N 0|1            pruebas: bloqueo en cuadros extra de la funcion N (0 uniones, 1 particulas, 2 efectos)
 //   info                   datos del personaje (mapa, posicion, vida) en done.txt
 //
+// Comandos de juego (gamecommands.cpp): por intencion, usando la logica del propio juego, sin
+// coordenadas de pantalla. Cada uno deja una linea "nombre: clave=valor ..." en done.txt (objects, una
+// por objeto). Los que esperan algo (walk ... wait, attack, skill) siguen en los pasos siguientes.
+//   state                  mapa, baldosa, vida, mana, SD, AG, nivel, clase, habilidad, objetivo
+//   objects [RADIO]        objetos vivos cerca (monstruos, NPCs, jugadores)
+//   walk X Y [wait]        caminar a la baldosa (como un click en el terreno); wait: hasta llegar
+//   attack N [untildead [SEGUNDOS]]  ataque normal al objeto N (como un click sobre el monstruo)
+//   skill S [N | X Y]      habilidad S sobre el objeto N, una baldosa o uno mismo
+//   target N               estado del objeto N
+//   peek DIRECCION [BYTES] bytes de la memoria del juego, en hexadecimal (para investigar)
+//
 // Se activa con camera3d.ini (solo junto al modo de prueba):
 //   [Test]
 //   Server=127.127.127.127:45405
 //   Automation=1
 
-#include "mods.h"
+#include "muauto.h"
 
 #include <gl/GL.h>
 #include <stdio.h>
@@ -35,7 +46,6 @@
 #include <string>
 #include <vector>
 
-#pragma comment(lib, "opengl32.lib")
 
 namespace
 {
@@ -51,6 +61,10 @@ namespace
     constexpr BYTE KeyUp = 0, KeyReleased = 1, KeyPressed = 2, KeyHeld = 3;
 
     using SwapBuffersType = BOOL(WINAPI*)(HDC);
+    // OpenGL se busca al capturar (main.exe ya lo cargo), para que muauto.dll no lo importe.
+    using PixelStoreType = void(APIENTRY*)(GLenum, GLint);
+    using ReadBufferType = void(APIENTRY*)(GLenum);
+    using ReadPixelsType = void(APIENTRY*)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, GLvoid*);
 
     LogFunction g_log = nullptr;
     char g_folder[MAX_PATH];
@@ -59,6 +73,7 @@ namespace
     std::vector<std::string> g_commands;
     size_t g_next = 0;
     std::string g_results;
+    bool g_gameCommandPending = false; // un comando de juego sigue en los proximos pasos
     int g_waitTicks = 0;
     char g_shotPath[MAX_PATH] = {};
     int g_shotDelay = 0; // cuadros a esperar antes de la captura
@@ -248,15 +263,15 @@ namespace
         }
         else if (_stricmp(name, "smooth") == 0)
         {
-            SetSmoothMotion(atoi(rest) != 0); // smooth 0|1
+            Host().setSmoothMotion(atoi(rest) != 0); // smooth 0|1
         }
         else if (_stricmp(name, "trails") == 0)
         {
-            InterpolationSetSmoothTrails(atoi(rest) != 0); // trails 0|1
+            Host().setSmoothTrails(atoi(rest) != 0); // trails 0|1
         }
         else if (_stricmp(name, "block") == 0 && sscanf_s(rest, "%d %d", &x, &y) == 2)
         {
-            SetCreatorBlocked(x, y != 0); // block N 0|1
+            Host().setCreatorBlocked(x, y != 0); // block N 0|1
         }
         else if (_stricmp(name, "info") == 0)
         {
@@ -264,7 +279,13 @@ namespace
         }
         else
         {
-            g_results += "error: comando desconocido: " + command;
+            std::string result;
+            if (!StartGameCommand(name, rest, result, g_gameCommandPending))
+            {
+                g_results += "error: comando desconocido: " + command;
+            }
+
+            g_results += result;
             return true;
         }
 
@@ -328,10 +349,19 @@ namespace
         }
 
         const int stride = (width * 3 + 3) & ~3;
+        const HMODULE gl = GetModuleHandleA("opengl32.dll");
+        const auto pixelStore = reinterpret_cast<PixelStoreType>(GetProcAddress(gl, "glPixelStorei"));
+        const auto readBuffer = reinterpret_cast<ReadBufferType>(GetProcAddress(gl, "glReadBuffer"));
+        const auto readPixels = reinterpret_cast<ReadPixelsType>(GetProcAddress(gl, "glReadPixels"));
+        if (pixelStore == nullptr || readBuffer == nullptr || readPixels == nullptr)
+        {
+            return;
+        }
+
         std::vector<BYTE> pixels(static_cast<size_t>(stride) * height);
-        glPixelStorei(GL_PACK_ALIGNMENT, 4);
-        glReadBuffer(GL_BACK);
-        glReadPixels(0, 0, width, height, 0x80E0 /* GL_BGR */, GL_UNSIGNED_BYTE, pixels.data());
+        pixelStore(GL_PACK_ALIGNMENT, 4);
+        readBuffer(GL_BACK);
+        readPixels(0, 0, width, height, 0x80E0 /* GL_BGR */, GL_UNSIGNED_BYTE, pixels.data());
 
         BITMAPFILEHEADER header{};
         BITMAPINFOHEADER info{};
@@ -439,6 +469,18 @@ void AutomationTick(BYTE* keyStates)
     if (g_waitTicks > 0)
     {
         g_waitTicks--;
+        return;
+    }
+
+    if (g_gameCommandPending)
+    {
+        std::string result;
+        if (ContinueGameCommand(result))
+        {
+            g_results += result;
+            g_gameCommandPending = false;
+        }
+
         return;
     }
 
