@@ -23,6 +23,13 @@ public class GameMapsInitializer : GameMapsInitializerBase
     }
 
     /// <inheritdoc />
+    public override void Initialize()
+    {
+        base.Initialize();
+        MonsterSpotGrouping.Apply(this.Context, this.GameConfiguration);
+    }
+
+    /// <inheritdoc />
     protected override IEnumerable<Type> MapInitializerTypes
     {
         get

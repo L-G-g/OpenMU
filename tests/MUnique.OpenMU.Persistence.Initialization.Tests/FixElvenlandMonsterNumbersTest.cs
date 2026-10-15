@@ -9,6 +9,7 @@ using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.Persistence.Initialization.CharacterClasses;
 using MUnique.OpenMU.Persistence.Initialization.Updates;
+using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.Persistence.InMemory;
 
 /// <summary>
@@ -65,10 +66,11 @@ internal class FixElvenlandMonsterNumbersTest
             Assert.That(GetMaximumHealth(gameConfiguration, PollutedButterflyNumber), Is.EqualTo(230));
             Assert.That(gameConfiguration.Monsters.Count(m => m.Number is HideousRabbitNumber or WerewolfNumber or PollutedButterflyNumber), Is.EqualTo(3));
 
-            // The butterflies keep their own spawn area, the rabbits and werewolves share theirs.
-            Assert.That(GetSpawnArea(elvenland, PollutedButterflyNumber), Is.EqualTo((0, 251, 128, 245)));
-            Assert.That(GetSpawnArea(elvenland, HideousRabbitNumber), Is.EqualTo((0, 128, 0, 128)));
-            Assert.That(GetSpawnArea(elvenland, WerewolfNumber), Is.EqualTo((0, 128, 0, 128)));
+            // The butterflies keep their own spawn area (0-251, 128-245), the rabbits and werewolves share theirs (0-128, 0-128).
+            // Their monsters are grouped into spots, which lie in the squares of these areas.
+            Assert.That(GetSpawnAreas(elvenland, PollutedButterflyNumber).Select(a => (int)a.Y1), Is.Not.Empty.And.All.GreaterThanOrEqualTo(128 - MonsterSpotGrouping.SpotDistance));
+            Assert.That(GetSpawnAreas(elvenland, HideousRabbitNumber).Select(a => Math.Max(a.X1, a.Y1)), Is.Not.Empty.And.All.LessThanOrEqualTo(128 + MonsterSpotGrouping.SpotDistance));
+            Assert.That(GetSpawnAreas(elvenland, WerewolfNumber).Select(a => Math.Max(a.X1, a.Y1)), Is.Not.Empty.And.All.LessThanOrEqualTo(128 + MonsterSpotGrouping.SpotDistance));
 
             // The summoner quests require the monster number of the original quest data.
             Assert.That(summonerKillRequirements, Is.Not.Empty);
@@ -121,10 +123,9 @@ internal class FixElvenlandMonsterNumbersTest
         return GetMonster(gameConfiguration, number).Attributes.Single(a => a.AttributeDefinition == Stats.MaximumHealth).Value;
     }
 
-    private static (int X1, int X2, int Y1, int Y2) GetSpawnArea(GameMapDefinition map, short number)
+    private static IEnumerable<MonsterSpawnArea> GetSpawnAreas(GameMapDefinition map, short number)
     {
-        var area = map.MonsterSpawns.Single(s => s.MonsterDefinition?.Number == number);
-        return (area.X1, area.X2, area.Y1, area.Y2);
+        return map.MonsterSpawns.Where(s => s.MonsterDefinition?.Number == number);
     }
 
     private static async Task<(IContext Context, GameConfiguration GameConfiguration)> CreateSeason6ConfigurationAsync()
