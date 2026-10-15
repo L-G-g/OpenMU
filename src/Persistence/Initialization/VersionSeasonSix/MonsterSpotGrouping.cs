@@ -240,10 +240,13 @@ internal static class MonsterSpotGrouping
 
     /// <summary>
     /// Finds the squares which had monsters before and have room for a spot.
+    /// A square needs at least <see cref="MinimumMonstersPerSpot"/> monsters, except the square with the most
+    /// monsters of a kind which has no other square, so that monsters which were spread thinly over a big area
+    /// don't disappear.
     /// </summary>
     private static List<Square> FindSquares(Dictionary<MonsterDefinition, double[,]> density, GameMapTerrain terrain)
     {
-        var squares = new List<Square>();
+        var candidates = new List<Square>();
         for (var left = 0; left < MapSize; left += SpotDistance)
         {
             for (var top = 0; top < MapSize; top += SpotDistance)
@@ -254,7 +257,7 @@ internal static class MonsterSpotGrouping
                     square.AddMonsters(monster, grid);
                 }
 
-                if (square.TotalMonsters < MinimumMonstersPerSpot)
+                if (square.TotalMonsters <= 0)
                 {
                     continue;
                 }
@@ -262,8 +265,26 @@ internal static class MonsterSpotGrouping
                 square.FindSpotPositions(terrain);
                 if (square.SpotPositions.Count > 0)
                 {
-                    squares.Add(square);
+                    candidates.Add(square);
                 }
+            }
+        }
+
+        var squares = candidates.Where(square => square.TotalMonsters >= MinimumMonstersPerSpot).ToList();
+        foreach (var monster in density.Keys.OrderBy(m => m.Number))
+        {
+            if (squares.Any(square => square.GetMonsters(monster) > 0))
+            {
+                continue;
+            }
+
+            var best = candidates
+                .Where(square => square.GetMonsters(monster) > 0)
+                .OrderByDescending(square => square.GetMonsters(monster))
+                .FirstOrDefault();
+            if (best is not null)
+            {
+                squares.Add(best);
             }
         }
 
