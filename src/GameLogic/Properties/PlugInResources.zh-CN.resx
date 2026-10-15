@@ -1187,7 +1187,7 @@
     <value>怪物属性调整</value>
   </data>
   <data name="MonsterAttributeScaler_Description" xml:space="preserve">
-    <value>按可配置的百分比增加所有怪物的基础属性。</value>
+    <value>按可配置的百分比调整所有怪物的基础属性。正值使怪物变强，负值使怪物变弱。</value>
   </data>
   <data name="StatResetFeaturePlugIn_Name" xml:space="preserve">
     <value>属性重置</value>

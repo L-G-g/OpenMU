@@ -12,6 +12,7 @@ using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// A feature plugin which scales all monster base stats by a configurable percentage.
+/// Positive percentages make monsters stronger, negative ones make them weaker.
 /// Uses shared multiplicative IElement instances. Configuration changes take effect immediately.
 /// </summary>
 [PlugIn]
@@ -22,6 +23,11 @@ public class MonsterAttributeScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, I
     ISupportDefaultCustomConfiguration,
     IDisabledByDefault
 {
+    /// <summary>
+    /// The lowest multiplier a negative percentage can result in, so that a stat never drops to zero or below.
+    /// </summary>
+    private const float MinimumMultiplier = 0.01f;
+
     private readonly SimpleElement _damageMultiplier = new(1.0f, AggregateType.Multiplicate);
     private readonly SimpleElement _attackRateMultiplier = new(1.0f, AggregateType.Multiplicate);
     private readonly SimpleElement _defenseRateMultiplier = new(1.0f, AggregateType.Multiplicate);
@@ -48,11 +54,11 @@ public class MonsterAttributeScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, I
                 return;
             }
 
-            this._damageMultiplier.Value = value.DamagePercentage > 0 ? 1.0f + (value.DamagePercentage / 100.0f) : 1.0f;
-            this._attackRateMultiplier.Value = value.AttackRatePercentage > 0 ? 1.0f + (value.AttackRatePercentage / 100.0f) : 1.0f;
-            this._defenseRateMultiplier.Value = value.DefenseRatePercentage > 0 ? 1.0f + (value.DefenseRatePercentage / 100.0f) : 1.0f;
-            this._defenseMultiplier.Value = value.DefensePercentage > 0 ? 1.0f + (value.DefensePercentage / 100.0f) : 1.0f;
-            this._healthMultiplier.Value = value.HealthPercentage > 0 ? 1.0f + (value.HealthPercentage / 100.0f) : 1.0f;
+            this._damageMultiplier.Value = GetMultiplier(value.DamagePercentage);
+            this._attackRateMultiplier.Value = GetMultiplier(value.AttackRatePercentage);
+            this._defenseRateMultiplier.Value = GetMultiplier(value.DefenseRatePercentage);
+            this._defenseMultiplier.Value = GetMultiplier(value.DefensePercentage);
+            this._healthMultiplier.Value = GetMultiplier(value.HealthPercentage);
         }
     }
 
@@ -96,5 +102,15 @@ public class MonsterAttributeScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, I
         monster.Attributes.RemoveElement(this._healthMultiplier, Stats.MaximumHealth);
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Gets the multiplier for a configured percentage, e.g. 1.25 for 25 and 0.8 for -20.
+    /// </summary>
+    /// <param name="percentage">The configured percentage.</param>
+    /// <returns>The multiplier, which is never below <see cref="MinimumMultiplier"/>.</returns>
+    internal static float GetMultiplier(float percentage)
+    {
+        return Math.Max(MinimumMultiplier, 1.0f + (percentage / 100.0f));
     }
 }

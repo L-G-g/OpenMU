@@ -1258,7 +1258,7 @@
     <value>Monster Attribute Scaler</value>
   </data>
   <data name="MonsterAttributeScaler_Description" xml:space="preserve">
-    <value>Increases all monster base stats by a configurable percentage.</value>
+    <value>Scales all monster base stats by a configurable percentage. Positive values make monsters stronger, negative values make them weaker.</value>
   </data>
   <data name="StatResetFeaturePlugIn_Name" xml:space="preserve">
     <value>Stat Reset Feature</value>

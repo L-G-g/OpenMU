@@ -1717,7 +1717,7 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Increases all monster base stats by a configurable percentage..
+        ///   Looks up a localized string similar to Scales all monster base stats by a configurable percentage. Positive values make monsters stronger, negative values make them weaker..
         /// </summary>
         public static string MonsterAttributeScaler_Description {
             get {
