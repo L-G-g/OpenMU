@@ -617,6 +617,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized FixItemDataFromClientPlugIn_Description text.</summary>
         public static string FixItemDataFromClientPlugIn_Description => ResourceManager.GetString("FixItemDataFromClientPlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized FixElvenlandMonsterNumbersUpdatePlugIn_Name text.</summary>
+        public static string FixElvenlandMonsterNumbersUpdatePlugIn_Name => ResourceManager.GetString("FixElvenlandMonsterNumbersUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FixElvenlandMonsterNumbersUpdatePlugIn_Description text.</summary>
+        public static string FixElvenlandMonsterNumbersUpdatePlugIn_Description => ResourceManager.GetString("FixElvenlandMonsterNumbersUpdatePlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized AddCastleSiegeDataUpdatePlugIn_Name text.</summary>
         public static string AddCastleSiegeDataUpdatePlugIn_Name => ResourceManager.GetString("AddCastleSiegeDataUpdatePlugIn_Name", resourceCulture)!;
 
