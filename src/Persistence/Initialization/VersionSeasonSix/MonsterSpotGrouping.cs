@@ -67,6 +67,13 @@ internal static class MonsterSpotGrouping
     private const double MinimumMonstersPerSpot = 1;
 
     /// <summary>
+    /// The minimum number of coordinates of a square where monsters spawned before, so that it gets a spot
+    /// even with less than <see cref="MinimumMonstersPerSpot"/> monsters. This is a quarter of a square,
+    /// so that monsters which were spread thinly over a big area get spots all over it.
+    /// </summary>
+    private const int MinimumCoveredCoordinates = SpotDistance * SpotDistance / 4;
+
+    /// <summary>
     /// The minimum number of monsters of a kind on a map to be grouped into spots.
     /// </summary>
     private const int MinimumMonstersOfDefinition = 3;
@@ -240,12 +247,24 @@ internal static class MonsterSpotGrouping
 
     /// <summary>
     /// Finds the squares which had monsters before and have room for a spot.
-    /// A square needs at least <see cref="MinimumMonstersPerSpot"/> monsters, except the square with the most
-    /// monsters of a kind which has no other square, so that monsters which were spread thinly over a big area
-    /// don't disappear.
+    /// A square needs at least <see cref="MinimumMonstersPerSpot"/> monsters or <see cref="MinimumCoveredCoordinates"/>
+    /// coordinates where monsters spawned. A kind of monster which has no such square gets the square with most of its monsters,
+    /// so that it doesn't disappear.
     /// </summary>
     private static List<Square> FindSquares(Dictionary<MonsterDefinition, double[,]> density, GameMapTerrain terrain)
     {
+        var covered = new bool[MapSize, MapSize];
+        foreach (var grid in density.Values)
+        {
+            for (var x = 0; x < MapSize; x++)
+            {
+                for (var y = 0; y < MapSize; y++)
+                {
+                    covered[x, y] |= grid[x, y] > 0;
+                }
+            }
+        }
+
         var candidates = new List<Square>();
         for (var left = 0; left < MapSize; left += SpotDistance)
         {
@@ -262,6 +281,7 @@ internal static class MonsterSpotGrouping
                     continue;
                 }
 
+                square.CountCoveredCoordinates(covered);
                 square.FindSpotPositions(terrain);
                 if (square.SpotPositions.Count > 0)
                 {
@@ -270,7 +290,9 @@ internal static class MonsterSpotGrouping
             }
         }
 
-        var squares = candidates.Where(square => square.TotalMonsters >= MinimumMonstersPerSpot).ToList();
+        var squares = candidates
+            .Where(square => square.TotalMonsters >= MinimumMonstersPerSpot || square.CoveredCoordinates >= MinimumCoveredCoordinates)
+            .ToList();
         foreach (var monster in density.Keys.OrderBy(m => m.Number))
         {
             if (squares.Any(square => square.GetMonsters(monster) > 0))
@@ -343,6 +365,11 @@ internal static class MonsterSpotGrouping
 
         public double TotalMonsters { get; private set; }
 
+        /// <summary>
+        /// Gets the number of coordinates of this square where monsters spawned before.
+        /// </summary>
+        public int CoveredCoordinates { get; private set; }
+
         public List<(byte X, byte Y)> SpotPositions { get; } = new();
 
         public bool IsHotspot => ((this._left / SpotDistance) + (2 * (this._top / SpotDistance))) % HotspotInterval == 0;
@@ -374,6 +401,20 @@ internal static class MonsterSpotGrouping
             {
                 this.Monsters.Add(monster, (count, sumX, sumY));
                 this.TotalMonsters += count;
+            }
+        }
+
+        public void CountCoveredCoordinates(bool[,] covered)
+        {
+            for (var x = this._left; x < Math.Min(this._left + SpotDistance, MapSize); x++)
+            {
+                for (var y = this._top; y < Math.Min(this._top + SpotDistance, MapSize); y++)
+                {
+                    if (covered[x, y])
+                    {
+                        this.CoveredCoordinates++;
+                    }
+                }
             }
         }
 
