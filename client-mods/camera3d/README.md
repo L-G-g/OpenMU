@@ -85,6 +85,19 @@ SmoothTrails=1  ; estelas fluidas
 `camera3d.log` anota cada 5 segundos los FPS, los pasos de lógica, el peor cuadro y los tirones.
 El análisis completo y las mediciones están en `FPS.md`.
 
+## Mapa del TAB: hotspots en violeta
+
+En el mapa que se abre con TAB, los marcadores de los spots de monstruos que son hotspots (nombre que
+termina en `(Hotspot)`, ver `client-mods/minimap-spots`) se dibujan con un punto violeta en vez del
+verde de los NPC. El resto se ve igual que en el juego.
+
+`src/minimap.cpp` envuelve la llamada que dibuja el punto de un NPC en el mapa (`0x0082AD70`, CALL
+`0x00638400` con la textura `0x7EC4`, dentro del dibujo de `CNewUIMiniMap` en `0x0082AA50`). Los
+marcadores se leen de `Minimap_<mapa>_<idioma>.bmd` (`0x0082B2B0`) en el objeto `+300`, 100 de `0x74`
+bytes (tipo, x, y, giro, nombre en `+0x10`); el objeto está en `[EBP-0x3C]` del dibujo. Para un
+hotspot se dibuja con una copia violeta del punto verde, armada una vez leyendo esa textura de OpenGL;
+el enlace de texturas del juego (`0x00635CF0`) acepta un número negativo como textura de OpenGL directa.
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -187,6 +200,7 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/rightclick.cpp`: click derecho inteligente.
 - `src/mods.h`: piezas compartidas entre los mods.
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
+- `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll` y `muauto.dll`.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
@@ -204,7 +218,7 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
