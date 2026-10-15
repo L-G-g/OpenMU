@@ -19,42 +19,35 @@ el foco y devuelven una línea `nombre: clave=valor ...` por resultado.
 - `camera3d.ini` del cliente de prueba tiene que tener `[Test] Server=127.127.127.127:45405`: el modo
   de prueba redirige al servidor de prueba toda conexión no local. Antes de mandar comandos, verificar
   con `Assert-MuLocal` que el cliente solo tiene conexiones locales (si no, lo cierra).
-- No manejar el cliente mientras Gabi está usando la PC. Con la PC bloqueada no hay input real ni
-  capturas de pantalla; los comandos internos y `Get-MuShot` sí funcionan.
+- No usar mouse ni teclado reales (`login.ps1`, `mu.ps1`) mientras Gabi está usando la PC: caen en su
+  ventana. Los comandos internos (`Invoke-Mu*`, `Get-MuShot`) no tocan su escritorio.
 - Si otro hilo está usando el cliente o el servidor de prueba, esperar a que estén libres.
 
 ## Servidor de prueba
 
-Si no hay nada escuchando en `127.127.127.127:45405`, se puede levantar en modo demo (datos en
-memoria, no toca ninguna base de datos):
-
 ```powershell
-$dir = 'D:\camera3d\testserver-build-repro'
-Start-Process "$dir\MUnique.OpenMU.Startup.exe" -ArgumentList '-demo','-autostart','-resolveIP:127.127.127.127' -WorkingDirectory $dir -WindowStyle Hidden -RedirectStandardOutput D:\camera3d\testserver-muauto.log
+& D:\camera3d\skill\start-testserver.ps1
 ```
 
-`-resolveIP:127.127.127.127` es necesario: sin eso el server anuncia la IP pública para el game
-server y el cliente no puede entrar. Avisar antes si otro hilo puede estar usándolo.
+Si no hay nada escuchando en `127.127.127.127:45405`, lo levanta en modo demo (datos en memoria, no
+toca ninguna base de datos) con `-resolveIP:127.127.127.127` (sin eso anuncia la IP pública para el
+game server y el cliente no puede entrar). Avisar antes si otro hilo puede estar usándolo.
 
 ## Abrir y entrar
 
 ```powershell
 . D:\camera3d\skill\auto.ps1
-& D:\camera3d\skill\launch-test.ps1 -Exe D:\camera3d\client\main_mod.exe   # sin administrador; pid en D:\camera3d\testpid.txt
-& D:\camera3d\skill\login.ps1 -Account testgm          # input real: necesita la PC desbloqueada
-Assert-MuLocal
+Invoke-MuLogin -Account testgm -Slot 0   # abre main_mod.exe si hace falta, entra y devuelve el estado
 ```
 
-Cuentas del servidor de prueba: la contraseña es el nombre (`testgm`, `test400`, ...). `login.ps1`
-usa coordenadas para 1024x768 y `main_mod.exe` (el `main.exe` de esa carpeta es el original, sin
-`camera3d.dll`).
+Todo es interno: no mueve el mouse ni escribe en otras ventanas, así que se puede usar con Gabi
+trabajando en la PC. Cuentas del servidor de prueba: la contraseña es el nombre (`testgm`, `test400`,
+...). `Assert-MuLocal` verifica que el cliente solo tenga conexiones locales.
 
-- En la pantalla de login el juego ignora los comandos internos si su ventana no está al frente, así
-  que el login usa mouse y teclado reales: pedirle a Gabi que no use la PC esos ~40 segundos, o que
-  entre él. Dentro del juego todo es interno.
-- El connect server corta conexiones inactivas: si el cliente queda ~1 minuto en la pantalla de login,
-  se cierra solo. Volver a abrirlo.
-- No mandar comandos de login (`click`, `text`) si alguien ya entró: caen dentro del juego.
+- El connect server corta conexiones inactivas: si el cliente queda ~1 minuto en la pantalla de login
+  sin entrar, se cierra solo. `Invoke-MuLogin` lo vuelve a abrir.
+- `login.ps1` (mouse y teclado reales) queda solo como alternativa: necesita la ventana al frente y
+  que nadie use la PC.
 
 ## Comandos de juego
 
@@ -68,6 +61,7 @@ usa coordenadas para 1024x768 y `main_mod.exe` (el `main.exe` de esa carpeta es 
 | `Invoke-MuAttack N [-UntilDead] [-Seconds 60]` | `attack N [untildead [SEGUNDOS]]` | `result=hit/killed/gone/timeout/herodead hits ticks x y` |
 | `Invoke-MuSkill S [-Target N \| -X x -Y y]` | `skill S [N \| X Y]` | `result=sent packet=0x19..` o `timeout`; si el objetivo está lejos, se acerca |
 | `Invoke-Mu @("peek 0x07BC4F04 4")` | `peek DIRECCION [BYTES]` | bytes en hexadecimal |
+| `Invoke-Mu @("enter 0")` | `enter N` | en la selección de personaje, entra con el personaje `N` |
 
 - `N` es el índice del objeto (`index` de `objects`), `S` el número de habilidad (por ejemplo 48 =
   Greater Fortitude del DK, 41 = Twisting Slash). El personaje tiene que tenerla aprendida.

@@ -40,6 +40,9 @@ namespace
     constexpr DWORD PickTerrainFunction = 0x005DA250;   // char PickTerrainTile(x, y, tileX, tileY, scale, size, select)
     constexpr DWORD PickCallWalk = 0x005B741A;          // en la logica del personaje: click en el terreno
     constexpr DWORD PickCallSkillTarget = 0x005AAFDF;   // en el destino de una habilidad sin objeto elegido
+    constexpr DWORD EnterGameFunction = 0x004D6A60;     // void EnterGame(char check): el boton Connect de la seleccion
+    int* const Scene = reinterpret_cast<int*>(0x00E609E8);              // 2 login, 4 seleccion de personaje, 5 juego
+    int* const SelectedHero = reinterpret_cast<int*>(0x00E60B4C);       // personaje elegido en la seleccion
 
     DWORD* const Hero = reinterpret_cast<DWORD*>(0x07BC4F04);
     DWORD* const CharacterManager = reinterpret_cast<DWORD*>(0x00E7C224);
@@ -84,6 +87,7 @@ namespace
     // abajo y de las ventanas de los costados, para que el juego tome el click como sobre el mundo.
     constexpr int SafeMouseX = 320, SafeMouseY = 180;
     constexpr int TicksPerSecond = 25;
+    constexpr int SettleTicks = 4;
 
     LogFunction g_log = nullptr;
     bool g_installed = false;
@@ -317,6 +321,7 @@ namespace
         int savedMouseX = 0;
         int savedMouseY = 0;
         int packetsAtStart = 0;
+        int settleTicks = 0;
 
         // walk
         int x = 0, y = 0;     // destino
@@ -702,6 +707,9 @@ namespace
         g_command.timeout = timeoutTicks;
         g_command.savedMouseX = *MouseX;
         g_command.savedMouseY = *MouseY;
+        g_command.settleTicks = SettleTicks;
+        *MouseX = SafeMouseX;
+        *MouseY = SafeMouseY;
     }
 
     void PatchCall(DWORD site, DWORD expectedTarget, const void* hook, bool& ok)
@@ -794,6 +802,20 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
     {
         result = Peek(arguments);
     }
+    else if (_stricmp(name, "enter") == 0)
+    {
+        // Seleccion de personaje: elige el lugar N y hace lo mismo que el boton Connect.
+        const DWORD character = count >= 1 ? Character(a) : 0;
+        if (*Scene != 4 || character == 0 || Read<BYTE>(character + CharLive) == 0)
+        {
+            result = Format("error: enter N: no hay personaje %d en la seleccion (escena %d)", a, *Scene);
+            return true;
+        }
+
+        *SelectedHero = a;
+        reinterpret_cast<void(__cdecl*)(char)>(EnterGameFunction)(1);
+        result = Format("enter: slot=%d name=%s", a, Word(character + CharName, 11).c_str());
+    }
     else if (!g_installed)
     {
         result = Format("error: %s: comandos de juego desactivados (ver camera3d.log)", name);
@@ -811,7 +833,7 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
         g_command.y = g_command.wy = b;
         g_command.wait = strstr(arguments, "wait") != nullptr;
         g_command.packetsAtStart = PacketCount(PacketWalk);
-        pending = !ContinueWalk(result);
+        pending = true;
     }
     else if (_stricmp(name, "attack") == 0)
     {
@@ -844,7 +866,7 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
         g_command.targetKey = Read<WORD>(Character(a) + CharKey);
         g_command.untilDead = until != nullptr;
         g_command.packetsAtStart = PacketCount(PacketHit);
-        pending = !ContinueAttack(result);
+        pending = true;
     }
     else if (_stricmp(name, "skill") == 0)
     {
@@ -874,7 +896,7 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
         g_command.x = b;
         g_command.y = c;
         g_command.packetsAtStart = SkillPacketCount();
-        pending = !ContinueSkill(result);
+        pending = true;
     }
     else
     {
@@ -886,6 +908,16 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
 
 bool ContinueGameCommand(std::string& result)
 {
+    // Los primeros pasos solo dejan el mouse sobre el mundo: si estaba sobre una ventana o la barra de
+    // abajo, la interfaz tarda unos pasos en soltarlo y hasta entonces el juego ignora los clicks.
+    if (g_command.kind != Kind::None && g_command.settleTicks > 0)
+    {
+        g_command.settleTicks--;
+        *MouseX = SafeMouseX;
+        *MouseY = SafeMouseY;
+        return false;
+    }
+
     switch (g_command.kind)
     {
     case Kind::Walk:

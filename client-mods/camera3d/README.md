@@ -101,6 +101,11 @@ Todo se activa además con `camera3d.ini`:
 - **Automatización** (`[Test] Automation=1`, `src/muauto/automation.cpp`): comandos desde
   `automation\commands.txt`, como mover, click, teclas, texto, capturas por OpenGL y ráfagas de
   cuadros.
+- **Login sin mouse real** (con la automatización): las pantallas de login y de selección de
+  personaje leen el mouse con su propio lector (`0x00E7C228`, actualizado por `0x00407C70` desde
+  `0x004D9DCC`), que usa el cursor de Windows y no ve nada si la ventana no está activa. Después de su
+  actualización se le pone el mouse de la automatización, así `click`, `text` y `key` funcionan también
+  ahí sin robar el foco (`Invoke-MuLogin` en `skill/auto.ps1`).
 - **Comandos de juego** (con la automatización, `src/muauto/gamecommands.cpp`): manejar al personaje
   por intención, sin coordenadas de pantalla. Cada resultado es una línea `nombre: clave=valor ...` en
   `done.txt`.
@@ -114,6 +119,7 @@ Todo se activa además con `camera3d.ini`:
   | `skill S [N \| X Y]` | Habilidad número `S` sobre el objeto `N` (si está lejos, se acerca), una baldosa o uno mismo | `result=sent` con el paquete, o `timeout` |
   | `target N` | Estado del objeto `N` | como una línea de `objects` |
   | `peek DIRECCIÓN [BYTES]` | Bytes de la memoria del juego, para investigar | hexadecimal |
+  | `enter N` | En la selección de personaje, entrar con el personaje `N` (lo mismo que el botón Connect, `0x004D6A60` con `0x00E60B4C`) | `slot name` |
 
   El cliente no recibe la vida de los monstruos, así que `hp=na`.
 

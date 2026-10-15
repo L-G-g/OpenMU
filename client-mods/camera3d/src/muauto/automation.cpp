@@ -31,6 +31,7 @@
 //   skill S [N | X Y]      habilidad S sobre el objeto N, una baldosa o uno mismo
 //   target N               estado del objeto N
 //   peek DIRECCION [BYTES] bytes de la memoria del juego, en hexadecimal (para investigar)
+//   enter N                seleccion de personaje: entrar al juego con el personaje N (0 el primero)
 //
 // Se activa con camera3d.ini (solo junto al modo de prueba):
 //   [Test]
@@ -85,6 +86,15 @@ namespace
     int g_heldKey = -1;
     int g_releaseKey = -1;
 
+    // Pantallas de login y seleccion de personaje: usan otro lector del mouse (CInput, 0x00E7C228,
+    // actualizado por 0x00407C70 desde 0x004D9DCC) que toma el cursor real de Windows y no ve nada si la
+    // ventana no esta activa. Despues de su actualizacion se le pone el mouse de la automatizacion.
+    constexpr DWORD InputUpdateFunction = 0x00407C70;  // void __thiscall CInput::Update()
+    constexpr DWORD InputUpdateCallSite = 0x004D9DCC;
+    bool g_mouseSet = false;     // la automatizacion movio el mouse (desde ahi lo maneja ella)
+    POINT g_mouse{};             // en pixeles de la ventana
+    BYTE* g_keyStates = nullptr;
+
     std::string Path(const char* name)
     {
         return std::string(g_folder) + name;
@@ -92,6 +102,8 @@ namespace
 
     void ToGameMouse(int x, int y)
     {
+        g_mouseSet = true;
+        g_mouse = { x, y };
         RECT client{};
         GetClientRect(*MainWindow, &client);
         const int width = client.right > 0 ? client.right : 1024;
@@ -408,6 +420,44 @@ namespace
         return g_originalSwapBuffers(dc);
     }
 
+    // Despues de que CInput lee el mouse de Windows: cursor y botones de la automatizacion.
+    void __fastcall InputUpdateHook(BYTE* input)
+    {
+        reinterpret_cast<void(__fastcall*)(BYTE*)>(InputUpdateFunction)(input);
+        if (!g_mouseSet || g_keyStates == nullptr)
+        {
+            return;
+        }
+
+        *reinterpret_cast<int*>(input + 0x0C) = g_mouse.x;
+        *reinterpret_cast<int*>(input + 0x10) = g_mouse.y;
+        *reinterpret_cast<int*>(input + 0x14) = 0; // movimiento desde el cuadro anterior
+        *reinterpret_cast<int*>(input + 0x18) = 0;
+        *reinterpret_cast<int*>(input + 0x34) = g_mouse.x;
+        *reinterpret_cast<int*>(input + 0x38) = g_mouse.y;
+
+        // Boton izquierdo: +0x1C apretado recien, +0x1D apretado, +0x1E soltado recien, +0x1F doble click.
+        const BYTE left = g_keyStates[VK_LBUTTON];
+        input[0x1C] = left == KeyPressed ? 1 : 0;
+        input[0x1D] = left == KeyPressed || left == KeyHeld ? 1 : 0;
+        input[0x1E] = left == KeyReleased ? 1 : 0;
+        input[0x1F] = 0;
+    }
+
+    void InstallInputHook()
+    {
+        const BYTE* code = reinterpret_cast<const BYTE*>(InputUpdateCallSite);
+        if (code[0] != 0xE8 || InputUpdateCallSite + 5 + *reinterpret_cast<const int*>(code + 1) != InputUpdateFunction)
+        {
+            g_log("Automatizacion: la lectura del mouse del login no coincide; sin clicks en el login.");
+            return;
+        }
+
+        BYTE call[5] = { 0xE8 };
+        *reinterpret_cast<DWORD*>(call + 1) = reinterpret_cast<DWORD>(&InputUpdateHook) - (InputUpdateCallSite + 5);
+        WriteCode(InputUpdateCallSite, call, sizeof(call));
+    }
+
     bool IsEnabled()
     {
         HMODULE module = nullptr;
@@ -439,6 +489,7 @@ void AutomationTick(BYTE* keyStates)
     }
 
     *WindowActive = 1;
+    g_keyStates = keyStates;
 
     // Soltar lo que se apreto en el paso anterior.
     if (g_releaseKey >= 0 && g_heldKey != g_releaseKey)
@@ -533,6 +584,7 @@ bool InstallAutomation(LogFunction log)
         g_log("Automatizacion: no se encontro SwapBuffers; sin capturas.");
     }
 
+    InstallInputHook();
     g_enabled = true;
     g_log("Automatizacion activa en %s", g_folder);
     return true;

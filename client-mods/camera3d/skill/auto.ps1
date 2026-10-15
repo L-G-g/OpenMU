@@ -100,3 +100,22 @@ function Invoke-MuSkill([int]$Skill, [int]$Target = -1, [int]$X = -1, [int]$Y = 
 function Get-MuNearestMonster([int]$Radius = 15) {
     Get-MuObjects $Radius | Where-Object { $_.kind -eq 'monster' -and $_.dead -eq 0 } | Select-Object -First 1
 }
+
+# Login sin mouse ni teclado reales (los clicks y el texto van dentro del juego). Coordenadas para 1024x768,
+# las mismas de login.ps1. Abre el cliente si no esta abierto y espera a estar en el juego.
+function Invoke-MuLogin([string]$Account = "testgm", [string]$Password = $Account, [int]$Slot = 0) {
+    $testPid = [int](Get-Content D:\camera3d\testpid.txt -ErrorAction SilentlyContinue)
+    if (-not (Get-Process -Id $testPid -ErrorAction SilentlyContinue)) {
+        & D:\camera3d\skill\launch-test.ps1 -Exe D:\camera3d\client\main_mod.exe | Out-Null
+        Start-Sleep 12
+    }
+    Assert-MuLocal
+    Invoke-Mu @("click 332 300", "wait 50", "click 510 300", "wait 75") | Out-Null           # servidor y sub-servidor
+    Assert-MuLocal
+    Invoke-Mu @("click 533 464", "wait 3", "text $Account", "click 533 490", "wait 3", "text $Password",
+        "key enter", "wait 125") | Out-Null                                                    # cuenta y contrasena
+    Invoke-Mu @("enter $Slot", "wait 150") -TimeoutSeconds 60 | Out-Null                      # personaje (como Connect)
+    $state = Get-MuState
+    Assert-MuLocal
+    return $state
+}
