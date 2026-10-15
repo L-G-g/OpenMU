@@ -95,6 +95,7 @@ internal class MonsterSpotGroupingTest
         var terrain = new GameMapTerrain(map);
         Assert.Multiple(() =>
         {
+            Assert.That(spots, Has.Count.LessThanOrEqualTo(MonsterSpotGrouping.MaximumSpotsPerMap), $"Spots of map {map.Number}");
             Assert.That(spots.Select(s => s.Quantity), Is.All.EqualTo(MonsterSpotGrouping.GroupSize).Or.EqualTo(MonsterSpotGrouping.HotspotSize), $"Quantities of map {map.Number}");
             Assert.That(spots.Select(s => s.X2 - s.X1 + 1), Is.All.EqualTo(MonsterSpotGrouping.SpotSize), $"Widths of map {map.Number}");
             Assert.That(spots.Select(s => s.Y2 - s.Y1 + 1), Is.All.EqualTo(MonsterSpotGrouping.SpotSize), $"Heights of map {map.Number}");

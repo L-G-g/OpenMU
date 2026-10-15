@@ -20,7 +20,8 @@ using MUnique.OpenMU.GameLogic;
 /// ground outside of the safezone, as close as possible to where the monsters of its kind were in the square.
 /// Monsters with less than <see cref="MinimumMonstersOfDefinition"/> spawns on a map (e.g. bosses),
 /// traps and spawns which don't spawn automatically keep their original spawns.
-/// Maps which already have spots are left as they are.
+/// Maps which already have spots are not grouped again.
+/// A map keeps at most <see cref="MaximumSpotsPerMap"/> spots, so that the map of the client can show each of them.
 /// </remarks>
 internal static class MonsterSpotGrouping
 {
@@ -49,6 +50,18 @@ internal static class MonsterSpotGrouping
     /// It's above the numbers of the original spawn areas.
     /// </summary>
     internal const short FirstSpotNumber = 20000;
+
+    /// <summary>
+    /// The maximum number of spots of a map.
+    /// The map of the client (TAB) shows at most 100 markers per map, including its NPCs and gates (up to 19, in Lorencia),
+    /// so that each spot can have its own marker.
+    /// </summary>
+    internal const int MaximumSpotsPerMap = 80;
+
+    /// <summary>
+    /// The number of spot numbers which are reserved for the spots of a map, starting at <see cref="FirstSpotNumber"/>.
+    /// </summary>
+    private const int ReservedSpotNumbers = 1000;
 
     /// <summary>
     /// Every n-th square of a diagonal pattern is a hotspot, so that the hotspots are spread over the map.
@@ -107,7 +120,8 @@ internal static class MonsterSpotGrouping
     ];
 
     /// <summary>
-    /// Groups the monsters of all hunting maps into spots.
+    /// Groups the monsters of all hunting maps into spots, and removes the most crowded spots of a map
+    /// which has more than <see cref="MaximumSpotsPerMap"/>.
     /// </summary>
     /// <param name="context">The context.</param>
     /// <param name="gameConfiguration">The game configuration.</param>
@@ -119,13 +133,58 @@ internal static class MonsterSpotGrouping
         foreach (var map in maps)
         {
             GroupIntoSpots(context, map);
+            LimitSpots(map);
+        }
+    }
+
+    /// <summary>
+    /// Determines whether the spawn area is one of the spots which were created by this grouping.
+    /// </summary>
+    /// <param name="map">The map of the spawn area.</param>
+    /// <param name="spawn">The spawn area.</param>
+    /// <returns><c>true</c>, if the spawn area is a spot.</returns>
+    internal static bool IsSpot(GameMapDefinition map, MonsterSpawnArea spawn)
+    {
+        // The ids of the spots of a map only differ in the spot number, which is their third component.
+        var first = GuidHelper.CreateGuid<MonsterSpawnArea>(map.Number, FirstSpotNumber).ToByteArray();
+        var id = spawn.GetId().ToByteArray();
+        var number = GetSpotNumber(spawn);
+        return number is >= FirstSpotNumber and < FirstSpotNumber + ReservedSpotNumbers
+               && id.AsSpan(0, 6).SequenceEqual(first.AsSpan(0, 6))
+               && id.AsSpan(8).SequenceEqual(first.AsSpan(8));
+    }
+
+    private static short GetSpotNumber(MonsterSpawnArea spawn) => BitConverter.ToInt16(spawn.GetId().ToByteArray(), 6);
+
+    /// <summary>
+    /// Removes spots until the map has at most <see cref="MaximumSpotsPerMap"/>.
+    /// It removes the spot which is nearest to another spot, preferring normal spots over hotspots,
+    /// and keeps at least one spot of each kind of monster.
+    /// </summary>
+    private static void LimitSpots(GameMapDefinition map)
+    {
+        var spots = map.MonsterSpawns.Where(spawn => IsSpot(map, spawn)).ToList();
+        while (spots.Count > MaximumSpotsPerMap)
+        {
+            var removable = spots
+                .Where(spot => spots.Count(other => other.MonsterDefinition == spot.MonsterDefinition) > 1)
+                .OrderBy(spot => spots.Where(other => other != spot).Min(other => Math.Pow(other.X1 - spot.X1, 2) + Math.Pow(other.Y1 - spot.Y1, 2)))
+                .ThenBy(spot => spot.Quantity)
+                .ThenByDescending(GetSpotNumber)
+                .FirstOrDefault();
+            if (removable is null)
+            {
+                return;
+            }
+
+            spots.Remove(removable);
+            map.MonsterSpawns.Remove(removable);
         }
     }
 
     private static void GroupIntoSpots(IContext context, GameMapDefinition map)
     {
-        var firstSpotId = GuidHelper.CreateGuid<MonsterSpawnArea>(map.Number, FirstSpotNumber);
-        if (map.MonsterSpawns.Any(spawn => spawn.GetId() == firstSpotId))
+        if (map.MonsterSpawns.Any(spawn => IsSpot(map, spawn)))
         {
             // The monsters of this map are already grouped.
             return;

@@ -287,7 +287,7 @@
   <data name="FixElvenlandMonsterNumbersUpdatePlugIn_Name" xml:space="preserve"><value>Fix Elvenland Monster Numbers</value></data>
   <data name="FixElvenlandMonsterNumbersUpdatePlugIn_Description" xml:space="preserve"><value>Corrects the numbers of the Polluted Butterfly (421), Hideous Rabbit (419) and Werewolf (420), so that the client shows the right name and model for their stats.</value></data>
   <data name="GroupMonsterSpotsUpdatePlugIn_Name" xml:space="preserve"><value>Group Monsters Into Spots</value></data>
-  <data name="GroupMonsterSpotsUpdatePlugIn_Description" xml:space="preserve"><value>Rearranges the monsters of the hunting maps into spots of 5 monsters in an area of 4x4, about 20 coordinates apart. About every fifth spot is a hotspot with 7 monsters.</value></data>
+  <data name="GroupMonsterSpotsUpdatePlugIn_Description" xml:space="preserve"><value>Rearranges the monsters of the hunting maps into spots of 5 monsters in an area of 4x4, about 20 coordinates apart, at most 80 per map. About every fifth spot is a hotspot with 7 monsters.</value></data>
   <data name="AddCastleSiegeDataUpdatePlugIn_Name" xml:space="preserve"><value>Add Castle Siege data</value></data>
   <data name="AddCastleSiegeDataUpdatePlugIn_Description" xml:space="preserve"><value>This update adds the Castle Siege configuration and persistent state.</value></data>
   <data name="AddCashShopUpdatePlugIn_Name" xml:space="preserve"><value>Add cash shop</value></data>
