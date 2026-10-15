@@ -85,20 +85,81 @@ SmoothTrails=1  ; estelas fluidas
 `camera3d.log` anota cada 5 segundos los FPS, los pasos de lógica, el peor cuadro y los tirones.
 El análisis completo y las mediciones están en `FPS.md`.
 
-## Herramientas de prueba
+## Herramientas de prueba (muauto.dll)
 
-Todo esto se activa solo si `camera3d.ini` lo pide, así que el cliente normal no lo usa.
+Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
+los jugadores. `camera3d.dll` la carga solo si el archivo está en la misma carpeta (`src/testtools.cpp`),
+al iniciar y antes de cualquier conexión, y le pasa lo que necesita (log, ajustes de prueba del
+movimiento fluido, diagnóstico del dibujo). `muauto.dll` no parchea nada que parchee `camera3d.dll`:
+el paso de lógica le llega por la actualización de teclas que ya envuelve el click derecho. Sin
+`muauto.dll` el cliente funciona igual que v1.2 (las opciones `[Test]` y `[Debug]` no hacen nada).
 
-- **Modo de prueba** (`[Test] Server=127.127.127.127:45405`, `src/testmode.cpp`): redirige toda
-  conexión no local al servidor de prueba.
-- **Automatización** (`[Test] Automation=1`, `src/automation.cpp`): comandos desde
+Todo se activa además con `camera3d.ini`:
+
+- **Modo de prueba** (`[Test] Server=127.127.127.127:45405`, `src/muauto/testmode.cpp`): redirige
+  toda conexión no local al servidor de prueba.
+- **Automatización** (`[Test] Automation=1`, `src/muauto/automation.cpp`): comandos desde
   `automation\commands.txt`, como mover, click, teclas, texto, capturas por OpenGL y ráfagas de
   cuadros.
-- **Diagnóstico** (`[Debug] RenderDiff=1|2`, `src/fpsdiag.cpp`): anota qué cambia el dibujo.
-- **Scripts** de `skill/`:
+- **Login sin mouse real** (con la automatización): las pantallas de login y de selección de
+  personaje leen el mouse con su propio lector (`0x00E7C228`, actualizado por `0x00407C70` desde
+  `0x004D9DCC`), que usa el cursor de Windows y no ve nada si la ventana no está activa. Después de su
+  actualización se le pone el mouse de la automatización, así `click`, `text` y `key` funcionan también
+  ahí sin robar el foco (`Invoke-MuLogin` en `skill/auto.ps1`).
+- **Comandos de juego** (con la automatización, `src/muauto/gamecommands.cpp`): manejar al personaje
+  por intención, sin coordenadas de pantalla. Cada resultado es una línea `nombre: clave=valor ...` en
+  `done.txt`.
+
+  | Comando | Qué hace | Resultado |
+  |---|---|---|
+  | `state` | Estado del personaje | `map x y hp mp sd ag level class skill selected target moving attacking dead safezone action` |
+  | `objects [RADIO]` | Objetos vivos cerca (15 baldosas por defecto) | una línea `objects:` y una `object:` por objeto: `index kind type model key name x y dist live dead` (`type`: número de monstruo o NPC, como en el servidor) |
+  | `walk X Y [wait]` | Caminar a la baldosa, como un click en el terreno | `result=sent`, o con `wait`: `arrived`, `stuck`, `nopath` o `timeout` y la posición final |
+  | `attack N [untildead [SEGUNDOS]]` | Ataque normal al objeto `N`, como un click sostenido sobre el monstruo (se acerca y ataca) | `result=hit`, `killed`, `gone`, `timeout` o `herodead`, `hits` (ataques mandados) |
+  | `skill S [N \| X Y]` | Habilidad número `S` sobre el objeto `N` (si está lejos, se acerca), una baldosa o uno mismo | `result=sent` con el paquete, o `timeout` |
+  | `target N` | Estado del objeto `N` | como una línea de `objects` |
+  | `peek DIRECCIÓN [BYTES]` | Bytes de la memoria del juego, para investigar | hexadecimal |
+  | `enter N` | En la selección de personaje, entrar con el personaje `N` (lo mismo que el botón Connect, `0x004D6A60` con `0x00E60B4C`) | `slot name` |
+
+  El cliente no recibe la vida de los monstruos, así que `hp=na`.
+
+  Cómo funciona: en cada paso de lógica, antes de la lógica del personaje (`0x005B5FC0`, la que
+  atiende los clicks sobre el mundo), se deja el estado como si el jugador hiciera el click: el objeto
+  elegido bajo el mouse, los botones apretados y, para caminar o lanzar sobre una baldosa, la baldosa
+  "bajo el mouse". El juego hace el resto con su propia lógica (camino, acercarse, atacar, pedidos al
+  servidor). Para saber qué pasó se cuentan los paquetes que arma el juego.
+
+  | Dirección | Qué es | Uso |
+  |---|---|---|
+  | `0x005B5FC0` | Lógica del personaje propio (clicks sobre el mundo), llamada en `0x004D9577` | Corre después de la actualización de teclas; los comandos preparan su estado antes |
+  | `0x005B81E0` | Elige el objeto bajo el mouse (al dibujar) | Por eso la selección se repone en cada paso |
+  | `0x005B4940` | Uso de habilidades con click derecho | Habilidad elegida: personaje `+0x32` (índice en la lista) |
+  | `0x00542D20` | Búsqueda de camino | (la usa el juego) |
+  | `0x005A3C70` | Pedido de caminar | (la usa el juego) |
+  | `0x005DA250` | Baldosa del terreno bajo el mouse | Las llamadas en `0x005B741A` (click en el terreno) y `0x005AAFDF` (destino de habilidad) pasan por un gancho que devuelve la baldosa del comando |
+  | `0x00404B90` | Empieza cada paquete (tipo, código) | Gancho que cuenta los paquetes: `0xD4` caminar, `0x11` ataque, `0x19`/`0x1E`/`0xDB`/`0x1D` habilidades |
+  | `0x00E61728` / `0x00E6172C` / `0x00E61730` / `0x00E61734` | Item, NPC, monstruo o jugador y objeto del mapa bajo el mouse | Selección del comando |
+  | `0x00E61738` | Objetivo fijo (1 ataque, 2 habilidad) | Se borra al terminar, para que el ataque automático no siga |
+  | `0x00E61790` | Objeto hacia el que va el personaje | `target` de `state` |
+  | `0x081C03B4` / `0x00E616D0` | Pasos desde el último click atendido / mínimo entre clicks | Distinguir "sin camino" de "todavía no acepta clicks" |
+  | `0x08793384` / `0x08793381` | Botones izquierdo / derecho: apretado recién, soltado, sostenido | Click sostenido |
+  | `0x08793248` | Punto del terreno bajo el mouse | Centro de la baldosa del comando |
+  | `0x08406AA0` | Alturas del terreno (256×256 floats) | Altura de ese punto |
+  | `0x00E7C224` | Personajes: `[+8]`, 400 de `0x598` bytes | `objects` |
+  | `0x08128AC8` | Atributos del personaje propio | `state` |
+  | `0x08128ABC` | Tabla de habilidades (`0x58` bytes, nombre al principio) | Nombres |
+
+  Campos del personaje (`CHARACTER`): `+0x0E` zona segura, `+0x13` clase, `+0x24` muerto, `+0x32`
+  habilidad elegida, `+0x38` nombre, `+0x78` caminando, `+0x7E` número en el servidor, `+0x84` número de monstruo o NPC, `+0xAC`/`+0xB0`
+  baldosa, `+0x308` objeto (`+0x30C` vivo, `+0x31A` acción, `+0x320` tipo: 1 jugador, 2 monstruo,
+  4 NPC, `+0x338` modelo, `+0x404` posición). Atributos: `+0x0B` clase, `+0x0E` nivel, `+0x22`/`+0x26`
+  vida, `+0x24`/`+0x28` mana, `+0x2A`/`+0x2C` SD, `+0x40`/`+0x42` AG, `+0x78` lista de habilidades.
+- **Diagnóstico** (`[Debug] RenderDiff=1|2`, `src/muauto/fpsdiag.cpp`): anota qué cambia el dibujo.
+- **Scripts** de `skill/` (ver `skill/SKILL.md`):
   - abrir el cliente de prueba sin administrador;
   - login automático;
-  - control por automatización;
+  - control por automatización y comandos de juego (`Get-MuState`, `Get-MuObjects`, `Invoke-MuWalk`,
+    `Invoke-MuAttack`, `Invoke-MuSkill`, ...);
   - lectura de memoria para medir velocidades;
   - grillas de capturas.
 
@@ -126,7 +187,10 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/rightclick.cpp`: click derecho inteligente.
 - `src/mods.h`: piezas compartidas entre los mods.
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
-- `src/testmode.cpp`, `src/automation.cpp`, `src/fpsdiag.cpp`: herramientas de prueba.
+- `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
+- `src/shared.h`: lo que comparten `camera3d.dll` y `muauto.dll`.
+- `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
+  juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
   `.cam3d` con la tabla de importaciones ampliada). Así la cámara viene integrada y no hace falta
   ningún cargador. El `main.exe` original no se modifica.
@@ -140,8 +204,8 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src
-ightclick.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
 ```
@@ -152,7 +216,8 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`.
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`. `muauto.dll`
+va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
 El cliente completo, con estos archivos ya instalados, está respaldado en el repositorio privado
