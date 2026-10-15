@@ -39,7 +39,7 @@ public class MonsterAttributeScalerConfiguration
     }
 
     /// <summary>
-    /// Gets or sets the percentage by which monster damage (MinPhysBaseDmg, MaxPhysBaseDmg) is increased.
+    /// Gets or sets the percentage by which monster damage (MinPhysBaseDmg, MaxPhysBaseDmg) is increased. Negative values decrease it.
     /// </summary>
     [System.ComponentModel.DataAnnotations.Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.MonsterAttributeScalerConfiguration_DamagePercentage_Caption), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
     public float DamagePercentage
@@ -49,7 +49,7 @@ public class MonsterAttributeScalerConfiguration
     }
 
     /// <summary>
-    /// Gets or sets the percentage by which the monster attack rate is increased.
+    /// Gets or sets the percentage by which the monster attack rate is increased. Negative values decrease it.
     /// </summary>
     [System.ComponentModel.DataAnnotations.Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.MonsterAttributeScalerConfiguration_AttackRatePercentage_Caption), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
     public float AttackRatePercentage
@@ -59,7 +59,7 @@ public class MonsterAttributeScalerConfiguration
     }
 
     /// <summary>
-    /// Gets or sets the percentage by which monster defense rate is increased.
+    /// Gets or sets the percentage by which monster defense rate is increased. Negative values decrease it.
     /// </summary>
     [System.ComponentModel.DataAnnotations.Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.MonsterAttributeScalerConfiguration_DefenseRatePercentage_Caption), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
     public float DefenseRatePercentage
@@ -69,7 +69,7 @@ public class MonsterAttributeScalerConfiguration
     }
 
     /// <summary>
-    /// Gets or sets the percentage by which monster defense is increased.
+    /// Gets or sets the percentage by which monster defense is increased. Negative values decrease it.
     /// </summary>
     [System.ComponentModel.DataAnnotations.Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.MonsterAttributeScalerConfiguration_DefensePercentage_Caption), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
     public float DefensePercentage
@@ -79,7 +79,7 @@ public class MonsterAttributeScalerConfiguration
     }
 
     /// <summary>
-    /// Gets or sets the percentage by which monster maximum health is increased.
+    /// Gets or sets the percentage by which monster maximum health is increased. Negative values decrease it.
     /// </summary>
     [System.ComponentModel.DataAnnotations.Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.MonsterAttributeScalerConfiguration_HealthPercentage_Caption), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
     public float HealthPercentage

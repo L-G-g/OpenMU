@@ -1249,7 +1249,7 @@
     <value>Skalierung der Monsterattribute</value>
   </data>
   <data name="MonsterAttributeScaler_Description" xml:space="preserve">
-    <value>Erhöht alle Basiswerte von Monstern um einen konfigurierbaren Prozentsatz.</value>
+    <value>Skaliert alle Basiswerte von Monstern um einen konfigurierbaren Prozentsatz. Positive Werte machen Monster stärker, negative Werte schwächer.</value>
   </data>
   <data name="StatResetFeaturePlugIn_Name" xml:space="preserve">
     <value>Funktion Statuswerte zurücksetzen</value>
