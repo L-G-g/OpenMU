@@ -63,12 +63,17 @@ internal class Elvenland : BaseMapInitializer
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The numbers of the monsters are the ones of the monster table of the original Season 6 Episode 3
+    /// client, which shows the name and the model by the number: 419 is the Hideous Rabbit,
+    /// 420 the Werewolf and 421 the Polluted Butterfly.
+    /// </remarks>
     protected override IEnumerable<MonsterSpawnArea> CreateMonsterSpawns()
     {
         yield return this.CreateMonsterSpawn(21, this.NpcDictionary[418], 0, 128, 128, 245, 80); // Strange Rabbit
-        yield return this.CreateMonsterSpawn(22, this.NpcDictionary[419], 0, 251, 128, 245, 45); // Polluted Butterfly
-        yield return this.CreateMonsterSpawn(23, this.NpcDictionary[420], 0, 128, 0, 128, 45); // Hideous Rabbit
-        yield return this.CreateMonsterSpawn(24, this.NpcDictionary[421], 0, 128, 0, 128, 30); // Werewolf
+        yield return this.CreateMonsterSpawn(22, this.NpcDictionary[421], 0, 251, 128, 245, 45); // Polluted Butterfly
+        yield return this.CreateMonsterSpawn(23, this.NpcDictionary[419], 0, 128, 0, 128, 45); // Hideous Rabbit
+        yield return this.CreateMonsterSpawn(24, this.NpcDictionary[420], 0, 128, 0, 128, 30); // Werewolf
         yield return this.CreateMonsterSpawn(25, this.NpcDictionary[422], 128, 251, 0, 128, 30); // Cursed Lich
         yield return this.CreateMonsterSpawn(26, this.NpcDictionary[423], 128, 251, 0, 128, 20); // Totem Golem
         yield return this.CreateMonsterSpawn(27, this.NpcDictionary[424], 128, 251, 0, 128, 20); // Grizzly
@@ -109,7 +114,7 @@ internal class Elvenland : BaseMapInitializer
         {
             var monster = this.Context.CreateNew<MonsterDefinition>();
             this.GameConfiguration.Monsters.Add(monster);
-            monster.Number = 419;
+            monster.Number = 421;
             monster.Designation = LocalizedString.FromResource(() => MonsterNames.PollutedButterfly);
             monster.MoveRange = 3;
             monster.AttackRange = 1;
@@ -137,7 +142,7 @@ internal class Elvenland : BaseMapInitializer
         {
             var monster = this.Context.CreateNew<MonsterDefinition>();
             this.GameConfiguration.Monsters.Add(monster);
-            monster.Number = 420;
+            monster.Number = 419;
             monster.Designation = LocalizedString.FromResource(() => MonsterNames.HideousRabbit);
             monster.MoveRange = 3;
             monster.AttackRange = 1;
@@ -165,7 +170,7 @@ internal class Elvenland : BaseMapInitializer
         {
             var monster = this.Context.CreateNew<MonsterDefinition>();
             this.GameConfiguration.Monsters.Add(monster);
-            monster.Number = 421;
+            monster.Number = 420;
             monster.Designation = LocalizedString.FromResource(() => MonsterNames.Werewolf421);
             monster.MoveRange = 2;
             monster.AttackRange = 1;
