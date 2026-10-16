@@ -140,7 +140,8 @@ después de `healthbars.dll` (`src/loadelites.cpp`):
 [Elites]
 Enabled=1               ; 0: no se carga elites.dll
 Effect=1                ; número del efecto que el servidor le pone a los elites
-Color=0.6,0.2,1.0,1.0   ; rojo, verde, azul e intensidad del brillo (de 0 a 1)
+Color=0.6,0.2,1.0,1.5   ; rojo, verde, azul (de 0 a 1) e intensidad del cromo
+Tint=0.35               ; intensidad del tinte parejo (0: solo el cromo)
 ```
 
 El servidor (plugin "Elite Monster Effect", `EffectNumber` 1 por defecto) le pone a cada elite un efecto
@@ -153,12 +154,13 @@ probaron 1, 2, 4, 56 y 81), así que sin `elites.dll` el elite se ve como uno no
 | Dirección | Qué es | Uso |
 |---|---|---|
 | `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por `healthbars.dll` si está) | Se lee a dónde apunta y se encadena. Con `0x07` y el efecto de `Effect` se marca el número de objeto y al nombre del monstruo (`+0x38` del personaje) se le agrega " Elite"; con `0x13`, `0x14` y `0x17` se desmarca |
-| `0x005DE260` | Dibujo del cuerpo de un objeto (OBJECT, ..., ..., pasada). `camera3d.dll` reemplaza a quien lo llama (`0x005EBBB0`) | Se salta al principio de la función (los primeros 10 bytes van a un trampolín). Después del dibujo original, si el objeto es el cuerpo de un elite vivo (`OBJECT` = personaje `+0x308`), se dibuja otra vez con `RenderBody` (`0x005494C0`, `__thiscall` sobre el `BMD`) con textura, cromo y brillo (`0x46`) y el color de `Color` en la luz del modelo (`BMD +0x48`) |
+| `0x005DE260` | Dibujo del cuerpo de un objeto (OBJECT, ..., ..., pasada). `camera3d.dll` reemplaza a quien lo llama (`0x005EBBB0`) | Se salta al principio de la función (los primeros 10 bytes van a un trampolín). Después del dibujo original, si el objeto es el cuerpo de un elite vivo (`OBJECT` = personaje `+0x308`), se dibuja dos veces más con `RenderBody` (`0x005494C0`, `__thiscall` sobre el `BMD`) y el color de `Color` en la luz del modelo (`BMD +0x48`): color parejo y brillo (`0x41`, intensidad `Tint`) y textura, cromo y brillo (`0x46`) |
 
 El modelo se busca igual que al empezar `0x005DE260` (`0x004CDA10` y `0x00969AD0` con el tipo `OBJECT
-+0x30`). El brillo se suma a lo que hay detrás y el cromo se mueve con el tiempo. Mientras el mouse está
-sobre el elite el juego dibuja su contorno de selección (`0x005DDAF0` con 1 cambia la escala
-`0x00E61638` y la luz del modelo) y el brillo violeta no se ve; el nombre sí.
++0x30`). El brillo se suma a lo que hay detrás (se ve transparente) y el cromo se mueve con el tiempo.
+`0x44` (cromo y brillo sin textura) no dibuja nada en este cliente. Con el mouse sobre el monstruo,
+`0x005DDAF0` agranda el dibujo para el contorno de selección (escala `0x00E61638`); el brillo se dibuja
+con la escala en 1.
 
 ## Herramientas de prueba (muauto.dll)
 

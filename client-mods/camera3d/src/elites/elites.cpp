@@ -17,10 +17,10 @@
 //     a quien lo llama (RenderObject 0x005EBBB0), asi que se salta al principio de la funcion: los primeros
 //     10 bytes (PUSH EBP, MOV EBP,ESP, PUSH -1, PUSH 0x00CD425C) se ejecutan en un trampolin que sigue en
 //     0x005DE26A. RenderHook llama al dibujo original y despues, si el objeto es el cuerpo
-//     de un monstruo elite (OBJECT = CHARACTER +0x308), se dibuja el cuerpo otra vez con textura, cromo y
-//     brillo (RenderBody 0x005494C0 con 0x46, como los reflejos de varios monstruos del juego) en el color
-//     de [Elites] Color. El brillo se suma a lo que hay detras (se ve transparente) y el cromo se mueve con
-//     el tiempo, asi que el monstruo brilla en violeta.
+//     de un monstruo elite (OBJECT = CHARACTER +0x308), se dibuja el cuerpo dos veces mas con RenderBody
+//     (0x005494C0) en el color de [Elites] Color: con color parejo y brillo (0x41, intensidad [Elites] Tint)
+//     y con textura, cromo y brillo (0x46, como los reflejos de varios monstruos del juego). El brillo se
+//     suma a lo que hay detras (se ve transparente) y el cromo se mueve con el tiempo.
 
 #include "../shared.h"
 
@@ -51,6 +51,7 @@ namespace
     constexpr DWORD ObjType = 0x30, ObjHiddenMesh = 0x3C, ObjBlendMesh = 0x44, ObjBlendMeshLight = 0x64;
     constexpr DWORD ObjTextureU = 0x68, ObjTextureV = 0x6C, ObjAlpha = 0x98;
     constexpr DWORD ModelBodyLight = 0x48; // BMD: color del dibujo (float r, g, b)
+    constexpr int RenderColorBright = 0x41;          // color parejo y brillo
     constexpr int RenderTextureChromeBright = 0x46; // textura, cromo y brillo (0x44 sin textura no dibuja nada)
 
     // --- Paquetes ---
@@ -65,8 +66,9 @@ namespace
     LogFunction g_log = nullptr;
     DispatchType g_nextDispatch = nullptr;
     int g_effect = 1;
-    float g_color[4] = { 0.6f, 0.2f, 1.0f, 1.0f }; // violeta; el cuarto es la intensidad del brillo
+    float g_color[4] = { 0.6f, 0.2f, 1.0f, 1.5f }; // violeta; el cuarto es la intensidad del brillo
     bool g_elite[IdMask + 1] = {};
+    float g_tint = 0.35f;     // [Elites] Tint: intensidad del tinte parejo (0: sin tinte)
 
     WORD ReadId(const BYTE* data)
     {
@@ -107,6 +109,11 @@ namespace
         }
     }
 
+    void Unmark(WORD id)
+    {
+        g_elite[id] = false;
+    }
+
     // Desmarca los objetos de un paquete (despues de descifrarlo, el paquete es C1 o C2).
     void ForgetObjects(int code, const BYTE* packet, int size)
     {
@@ -125,7 +132,7 @@ namespace
             int offset = header + 1;
             for (int i = 0; i < count && offset + 10 <= size; i++)
             {
-                g_elite[ReadId(packet + offset)] = false;
+                Unmark(ReadId(packet + offset));
                 offset += 10 + packet[offset + 9];
             }
 
@@ -137,7 +144,7 @@ namespace
             const int count = size > header ? packet[header] : 0;
             for (int i = 0; i < count && header + 1 + i * 2 + 2 <= size; i++)
             {
-                g_elite[ReadId(packet + header + 1 + i * 2)] = false;
+                Unmark(ReadId(packet + header + 1 + i * 2));
             }
 
             break;
@@ -146,7 +153,7 @@ namespace
         case CodeKilled:
             if (header + 2 <= size)
             {
-                g_elite[ReadId(packet + header)] = false;
+                Unmark(ReadId(packet + header));
             }
 
             break;
@@ -197,8 +204,22 @@ namespace
         }
 
         const BYTE* character = object - CharObject;
-        return character[CharLive] && !character[CharDead] && character[CharKind] == KindMonster
-            && g_elite[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask];
+        if (!character[CharLive] || character[CharDead] || character[CharKind] != KindMonster)
+        {
+            return false;
+        }
+
+        if (g_elite[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask])
+        {
+            return true;
+        }
+
+        // El nombre con " Elite" lo puso esta DLL al llegar el efecto, y el juego lo vuelve a escribir cuando
+        // crea otra vez al monstruo: alcanza aunque la marca se haya borrado con un paquete de la vista.
+        const char* name = reinterpret_cast<const char*>(character + CharName);
+        const size_t length = strnlen(name, NameSize);
+        const size_t suffix = strlen(NameSuffix);
+        return length > suffix && length < NameSize && strcmp(name + length - suffix, NameSuffix) == 0;
     }
 
     // El modelo (BMD) de un tipo, igual que al empezar 0x005DE260: PUSH tipo, CALL 0x004CDA10, MOV ECX,EAX,
@@ -221,9 +242,13 @@ namespace
         }
     }
 
+    // Tambien por un puntero volatil, por lo mismo que el dibujo original (ver RenderHook).
+    using ModelType = BYTE*(__cdecl*)(int);
+    ModelType volatile g_model = &Model;
+
     void DrawEliteGlow(BYTE* object)
     {
-        BYTE* model = Model(*reinterpret_cast<const int*>(object + ObjType));
+        BYTE* model = g_model(*reinterpret_cast<const int*>(object + ObjType));
         if (model == nullptr)
         {
             return;
@@ -233,14 +258,22 @@ namespace
         const float saved[3] = { light[0], light[1], light[2] };
         const float savedScale = *RenderScale;
         *RenderScale = 1.0f;
-        light[0] = g_color[0] * g_color[3];
-        light[1] = g_color[1] * g_color[3];
-        light[2] = g_color[2] * g_color[3];
-        reinterpret_cast<RenderBodyType>(RenderBodyFunction)(model, RenderTextureChromeBright,
-            *reinterpret_cast<const float*>(object + ObjAlpha), *reinterpret_cast<const int*>(object + ObjBlendMesh),
-            *reinterpret_cast<const float*>(object + ObjBlendMeshLight),
-            *reinterpret_cast<const float*>(object + ObjTextureU), *reinterpret_cast<const float*>(object + ObjTextureV),
-            *reinterpret_cast<const int*>(object + ObjHiddenMesh), -1);
+        // Primero un tinte violeta parejo en todo el cuerpo (color y brillo: se suma, se ve transparente) y
+        // despues el cromo, que se mueve con el tiempo.
+        const int passes[2] = { RenderColorBright, RenderTextureChromeBright };
+        const float strength[2] = { g_tint, g_color[3] };
+        for (int i = 0; i < 2; i++)
+        {
+            light[0] = g_color[0] * strength[i];
+            light[1] = g_color[1] * strength[i];
+            light[2] = g_color[2] * strength[i];
+            reinterpret_cast<RenderBodyType>(RenderBodyFunction)(model, passes[i],
+                *reinterpret_cast<const float*>(object + ObjAlpha), *reinterpret_cast<const int*>(object + ObjBlendMesh),
+                *reinterpret_cast<const float*>(object + ObjBlendMeshLight),
+                *reinterpret_cast<const float*>(object + ObjTextureU), *reinterpret_cast<const float*>(object + ObjTextureV),
+                *reinterpret_cast<const int*>(object + ObjHiddenMesh), -1);
+        }
+
         light[0] = saved[0];
         light[1] = saved[1];
         light[2] = saved[2];
@@ -261,9 +294,14 @@ namespace
         }
     }
 
+    // Se llama por un puntero volatil: el compilador no puede suponer que la funcion desnuda (que devuelve en
+    // EAX lo que devuelve el dibujo original) deja los registros como estaban.
+    using RenderBodyObjectType = void(__cdecl*)(BYTE*, char, int, int);
+    RenderBodyObjectType volatile g_renderBodyObjectOriginal = &RenderBodyObjectOriginal;
+
     void __cdecl RenderHook(BYTE* object, char select, int param3, int pass)
     {
-        RenderBodyObjectOriginal(object, select, param3, pass);
+        g_renderBodyObjectOriginal(object, select, param3, pass);
         if (object == nullptr || pass != 0)
         {
             return; // las otras pasadas (por ejemplo 10) son dibujos especiales del juego
@@ -325,6 +363,9 @@ extern "C" __declspec(dllexport) bool StartElites(const ElitesHost* host)
     g_log = host->log;
     g_effect = GetPrivateProfileIntA("Elites", "Effect", 1, host->iniPath);
     ReadColor(host->iniPath);
+    char tint[32];
+    GetPrivateProfileStringA("Elites", "Tint", "0.35", tint, sizeof(tint), host->iniPath);
+    g_tint = static_cast<float>(atof(tint));
 
     // healthbars.dll puede haber redirigido la llamada antes: se encadena a lo que haya.
     const DWORD dispatch = CallTarget(DispatchCallSite);
