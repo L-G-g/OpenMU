@@ -46,6 +46,7 @@ public class NewNpcsInScopePlugIn : INewNpcsInScopePlugIn
         {
             await connection.SendAsync(
                 () => WriteNpcsInScope(isSpawned, connection, npcs, this._player)).ConfigureAwait(false);
+            await this.ShowDamagedNpcsHealthAsync(npcs).ConfigureAwait(false);
         }
 
         if (summons.Any())
@@ -175,5 +176,27 @@ public class NewNpcsInScopePlugIn : INewNpcsInScopePlugIn
         }
 
         await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Shows the health of the damaged NPCs, so that a health bar which is already visible for other
+    /// players appears for this player, too.
+    /// </summary>
+    /// <param name="npcs">The NPCs which came into view.</param>
+    private async ValueTask ShowDamagedNpcsHealthAsync(IEnumerable<NonPlayerCharacter> npcs)
+    {
+        if (this._player.ViewPlugIns.GetPlugIn<IShowObjectHealthPlugIn>() is not { } healthPlugIn)
+        {
+            return;
+        }
+
+        foreach (var npc in npcs.OfType<AttackableNpcBase>())
+        {
+            var healthRatio = npc.HealthRatio;
+            if (npc.IsAlive && healthRatio < 1)
+            {
+                await healthPlugIn.ShowObjectHealthAsync(npc, healthRatio).ConfigureAwait(false);
+            }
+        }
     }
 }

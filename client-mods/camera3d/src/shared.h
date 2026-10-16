@@ -55,3 +55,22 @@ struct TestTools
 // bool StartTestTools(const TestHost* host, TestTools* tools): se llama una vez, al cargar camera3d.
 using StartTestToolsFunction = bool (*)(const TestHost* host, TestTools* tools);
 constexpr const char* StartTestToolsName = "StartTestTools";
+
+// --- Barras de vida (healthbars.dll) ---
+// camera3d.dll carga healthbars.dll si el archivo esta junto a ella y camera3d.ini no la desactiva
+// ([HealthBars] Enabled=0), y llama a su funcion exportada StartHealthBars. healthbars.dll parchea sus
+// propios lugares del juego, ninguno de los que parchean camera3d.dll o muauto.dll.
+
+constexpr int HealthBarsHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a healthbars.dll.
+struct HealthBarsHost
+{
+    int version;
+    LogFunction log;
+};
+
+// bool StartHealthBars(const HealthBarsHost* host): se llama una vez, despues de que camera3d verifico
+// que el main.exe es el esperado.
+using StartHealthBarsFunction = bool (*)(const HealthBarsHost* host);
+constexpr const char* StartHealthBarsName = "StartHealthBars";

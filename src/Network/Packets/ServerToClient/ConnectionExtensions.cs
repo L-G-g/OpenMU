@@ -1132,6 +1132,36 @@ public static class ConnectionExtensions
     }
 
     /// <summary>
+    /// Sends a <see cref="ObjectHealthStatus" /> to this connection.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
+    /// <param name="objectId">The object id.</param>
+    /// <param name="healthStatus">Gets or sets the status of the remaining health in fractions of 1/250.</param>
+    /// <remarks>
+    /// Is sent by the server when: The health of an observed non-player object (e.g. a monster) changed by a hit, or a damaged object came into view. This packet is not part of the original protocol; it's understood by the client mod camera3d.dll of the PeroniaMU season 6 client. The original client ignores it.
+    /// Causes reaction on client side: A health bar with the remaining health is shown above the object.
+    /// </remarks>
+    public static async ValueTask SendObjectHealthStatusAsync(this IConnection? connection, ushort @objectId, byte @healthStatus)
+    {
+        if (connection is null)
+        {
+            return;
+        }
+
+        int WritePacket()
+        {
+            var length = ObjectHealthStatusRef.Length;
+            var packet = new ObjectHealthStatusRef(connection.Output.GetSpan(length)[..length]);
+            packet.ObjectId = @objectId;
+            packet.HealthStatus = @healthStatus;
+
+            return packet.Header.Length;
+        }
+
+        await connection.SendAsync(WritePacket).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Sends a <see cref="ObjectMoved" /> to this connection.
     /// </summary>
     /// <param name="connection">The connection.</param>
