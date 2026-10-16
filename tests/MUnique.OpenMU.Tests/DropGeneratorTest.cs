@@ -92,7 +92,7 @@ public class DropGeneratorTest
         var monster = this.GetMonster(1, 47);
         monster.DropItemGroups.Add(this.CreateDropItemGroup(1.0, questItem));
         var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
-        var generator = new DefaultDropGenerator(config, this.GetRandomizer(9999));
+        var generator = new DefaultDropGenerator(config, this.GetRandomizer2(0, 0.9999));
 
         var (itemsWithoutQuest, _) = await generator.GenerateItemDropsAsync(monster, 1, player).ConfigureAwait(false);
         Assert.That(itemsWithoutQuest.Select(i => i.Definition), Does.Not.Contain(questItem));
