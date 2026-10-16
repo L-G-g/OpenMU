@@ -128,6 +128,38 @@ llena se proyecta a la pantalla el punto `+0x404` (la posición, ya interpolada 
 altura de su caja (`+0x3E8`, máximo en z) y un margen. Los puntos detrás de la cámara no se dibujan. El
 estado de OpenGL se guarda y se devuelve entero, porque el juego recuerda qué tiene activado.
 
+## Monstruos elite (elites.dll)
+
+Los monstruos elite de OpenMU (por ejemplo el "Shadow Elite" de Lost Tower, que suelta el Scroll of
+Emperor de la primera quest) usan el modelo y el número de su original, así que el cliente original los
+muestra igual que a los normales. Con `elites.dll` se llaman "<nombre> Elite" (al pasar el mouse dice
+"Shadow Elite") y brillan en violeta transparente. `camera3d.dll` la carga si está en la misma carpeta,
+después de `healthbars.dll` (`src/loadelites.cpp`):
+
+```
+[Elites]
+Enabled=1               ; 0: no se carga elites.dll
+Effect=1                ; número del efecto que el servidor le pone a los elites
+Color=0.6,0.2,1.0,1.0   ; rojo, verde, azul e intensidad del brillo (de 0 a 1)
+```
+
+El servidor (plugin "Elite Monster Effect", `EffectNumber` 1 por defecto) le pone a cada elite un efecto
+y lo manda con `C1 07 MagicEffectStatus [activo] [número del objeto, 2 bytes big endian] [efecto]` al
+aparecer y cuando entra a la vista. El cliente S6 no dibuja nada para ese efecto en un monstruo (se
+probaron 1, 2, 4, 56 y 81), así que sin `elites.dll` el elite se ve como uno normal.
+
+`src/elites/elites.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por `healthbars.dll` si está) | Se lee a dónde apunta y se encadena. Con `0x07` y el efecto de `Effect` se marca el número de objeto y al nombre del monstruo (`+0x38` del personaje) se le agrega " Elite"; con `0x13`, `0x14` y `0x17` se desmarca |
+| `0x005DE260` | Dibujo del cuerpo de un objeto (OBJECT, ..., ..., pasada). `camera3d.dll` reemplaza a quien lo llama (`0x005EBBB0`) | Se salta al principio de la función (los primeros 10 bytes van a un trampolín). Después del dibujo original, si el objeto es el cuerpo de un elite vivo (`OBJECT` = personaje `+0x308`), se dibuja otra vez con `RenderBody` (`0x005494C0`, `__thiscall` sobre el `BMD`) con textura, cromo y brillo (`0x46`) y el color de `Color` en la luz del modelo (`BMD +0x48`) |
+
+El modelo se busca igual que al empezar `0x005DE260` (`0x004CDA10` y `0x00969AD0` con el tipo `OBJECT
++0x30`). El brillo se suma a lo que hay detrás y el cromo se mueve con el tiempo. Mientras el mouse está
+sobre el elite el juego dibuja su contorno de selección (`0x005DDAF0` con 1 cambia la escala
+`0x00E61638` y la luz del modelo) y el brillo violeta no se ve; el nombre sí.
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -233,8 +265,10 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
-- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll` y `healthbars.dll`.
+- `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
+- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll` y `elites.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
+- `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -250,8 +284,9 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp src\loadelites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -263,7 +298,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll` y `healthbars.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll` y `elites.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
