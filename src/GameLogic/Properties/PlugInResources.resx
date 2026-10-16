@@ -1595,4 +1595,22 @@
   <data name="GameEventPublisherConfiguration_PublishAncientItemDrops_Name" xml:space="preserve">
     <value>Publish ancient item drops</value>
   </data>
+  <data name="EliteMonsterEffectPlugIn_Name" xml:space="preserve">
+    <value>Elite Monster Effect</value>
+  </data>
+  <data name="EliteMonsterEffectPlugIn_Description" xml:space="preserve">
+    <value>Shows a visible effect on the elite monsters (e.g. the Shadow Elite), which look like the normal ones otherwise.</value>
+  </data>
+  <data name="EliteMonsterEffectConfiguration_DesignationSuffix_Name" xml:space="preserve">
+    <value>Designation suffix</value>
+  </data>
+  <data name="EliteMonsterEffectConfiguration_DesignationSuffix_Description" xml:space="preserve">
+    <value>The monsters whose designation ends with this text get the effect.</value>
+  </data>
+  <data name="EliteMonsterEffectConfiguration_EffectNumber_Name" xml:space="preserve">
+    <value>Effect number</value>
+  </data>
+  <data name="EliteMonsterEffectConfiguration_EffectNumber_Description" xml:space="preserve">
+    <value>The number of the magic effect which the client shows on the elite monsters. 0 shows none.</value>
+  </data>
 </root>

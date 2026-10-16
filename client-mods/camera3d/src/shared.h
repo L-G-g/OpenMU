@@ -74,3 +74,22 @@ struct HealthBarsHost
 // que el main.exe es el esperado.
 using StartHealthBarsFunction = bool (*)(const HealthBarsHost* host);
 constexpr const char* StartHealthBarsName = "StartHealthBars";
+
+// --- Monstruos elite (elites.dll) ---
+// camera3d.dll carga elites.dll si el archivo esta junto a ella y camera3d.ini no la desactiva
+// ([Elites] Enabled=0), y llama a su funcion exportada StartElites, despues de healthbars.dll. elites.dll
+// encadena las mismas llamadas del juego que healthbars.dll: lee a donde apuntan y llama a eso.
+
+constexpr int ElitesHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a elites.dll.
+struct ElitesHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Elites]
+};
+
+// bool StartElites(const ElitesHost* host): se llama una vez, despues de StartHealthBars.
+using StartElitesFunction = bool (*)(const ElitesHost* host);
+constexpr const char* StartElitesName = "StartElites";

@@ -86,6 +86,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         new Gates(this.Context, this.GameConfiguration).Initialize();
         new Quest(this.Context, this.GameConfiguration).Initialize();
         new Quests(this.Context, this.GameConfiguration).Initialize();
+        EliteQuestMonsters.Apply(this.Context, this.GameConfiguration);
         new DevilSquareInitializer(this.Context, this.GameConfiguration).Initialize();
         new BloodCastleInitializer(this.Context, this.GameConfiguration).Initialize();
         new ChaosCastleInitializer(this.Context, this.GameConfiguration).Initialize();

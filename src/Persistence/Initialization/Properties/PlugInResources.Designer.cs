@@ -629,6 +629,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized GroupMonsterSpotsUpdatePlugIn_Description text.</summary>
         public static string GroupMonsterSpotsUpdatePlugIn_Description => ResourceManager.GetString("GroupMonsterSpotsUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized AddEliteQuestMonstersUpdatePlugIn_Name text.</summary>
+        public static string AddEliteQuestMonstersUpdatePlugIn_Name => ResourceManager.GetString("AddEliteQuestMonstersUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized AddEliteQuestMonstersUpdatePlugIn_Description text.</summary>
+        public static string AddEliteQuestMonstersUpdatePlugIn_Description => ResourceManager.GetString("AddEliteQuestMonstersUpdatePlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized AddCastleSiegeDataUpdatePlugIn_Name text.</summary>
         public static string AddCastleSiegeDataUpdatePlugIn_Name => ResourceManager.GetString("AddCastleSiegeDataUpdatePlugIn_Name", resourceCulture)!;
 

@@ -1,4 +1,4 @@
-// <copyright file="DefaultDropGenerator.cs" company="MUnique">
+﻿// <copyright file="DefaultDropGenerator.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -80,10 +80,12 @@ public class DefaultDropGenerator : IDropGenerator
         }
         else
         {
-            this.PartitionDropGroups(monster.DropItemGroups ?? []);
+            var questItemGroups = (await GetQuestItemGroupsAsync(player).ConfigureAwait(false) ?? []).ToList();
+            var soloQuestItemGroups = player.Party is null ? character.GetQuestDropItemGroups().ToList() : [];
+            this.PartitionDropGroups(monster.DropItemGroups?.Where(group => IsDropOfNeededQuestItemsOrOther(group, soloQuestItemGroups)) ?? []);
             this.PartitionDropGroups(character.DropItemGroups ?? [], monster);
             this.PartitionDropGroups(map.DropItemGroups ?? [], monster);
-            this.PartitionDropGroups(await GetQuestItemGroupsAsync(player).ConfigureAwait(false) ?? [], monster);
+            this.PartitionDropGroups(questItemGroups, monster);
         }
 
         uint money = 0;
@@ -237,6 +239,27 @@ public class DefaultDropGenerator : IDropGenerator
         return character.GetQuestDropItemGroups();
     }
 
+    /// <summary>
+    /// Determines whether a drop item group of a monster may drop for the player.
+    /// </summary>
+    /// <remarks>
+    /// A group which only contains quest items (e.g. the quest items which the elite monsters of the
+    /// first class change quest drop) only drops when a quest of the player requires one of its
+    /// items with the same item level, and only when the player isn't in a party: these monsters are meant to be
+    /// hunted alone. Other players couldn't pick the items up anyway.
+    /// </remarks>
+    private static bool IsDropOfNeededQuestItemsOrOther(DropItemGroup group, IReadOnlyCollection<DropItemGroup> questItemGroups)
+    {
+        if (group.PossibleItems.Count == 0 || group.PossibleItems.Any(item => !item.IsQuestItem))
+        {
+            return true;
+        }
+
+        return questItemGroups.Any(questGroup =>
+            (questGroup.ItemLevel ?? 0) == (group.ItemLevel ?? 0)
+            && questGroup.PossibleItems.Any(group.PossibleItems.Contains));
+    }
+
     private static bool IsGroupRelevant(MonsterDefinition monsterDefinition, DropItemGroup group)
     {
         if (group.MinimumMonsterLevel.HasValue && monsterDefinition[Stats.Level] < group.MinimumMonsterLevel)
@@ -337,8 +360,9 @@ public class DefaultDropGenerator : IDropGenerator
     {
         foreach (var group in groups)
         {
-            if (monster is not null && !IsGroupRelevant(monster, group))
+            if (group.Chance <= 0 || (monster is not null && !IsGroupRelevant(monster, group)))
             {
+                // A group without chance never drops, e.g. a quest item which only drops from specific monsters.
                 continue;
             }
 

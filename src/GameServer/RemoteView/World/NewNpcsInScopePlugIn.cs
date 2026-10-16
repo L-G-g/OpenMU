@@ -47,6 +47,7 @@ public class NewNpcsInScopePlugIn : INewNpcsInScopePlugIn
             await connection.SendAsync(
                 () => WriteNpcsInScope(isSpawned, connection, npcs, this._player)).ConfigureAwait(false);
             await this.ShowDamagedNpcsHealthAsync(npcs).ConfigureAwait(false);
+            await this.ShowNpcsEffectsAsync(npcs).ConfigureAwait(false);
         }
 
         if (summons.Any())
@@ -176,6 +177,32 @@ public class NewNpcsInScopePlugIn : INewNpcsInScopePlugIn
         }
 
         await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Shows the visible magic effects of the NPCs, e.g. the effect of an elite monster, because the
+    /// packet which adds the NPCs to the scope doesn't include them.
+    /// </summary>
+    /// <param name="npcs">The NPCs which came into view.</param>
+    private async ValueTask ShowNpcsEffectsAsync(IEnumerable<NonPlayerCharacter> npcs)
+    {
+        if (this._player.ViewPlugIns.GetPlugIn<IActivateMagicEffectPlugIn>() is not { } effectPlugIn)
+        {
+            return;
+        }
+
+        foreach (var npc in npcs.OfType<AttackableNpcBase>())
+        {
+            if (!npc.IsAlive)
+            {
+                continue;
+            }
+
+            foreach (var effect in npc.MagicEffectList.VisibleEffects)
+            {
+                await effectPlugIn.ActivateMagicEffectAsync(effect, npc).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>
