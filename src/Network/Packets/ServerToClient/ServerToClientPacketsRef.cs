@@ -6537,6 +6537,94 @@ public readonly ref struct ObjectHitExtendedRef
 
 
 /// <summary>
+/// Is sent by the server when: The health of an observed non-player object (e.g. a monster) changed by a hit, or a damaged object came into view. This packet is not part of the original protocol; it's understood by the client mod camera3d.dll of the PeroniaMU season 6 client. The original client ignores it.
+/// Causes reaction on client side: A health bar with the remaining health is shown above the object.
+/// </summary>
+public readonly ref struct ObjectHealthStatusRef
+{
+    private readonly Span<byte> _data;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ObjectHealthStatusRef"/> struct.
+    /// </summary>
+    /// <param name="data">The underlying data.</param>
+    public ObjectHealthStatusRef(Span<byte> data)
+        : this(data, true)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ObjectHealthStatusRef"/> struct.
+    /// </summary>
+    /// <param name="data">The underlying data.</param>
+    /// <param name="initialize">If set to <c>true</c>, the header data is automatically initialized and written to the underlying span.</param>
+    private ObjectHealthStatusRef(Span<byte> data, bool initialize)
+    {
+        this._data = data;
+        if (initialize)
+        {
+            var header = this.Header;
+            header.Type = HeaderType;
+            header.Code = Code;
+            header.Length = (byte)Math.Min(data.Length, Length);
+        }
+    }
+
+    /// <summary>
+    /// Gets the header type of this data packet.
+    /// </summary>
+    public static byte HeaderType => 0xC1;
+
+    /// <summary>
+    /// Gets the operation code of this data packet.
+    /// </summary>
+    public static byte Code => 0xFA;
+
+    /// <summary>
+    /// Gets the initial length of this data packet. When the size is dynamic, this value may be bigger than actually needed.
+    /// </summary>
+    public static int Length => 6;
+
+    /// <summary>
+    /// Gets the header of this packet.
+    /// </summary>
+    public C1HeaderRef Header => new (this._data);
+
+    /// <summary>
+    /// Gets or sets the object id.
+    /// </summary>
+    public ushort ObjectId
+    {
+        get => ReadUInt16BigEndian(this._data[3..]);
+        set => WriteUInt16BigEndian(this._data[3..], value);
+    }
+
+    /// <summary>
+    /// Gets or sets gets or sets the status of the remaining health in fractions of 1/250.
+    /// </summary>
+    public byte HealthStatus
+    {
+        get => this._data[5];
+        set => this._data[5] = value;
+    }
+
+    /// <summary>
+    /// Performs an implicit conversion from a Span of bytes to a <see cref="ObjectHealthStatus"/>.
+    /// </summary>
+    /// <param name="packet">The packet as span.</param>
+    /// <returns>The packet as struct.</returns>
+    public static implicit operator ObjectHealthStatusRef(Span<byte> packet) => new (packet, false);
+
+    /// <summary>
+    /// Performs an implicit conversion from <see cref="ObjectHealthStatus"/> to a Span of bytes.
+    /// </summary>
+    /// <param name="packet">The packet as struct.</param>
+    /// <returns>The packet as byte span.</returns>
+    public static implicit operator Span<byte>(ObjectHealthStatusRef packet) => packet._data; 
+}
+
+
+/// <summary>
 /// Is sent by the server when: An object in the observed scope (including the own player) moved instantly.
 /// Causes reaction on client side: The position of the object is updated on client side.
 /// </summary>

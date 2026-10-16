@@ -1845,6 +1845,12 @@
   <data name="ShowHitPlugIn_Description" xml:space="preserve">
     <value>The default implementation of the IShowHitPlugIn which is forwarding everything to the game client with specific data packets.</value>
   </data>
+  <data name="ShowObjectHealthPlugIn_Name" xml:space="preserve">
+    <value>Show Object Health</value>
+  </data>
+  <data name="ShowObjectHealthPlugIn_Description" xml:space="preserve">
+    <value>Sends the remaining health of monsters and other objects to the game client, so that the PeroniaMU client mod can show health bars. The original client ignores it.</value>
+  </data>
   <data name="ShowMoneyDrop075_Name" xml:space="preserve">
     <value>ShowMoneyDrop 0.75</value>
   </data>

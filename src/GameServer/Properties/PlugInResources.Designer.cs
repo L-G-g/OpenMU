@@ -6055,6 +6055,24 @@ namespace MUnique.OpenMU.GameServer.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Sends the remaining health of monsters and other objects to the game client, so that the PeroniaMU client mod can show health bars. The original client ignores it..
+        /// </summary>
+        public static string ShowObjectHealthPlugIn_Description {
+            get {
+                return ResourceManager.GetString("ShowObjectHealthPlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show Object Health.
+        /// </summary>
+        public static string ShowObjectHealthPlugIn_Name {
+            get {
+                return ResourceManager.GetString("ShowObjectHealthPlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The default implementation of the IShowItemCraftingResultPlugIn which is forwarding everything to the game client with specific data packets..
         /// </summary>
         public static string ShowItemCraftingResultPlugIn_Description {

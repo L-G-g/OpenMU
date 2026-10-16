@@ -97,6 +97,18 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
         set => Interlocked.Exchange(ref this._health, value);
     }
 
+    /// <summary>
+    /// Gets the remaining health, between 0 (dead) and 1 (full health).
+    /// </summary>
+    public float HealthRatio
+    {
+        get
+        {
+            var maximumHealth = this.SpawnArea.MaximumHealthOverride ?? this.Attributes[Stats.MaximumHealth];
+            return maximumHealth > 0 ? Math.Clamp(this.Health / maximumHealth, 0, 1) : 0;
+        }
+    }
+
     private bool ShouldRespawn => this.SpawnArea.SpawnTrigger == SpawnTrigger.Automatic
                                   || (this.SpawnArea.SpawnTrigger == SpawnTrigger.AutomaticDuringEvent && (this._eventStateProvider?.IsEventRunning ?? false))
                                   || (this.SpawnArea.SpawnTrigger == SpawnTrigger.AutomaticDuringWave && (this._eventStateProvider?.IsSpawnWaveActive(this.SpawnArea.WaveNumber) ?? false));
@@ -249,6 +261,12 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
 
             await player.InvokeViewPlugInAsync<IShowHitPlugIn>(p => p.ShowHitAsync(this, hitInfo)).ConfigureAwait(false);
             player.GameContext.PlugInManager.GetPlugInPoint<IAttackableGotHitPlugIn>()?.AttackableGotHit(this, attacker, hitInfo);
+        }
+
+        if (!killed && hitInfo.TotalDamage > 0)
+        {
+            var healthRatio = this.HealthRatio;
+            await this.ForEachWorldObserverAsync<IShowObjectHealthPlugIn>(p => p.ShowObjectHealthAsync(this, healthRatio), false).ConfigureAwait(false);
         }
 
         if (killed)

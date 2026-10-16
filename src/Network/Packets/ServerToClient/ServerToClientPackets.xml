@@ -2472,6 +2472,28 @@
     </Packet>
     <Packet>
       <HeaderType>C1Header</HeaderType>
+      <Code>FA</Code>
+      <Name>ObjectHealthStatus</Name>
+      <Length>6</Length>
+      <Direction>ServerToClient</Direction>
+      <SentWhen>The health of an observed non-player object (e.g. a monster) changed by a hit, or a damaged object came into view. This packet is not part of the original protocol; it's understood by the client mod camera3d.dll of the PeroniaMU season 6 client. The original client ignores it.</SentWhen>
+      <CausedReaction>A health bar with the remaining health is shown above the object.</CausedReaction>
+      <Fields>
+        <Field>
+          <Index>3</Index>
+          <Type>ShortBigEndian</Type>
+          <Name>ObjectId</Name>
+        </Field>
+        <Field>
+          <Index>5</Index>
+          <Type>Byte</Type>
+          <Name>HealthStatus</Name>
+          <Description>Gets or sets the status of the remaining health in fractions of 1/250.</Description>
+        </Field>
+      </Fields>
+    </Packet>
+    <Packet>
+      <HeaderType>C1Header</HeaderType>
       <Code>15</Code>
       <Name>ObjectMoved</Name>
       <Length>8</Length>
