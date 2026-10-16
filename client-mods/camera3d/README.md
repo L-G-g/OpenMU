@@ -98,6 +98,36 @@ bytes (tipo, x, y, giro, nombre en `+0x10`); el objeto está en `[EBP-0x3C]` del
 hotspot se dibuja con una copia violeta del punto verde, armada una vez leyendo esa textura de OpenGL;
 el enlace de texturas del juego (`0x00635CF0`) acepta un número negativo como textura de OpenGL directa.
 
+## Barras de vida de los monstruos (healthbars.dll)
+
+Sobre los monstruos dañados se dibuja una barra chica de tamaño fijo: fondo oscuro con borde y relleno
+rojo según la vida que les queda. No aparece con la vida llena, al morir ni en un monstruo que
+reaparece. Van en otra DLL, `healthbars.dll`, que `camera3d.dll` carga si está en la misma carpeta
+(`src/loadhealthbars.cpp`); se desactivan con `camera3d.ini`:
+
+```
+[HealthBars]
+Enabled=1       ; 0: no se carga healthbars.dll
+```
+
+El servidor (plugin "Show Object Health" de OpenMU) manda `C1 06 FA [número del objeto, 2 bytes big
+endian] [vida en 1/250, de 1 a 250]` cuando un monstruo recibe daño sin morir y cuando uno dañado entra a
+la vista. El `main.exe` original lo ignora: su reparto de paquetes (`0x006639D0`) manda los códigos
+mayores a `0xF9` al caso por defecto, que devuelve 1 sin anotar nada ni desconectar. Así los clientes sin
+`healthbars.dll` (o con un `camera3d.dll` anterior) no cambian.
+
+`src/healthbars/healthbars.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes `0x006639D0` (código, paquete, largo, cifrado) | `0xFA` se queda en la DLL (vida por número de objeto del servidor, `+0x7E` del personaje) y no llega al juego. Con `0x13` (entran a la vista), `0x14` (salen) y `0x17` (muere) se borra la vida de esos números y el paquete sigue al juego |
+| `0x004D9C86` | CALL a `0x00637770` (empieza la interfaz: proyección 2D en píxeles) en la escena principal, después de elegir el objeto bajo el mouse | Se guardan las matrices 3D de OpenGL, se llama a la original y se dibujan las barras: quedan sobre el mundo y debajo de la interfaz |
+
+Para cada monstruo (`+0x30C` vivo, `+0x24` no muerto, `+0x320` tipo 2) con vida conocida menor a la
+llena se proyecta a la pantalla el punto `+0x404` (la posición, ya interpolada durante el dibujo) más la
+altura de su caja (`+0x3E8`, máximo en z) y un margen. Los puntos detrás de la cámara no se dibujan. El
+estado de OpenGL se guarda y se devuelve entero, porque el juego recuerda qué tiene activado.
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -202,7 +232,9 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
 - `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
-- `src/shared.h`: lo que comparten `camera3d.dll` y `muauto.dll`.
+- `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
+- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll` y `healthbars.dll`.
+- `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -218,7 +250,8 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -230,7 +263,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll` y `healthbars.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
