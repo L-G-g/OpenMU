@@ -4398,5 +4398,23 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized LostConnectionDetectionConfiguration_Timeout_Description text.</summary>
         public static string LostConnectionDetectionConfiguration_Timeout_Description => ResourceManager.GetString("LostConnectionDetectionConfiguration_Timeout_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized EliteMonsterEffectPlugIn_Name text.</summary>
+        public static string EliteMonsterEffectPlugIn_Name => ResourceManager.GetString("EliteMonsterEffectPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized EliteMonsterEffectPlugIn_Description text.</summary>
+        public static string EliteMonsterEffectPlugIn_Description => ResourceManager.GetString("EliteMonsterEffectPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized EliteMonsterEffectConfiguration_DesignationSuffix_Name text.</summary>
+        public static string EliteMonsterEffectConfiguration_DesignationSuffix_Name => ResourceManager.GetString("EliteMonsterEffectConfiguration_DesignationSuffix_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized EliteMonsterEffectConfiguration_DesignationSuffix_Description text.</summary>
+        public static string EliteMonsterEffectConfiguration_DesignationSuffix_Description => ResourceManager.GetString("EliteMonsterEffectConfiguration_DesignationSuffix_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized EliteMonsterEffectConfiguration_EffectNumber_Name text.</summary>
+        public static string EliteMonsterEffectConfiguration_EffectNumber_Name => ResourceManager.GetString("EliteMonsterEffectConfiguration_EffectNumber_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized EliteMonsterEffectConfiguration_EffectNumber_Description text.</summary>
+        public static string EliteMonsterEffectConfiguration_EffectNumber_Description => ResourceManager.GetString("EliteMonsterEffectConfiguration_EffectNumber_Description", resourceCulture)!;
     }
 }

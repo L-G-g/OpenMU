@@ -64,7 +64,13 @@ internal abstract class BaseMapInitializer : IMapInitializer
     /// <summary>
     /// Gets the NPC dictionary.
     /// </summary>
-    protected Dictionary<short, MonsterDefinition> NpcDictionary => this._npcDictionary ??= this.GameConfiguration.Monsters.ToDictionary(npc => npc.Number, npc => npc);
+    /// <remarks>
+    /// Variants of a monster can have the same number, e.g. the elite monsters of <see cref="VersionSeasonSix.EliteQuestMonsters"/>.
+    /// Then the definition whose id was derived from the number is the one of the original data.
+    /// </remarks>
+    protected Dictionary<short, MonsterDefinition> NpcDictionary => this._npcDictionary ??= this.GameConfiguration.Monsters
+        .GroupBy(npc => npc.Number)
+        .ToDictionary(group => group.Key, group => group.FirstOrDefault(npc => npc.GetId() == GuidHelper.CreateGuid<MonsterDefinition>(group.Key)) ?? group.First());
 
     /// <summary>
     /// Gets the map number which will be set as <see cref="GameMapDefinition.Number"/>.

@@ -7,6 +7,8 @@ namespace MUnique.OpenMU.Tests;
 using Moq;
 using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.DataModel.Configuration.Items;
+using MUnique.OpenMU.DataModel.Configuration.Quests;
+using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.GameLogic.Attributes;
 
@@ -78,6 +80,37 @@ public class DropGeneratorTest
     }
 
     /// <summary>
+    /// Tests that a drop item group of a monster with only quest items drops only for a player
+    /// whose active quest requires the item.
+    /// </summary>
+    [Test]
+    public async ValueTask TestQuestItemDropOfMonsterOnlyForQuestAsync()
+    {
+        var config = this.GetGameConfig();
+        var questItem = this.CreateItemDefinition(14, 23, 0);
+        questItem.IsQuestItem = true;
+        var monster = this.GetMonster(1, 47);
+        monster.DropItemGroups.Add(this.CreateDropItemGroup(1.0, questItem));
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        var generator = new DefaultDropGenerator(config, this.GetRandomizer(9999));
+
+        var (itemsWithoutQuest, _) = await generator.GenerateItemDropsAsync(monster, 1, player).ConfigureAwait(false);
+        Assert.That(itemsWithoutQuest.Select(i => i.Definition), Does.Not.Contain(questItem));
+
+        // The quest requirement's own group has no chance, so that only the monster drops the item.
+        var requirement = new Mock<QuestItemRequirement>();
+        requirement.SetupAllProperties();
+        requirement.Object.Item = questItem;
+        requirement.Object.DropItemGroup = this.CreateDropItemGroup(0, questItem);
+        var quest = new Mock<QuestDefinition>();
+        quest.Setup(q => q.RequiredItems).Returns(new List<QuestItemRequirement> { requirement.Object });
+        Mock.Get(player.SelectedCharacter!).Setup(c => c.QuestStates).Returns(new List<CharacterQuestState> { new() { ActiveQuest = quest.Object } });
+
+        var (itemsWithQuest, _) = await generator.GenerateItemDropsAsync(monster, 1, player).ConfigureAwait(false);
+        Assert.That(itemsWithQuest.Select(i => i.Definition), Is.EqualTo(new[] { questItem }));
+    }
+
+    /// <summary>
     /// Tests the drops defined by a player are getting considered.
     /// </summary>
     public void TestItemDropItemByPlayer()
@@ -144,6 +177,16 @@ public class DropGeneratorTest
         var gameConfiguration = new Mock<GameConfiguration>();
         gameConfiguration.Setup(c => c.Items).Returns(new List<ItemDefinition>());
         return gameConfiguration.Object;
+    }
+
+    private DropItemGroup CreateDropItemGroup(double chance, ItemDefinition item)
+    {
+        var dropGroup = new Mock<DropItemGroup>();
+        dropGroup.SetupAllProperties();
+        dropGroup.Object.Chance = chance;
+        dropGroup.Object.ItemLevel = 0;
+        dropGroup.Setup(g => g.PossibleItems).Returns(new List<ItemDefinition> { item });
+        return dropGroup.Object;
     }
 
     private ItemDefinition CreateItemDefinition(byte group, short number, byte dropLevel, byte? maximumDropLevel = null)
