@@ -1,4 +1,4 @@
-// <copyright file="DefaultDropGenerator.cs" company="MUnique">
+﻿// <copyright file="DefaultDropGenerator.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -81,7 +81,8 @@ public class DefaultDropGenerator : IDropGenerator
         else
         {
             var questItemGroups = (await GetQuestItemGroupsAsync(player).ConfigureAwait(false) ?? []).ToList();
-            this.PartitionDropGroups(monster.DropItemGroups?.Where(group => IsDropOfNeededQuestItemsOrOther(group, questItemGroups)) ?? []);
+            var soloQuestItemGroups = player.Party is null ? character.GetQuestDropItemGroups().ToList() : [];
+            this.PartitionDropGroups(monster.DropItemGroups?.Where(group => IsDropOfNeededQuestItemsOrOther(group, soloQuestItemGroups)) ?? []);
             this.PartitionDropGroups(character.DropItemGroups ?? [], monster);
             this.PartitionDropGroups(map.DropItemGroups ?? [], monster);
             this.PartitionDropGroups(questItemGroups, monster);
@@ -243,8 +244,9 @@ public class DefaultDropGenerator : IDropGenerator
     /// </summary>
     /// <remarks>
     /// A group which only contains quest items (e.g. the quest items which the elite monsters of the
-    /// first class change quest drop) only drops when a quest of the player or its party requires one of its
-    /// items with the same item level. Other players couldn't pick them up anyway.
+    /// first class change quest drop) only drops when a quest of the player requires one of its
+    /// items with the same item level, and only when the player isn't in a party: these monsters are meant to be
+    /// hunted alone. Other players couldn't pick the items up anyway.
     /// </remarks>
     private static bool IsDropOfNeededQuestItemsOrOther(DropItemGroup group, IReadOnlyCollection<DropItemGroup> questItemGroups)
     {

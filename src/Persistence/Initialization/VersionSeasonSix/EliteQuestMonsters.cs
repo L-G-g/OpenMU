@@ -21,7 +21,7 @@ using MUnique.OpenMU.GameServer.MessageHandler.Quests;
 /// Here, the Shadow Elite in Lost Tower drops the Scroll of Emperor, and the Death Knight Elite in Lost Tower,
 /// the Lizard King Elite in Atlans and the Mutant Elite in Tarkan drop the second item.
 /// Each of them spawns alone at <see cref="SpotsPerMap"/> places of its map, respawns after
-/// <see cref="RespawnDelay"/> and drops the item to a player (or party member) who needs it for the quest.
+/// <see cref="RespawnDelay"/> and drops the item to a player who needs it for the quest and hunts alone, not in a party.
 /// The elite monsters have the number of their original, so that the client shows them with the same model and name.
 /// </remarks>
 internal static class EliteQuestMonsters
