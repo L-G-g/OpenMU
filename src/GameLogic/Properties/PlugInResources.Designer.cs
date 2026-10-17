@@ -3618,6 +3618,24 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unlocks all creatable character classes (e.g. Magic Gladiator, Dark Lord, Summoner and Rage Fighter) for every account when it logs in, so they can be created from the start..
+        /// </summary>
+        public static string UnlockAllCharacterClassesPlugIn_Description {
+            get {
+                return ResourceManager.GetString("UnlockAllCharacterClassesPlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unlock all character classes.
+        /// </summary>
+        public static string UnlockAllCharacterClassesPlugIn_Name {
+            get {
+                return ResourceManager.GetString("UnlockAllCharacterClassesPlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Unlocks the Dark Lord character class as soon as the first character of an account reaches level 250..
         /// </summary>
         public static string UnlockDarkLordAtLevel250_Description {
