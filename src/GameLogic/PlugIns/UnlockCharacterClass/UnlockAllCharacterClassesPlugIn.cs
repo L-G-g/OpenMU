@@ -9,7 +9,7 @@ using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// Unlocks every creatable character class (e.g. Magic Gladiator, Dark Lord, Summoner and Rage Fighter)
-/// for an account as soon as it logged in, so that they can be created without reaching a level first.
+/// for an account as soon as it requests the character list, so that they can be created without reaching a level first.
 /// </summary>
 [PlugIn]
 [Display(Name = nameof(PlugInResources.UnlockAllCharacterClassesPlugIn_Name), Description = nameof(PlugInResources.UnlockAllCharacterClassesPlugIn_Description), ResourceType = typeof(PlugInResources))]
@@ -19,9 +19,10 @@ public class UnlockAllCharacterClassesPlugIn : IPlayerStateChangedPlugIn, IDisab
     /// <inheritdoc />
     public ValueTask PlayerStateChangedAsync(Player player, State previousState, State currentState)
     {
-        // The character list, including the unlock flags, is sent after the authentication.
+        // The character list, including the unlock flags, is sent right after advancing to the character selection.
+        // The authenticated state doesn't work here, because the account isn't set yet when it's reached at login.
         // Bots are excluded for the same reason as in UnlockCharacterAtLevelBase.
-        if (currentState != PlayerState.Authenticated || player.Account is not { IsBot: false } account)
+        if (currentState != PlayerState.CharacterSelection || player.Account is not { IsBot: false } account)
         {
             return ValueTask.CompletedTask;
         }
