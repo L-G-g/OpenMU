@@ -290,6 +290,8 @@
   <data name="GroupMonsterSpotsUpdatePlugIn_Description" xml:space="preserve"><value>Rearranges the monsters of the hunting maps into spots of 5 monsters in an area of 4x4, about 20 coordinates apart, at most 80 per map. About every fifth spot is a hotspot with 7 monsters.</value></data>
   <data name="AddEliteQuestMonstersUpdatePlugIn_Name" xml:space="preserve"><value>Elite Monsters For The First Class Change Quest</value></data>
   <data name="AddEliteQuestMonstersUpdatePlugIn_Description" xml:space="preserve"><value>Adds the Shadow Elite (Lost Tower), which is the only monster dropping the Scroll of Emperor, and the Death Knight Elite (Lost Tower), Lizard King Elite (Atlans) and Mutant Elite (Tarkan), which are the only ones dropping the second item of the quest. Each spawns alone at 3 places of its map, respawns after 5 minutes and drops the item to a player who needs it.</value></data>
+  <data name="FixAreaSkillHitsUpdatePlugIn_Name" xml:space="preserve"><value>Fix Force Wave, Flame and Cometfall hits</value></data>
+  <data name="FixAreaSkillHitsUpdatePlugIn_Description" xml:space="preserve"><value>Force Wave hits again, and Flame and Cometfall hit the targets within a radius of 1.5 coordinates around the targeted point, like the client shows it.</value></data>
   <data name="AddCastleSiegeDataUpdatePlugIn_Name" xml:space="preserve"><value>Add Castle Siege data</value></data>
   <data name="AddCastleSiegeDataUpdatePlugIn_Description" xml:space="preserve"><value>This update adds the Castle Siege configuration and persistent state.</value></data>
   <data name="AddCashShopUpdatePlugIn_Name" xml:space="preserve"><value>Add cash shop</value></data>

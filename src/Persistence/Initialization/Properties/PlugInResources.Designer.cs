@@ -635,6 +635,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized AddEliteQuestMonstersUpdatePlugIn_Description text.</summary>
         public static string AddEliteQuestMonstersUpdatePlugIn_Description => ResourceManager.GetString("AddEliteQuestMonstersUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized FixAreaSkillHitsUpdatePlugIn_Name text.</summary>
+        public static string FixAreaSkillHitsUpdatePlugIn_Name => ResourceManager.GetString("FixAreaSkillHitsUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FixAreaSkillHitsUpdatePlugIn_Description text.</summary>
+        public static string FixAreaSkillHitsUpdatePlugIn_Description => ResourceManager.GetString("FixAreaSkillHitsUpdatePlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized AddCastleSiegeDataUpdatePlugIn_Name text.</summary>
         public static string AddCastleSiegeDataUpdatePlugIn_Name => ResourceManager.GetString("AddCastleSiegeDataUpdatePlugIn_Name", resourceCulture)!;
 
