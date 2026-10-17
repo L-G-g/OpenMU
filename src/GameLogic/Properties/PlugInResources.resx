@@ -1218,6 +1218,12 @@
   <data name="ResetConfiguration_LogOut_Name" xml:space="preserve">
     <value>Log out</value>
   </data>
+  <data name="ResetConfiguration_IgnoreSkillLevelRequirements_Name" xml:space="preserve">
+    <value>Ignore skill level requirements after reset</value>
+  </data>
+  <data name="ResetConfiguration_IgnoreSkillLevelRequirements_Description" xml:space="preserve">
+    <value>Characters with at least one reset can use their skills regardless of the level requirement of the skill. The other requirements, like energy, still apply.</value>
+  </data>
   <data name="MiniGameStartConfiguration_EntranceOpenedMessage_Name" xml:space="preserve">
     <value>Entrance opened message</value>
   </data>

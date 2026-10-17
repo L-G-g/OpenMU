@@ -2655,6 +2655,24 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Characters with at least one reset can use their skills regardless of the level requirement of the skill. The other requirements, like energy, still apply..
+        /// </summary>
+        public static string ResetConfiguration_IgnoreSkillLevelRequirements_Description {
+            get {
+                return ResourceManager.GetString("ResetConfiguration_IgnoreSkillLevelRequirements_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ignore skill level requirements after reset.
+        /// </summary>
+        public static string ResetConfiguration_IgnoreSkillLevelRequirements_Name {
+            get {
+                return ResourceManager.GetString("ResetConfiguration_IgnoreSkillLevelRequirements_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Log out.
         /// </summary>
         public static string ResetConfiguration_LogOut_Name {

@@ -106,6 +106,13 @@ public class ResetConfiguration
     public bool LogOut { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether characters which did at least one reset can use their skills
+    /// regardless of the level requirement of the skill. The other requirements, like energy, still apply.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.ResetConfiguration_IgnoreSkillLevelRequirements_Name), Description = nameof(PlugInResources.ResetConfiguration_IgnoreSkillLevelRequirements_Description))]
+    public bool IgnoreSkillLevelRequirements { get; set; }
+
+    /// <summary>
     /// Tier definition for the points which are granted when resetting.
     /// </summary>
     public class ResetPointTier
