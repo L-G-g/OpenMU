@@ -141,6 +141,9 @@ extension can be used after selecting the character again.
 The plugin *UnlockSummonerAtLevel1* unlocks the Summoner for every account,
 which makes the Summoner Character Card useless. Deactivate that plugin if you
 sell the card.
+The same applies to the optional plugin *Unlock all character classes*, which
+unlocks every creatable class (Magic Gladiator, Dark Lord, Summoner and Rage
+Fighter) for every account at login.
 
 While the plugin of a special item is deactivated, its packages can't be bought,
 and bought items stay in the storage until the plugin is active again.

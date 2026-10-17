@@ -807,6 +807,12 @@
   <data name="HappyHourPlugIn_Description" xml:space="preserve">
     <value>Handle Happy Hour event</value>
   </data>
+  <data name="UnlockAllCharacterClassesPlugIn_Name" xml:space="preserve">
+    <value>Unlock all character classes</value>
+  </data>
+  <data name="UnlockAllCharacterClassesPlugIn_Description" xml:space="preserve">
+    <value>Unlocks all creatable character classes (e.g. Magic Gladiator, Dark Lord, Summoner and Rage Fighter) for every account when it logs in, so they can be created from the start.</value>
+  </data>
   <data name="UnlockDarkLordAtLevel250_Name" xml:space="preserve">
     <value>UnlockDarkLordAtLevel250</value>
   </data>
