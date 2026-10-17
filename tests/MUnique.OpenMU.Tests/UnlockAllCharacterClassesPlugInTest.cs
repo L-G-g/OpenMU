@@ -36,7 +36,7 @@ public class UnlockAllCharacterClassesPlugInTest
         player.Account!.UnlockedCharacterClasses.Add(summoner);
         player.GameContext.PlugInManager.RegisterPlugIn<IPlayerStateChangedPlugIn, UnlockAllCharacterClassesPlugIn>();
 
-        Assert.That(await player.PlayerState.TryAdvanceToAsync(PlayerState.EnteredWorld).ConfigureAwait(false), Is.True);
+        Assert.That(player.PlayerState.CurrentState, Is.EqualTo(PlayerState.EnteredWorld));
         Assert.That(player.Account.UnlockedCharacterClasses, Is.EquivalentTo(new[] { summoner }));
         Assert.That(await player.PlayerState.TryAdvanceToAsync(PlayerState.CharacterSelection).ConfigureAwait(false), Is.True);
 
