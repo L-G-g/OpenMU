@@ -1179,16 +1179,38 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     }
 
     /// <summary>
+    /// Determines whether the class of the selected character is qualified to perform the skill.
+    /// </summary>
+    /// <param name="skill">The skill.</param>
+    /// <returns><c>true</c>, if the skill has no class restriction or the class of the selected character is one of its <see cref="Skill.QualifiedCharacters"/>.</returns>
+    /// <remarks>
+    /// A character can know skills of a class it didn't reach yet, e.g. a dark knight which already learned
+    /// the skills of the blade knight. It can only perform them after it got the class by its class change quest.
+    /// Skills without any qualified class (e.g. some event skills) are not restricted. The collection is <c>null</c>
+    /// for skills which weren't created by a persistence context, e.g. in tests.
+    /// </remarks>
+    public bool IsQualifiedForSkill(Skill skill)
+    {
+        return skill.QualifiedCharacters is not { Count: > 0 } qualifiedCharacters
+               || (this.SelectedCharacter?.CharacterClass is { } characterClass && qualifiedCharacters.Contains(characterClass));
+    }
+
+    /// <summary>
     /// Tries to consume the <see cref="Skill.ConsumeRequirements"/> of a skill.
     /// </summary>
     /// <param name="skillEntry">The skill entry of the skill which should get performed.</param>
     /// <returns>
-    ///     <c>True</c>, if the <see cref="Skill.ConsumeRequirements"/> and <see cref="Skill.Requirements"/>
-    ///     are being met, and the <see cref="Skill.ConsumeRequirements"/> have been consumed; Otherwise, <c>false</c>.
+    ///     <c>True</c>, if the character class is qualified for the skill, the <see cref="Skill.ConsumeRequirements"/>
+    ///     and <see cref="Skill.Requirements"/> are being met, and the <see cref="Skill.ConsumeRequirements"/> have been consumed; Otherwise, <c>false</c>.
     /// </returns>
     public async ValueTask<bool> TryConsumeForSkillAsync(SkillEntry skillEntry)
     {
         if (skillEntry.Skill is not { } skill)
+        {
+            return false;
+        }
+
+        if (!this.IsQualifiedForSkill(skill))
         {
             return false;
         }

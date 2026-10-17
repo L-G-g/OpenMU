@@ -799,6 +799,9 @@ public sealed class CombatHandler
                 // skill picked here would simply not go off - the basic attack only steps in when NO
                 // skill was selected, not when the selected one fails.
                 || !BotProgression.MeetsRequirements(skill, attribute => this._player.Attributes?[attribute])
+
+                // A character can know skills of a class it didn't reach yet, which are refused the same way.
+                || !this._player.IsQualifiedForSkill(skill)
                 || !this.HasEnoughResources(entry))
             {
                 continue;

@@ -135,8 +135,8 @@ public sealed class BuffHandler
     }
 
     /// <summary>
-    /// Whether the character currently meets the skill's own requirements, and can therefore cast it
-    /// at all. A character keeps its skills across a reset but not the level which unlocked them, so a
+    /// Whether the character currently meets the skill's own requirements and has a class which is qualified
+    /// for it, and can therefore cast it at all. A character keeps its skills across a reset but not the level which unlocked them, so a
     /// veteran back at level 12 still owns Swell Life, which asks for level 120.
     /// <para>
     /// Skipping it here is what keeps the whole helper running. A buff which targets the party goes
@@ -148,7 +148,8 @@ public sealed class BuffHandler
     /// </summary>
     /// <param name="skill">The skill to cast.</param>
     private bool CanCast(Skill skill)
-        => BotProgression.MeetsRequirements(skill, attribute => this._player.Attributes?[attribute]);
+        => BotProgression.MeetsRequirements(skill, attribute => this._player.Attributes?[attribute])
+           && this._player.IsQualifiedForSkill(skill);
 
     /// <summary>
     /// Attempts to apply the buff to self and, if applicable, to party members.
