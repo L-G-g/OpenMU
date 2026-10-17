@@ -18,6 +18,7 @@ using MUnique.OpenMU.GameLogic.PlayerActions.Items;
 using MUnique.OpenMU.GameLogic.PlayerActions.Skills;
 using MUnique.OpenMU.GameLogic.PlayerActions.Trade;
 using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Resets;
 using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.GameLogic.Views.Character;
 using MUnique.OpenMU.GameLogic.Views.Guild;
@@ -1193,7 +1194,11 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
             return false;
         }
 
-        if (skill.Requirements.Any(r => r.MinimumValue > this.Attributes![r.Attribute]))
+        // Characters which did a reset may keep using their skills below the required level, if the reset feature allows it.
+        var ignoresLevelRequirement = this.Attributes![Stats.Resets] > 0
+            && this.GameContext.FeaturePlugIns.GetPlugIn<ResetFeaturePlugIn>()?.Configuration is { IgnoreSkillLevelRequirements: true };
+        if (skill.Requirements.Any(r => r.MinimumValue > this.Attributes![r.Attribute]
+                                        && !(ignoresLevelRequirement && r.Attribute == Stats.Level)))
         {
             return false;
         }
