@@ -30,7 +30,7 @@ public class PreLearnedSkillsAndEventItemShopUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "The requirements of the skill items (scrolls, orbs, parchments) become requirements of their skills, and the skill items don't drop from monsters anymore. The items to enter Blood Castle, Devil Square, Illusion Temple and Kalima don't drop from monsters anymore, Lumen the Barmaid in Lorencia sells all of them (adds Old Scroll +6, Illusion Sorcerer Covenant +6 and Lost Map +1 to +7). Activate the plugin 'Add Learnable Skills For New Characters' to give new characters all skills of their class.";
+    internal const string PlugInDescription = "The requirements of the skill items (scrolls, orbs, parchments) become requirements of their skills, and the skill items don't drop from monsters anymore. The items to enter Blood Castle, Devil Square, Illusion Temple, Kalima, Doppelganger and Imperial Guardian don't drop from monsters anymore, Lumen the Barmaid in Lorencia sells all of them (adds Old Scroll +6, Illusion Sorcerer Covenant +6, Lost Map +1 to +7, Mirror of Dimensions and Gaion's Order). Activate the plugin 'Add Learnable Skills For New Characters' to give new characters all skills of their class.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;

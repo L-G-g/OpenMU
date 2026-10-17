@@ -21,8 +21,8 @@ using MUnique.OpenMU.Persistence.Initialization.PlugIns.CharacterCreated;
 ///         so that a character which knows the skill from the start can only perform it when it meets them.
 ///         The skills are added to new characters by <see cref="AddLearnableSkillsForNewCharacters"/>.</item>
 ///   <item>The skill items don't drop from monsters anymore. They still exist, and are sold by the merchants as before.</item>
-///   <item>The items to enter Blood Castle, Devil Square, Illusion Temple and Kalima don't drop from monsters anymore.
-///         Lumen the Barmaid sells all of them.</item>
+///   <item>The items to enter Blood Castle, Devil Square, Illusion Temple, Kalima, Doppelganger and Imperial Guardian
+///         don't drop from monsters anymore. Lumen the Barmaid sells all of them.</item>
 /// </list>
 /// </remarks>
 internal static class PreLearnedSkillsAndEventItemShop
@@ -44,6 +44,8 @@ internal static class PreLearnedSkillsAndEventItemShop
         (13, 49), // Old Scroll (Illusion Temple)
         (13, 50), // Illusion Sorcerer Covenant (Illusion Temple)
         (14, 29), // Symbol of Kundun (Kalima)
+        (14, 110), // Sign of Dimensions (Doppelganger)
+        (14, 101), // Suspicious Scrap of Paper (Imperial Guardian)
     ];
 
     /// <summary>
@@ -61,6 +63,8 @@ internal static class PreLearnedSkillsAndEventItemShop
         (84, 14, 28, 5), // Lost Map +5 (Kalima 5)
         (85, 14, 28, 6), // Lost Map +6 (Kalima 6)
         (86, 14, 28, 7), // Lost Map +7 (Kalima 7)
+        (87, 14, 111, 0), // Mirror of Dimensions (Doppelganger)
+        (88, 14, 102, 0), // Gaion's Order (Imperial Guardian)
     ];
 
     /// <summary>

@@ -369,6 +369,17 @@ public class ItemPriceCalculatorTest
         this.CheckPrice(id, dropLevel, maxDurability, heigth, width, 0, 0, level, price, true, true, skill);
     }
 
+    /// <summary>
+    /// Tests the price of the items to enter the events of the doppelganger and the imperial guardian, which Lumen the Barmaid sells.
+    /// </summary>
+    /// <param name="id">The identifier.</param>
+    [TestCase(102, Description = "Gaion's Order")]
+    [TestCase(111, Description = "Mirror of Dimensions")]
+    public void EventEntryItems(byte id)
+    {
+        this.CheckPrice(id, 0, 1, 1, 1, 14, 0, 0, 100000);
+    }
+
     private void CheckPrice(byte id, byte dropLevel, byte maxDurability, byte height, byte width, byte group, int value, byte level, long price, bool luck = false, bool option = false, bool skill = false)
     {
         var itemDefinitionMock = new Mock<ItemDefinition>();
