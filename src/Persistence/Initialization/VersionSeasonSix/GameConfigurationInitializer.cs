@@ -99,6 +99,9 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         // After all items exist.
         new ItemRules(this.Context, this.GameConfiguration).Initialize();
         new CashShopInitializer(this.Context, this.GameConfiguration).Initialize();
+
+        // After all items, maps and merchant stores exist.
+        PreLearnedSkillsAndEventItemShop.Apply(this.Context, this.GameConfiguration);
     }
 
     /// <summary>
