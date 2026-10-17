@@ -119,8 +119,8 @@ internal class ImperialGuardianDataTest
 
         Assert.That(gameConfiguration.Monsters.Single(monster => monster.Number == JerintNumber).NpcWindow, Is.EqualTo(NpcWindow.JerintGaionEvententry));
 
+        // The drop item group exists, but a new database doesn't drop the scrap: Lumen sells the Gaion's Order, see PreLearnedSkillsAndEventItemShop.
         var scrapDropGroups = gameConfiguration.DropItemGroups.Where(group => group.PossibleItems.Any(item => item is { Group: 14, Number: 101 })).ToList();
         Assert.That(scrapDropGroups, Has.Count.EqualTo(1));
-        Assert.That(gameConfiguration.Maps.Where(map => map.DropItemGroups.Contains(scrapDropGroups[0])), Is.Not.Empty);
     }
 }

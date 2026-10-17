@@ -635,6 +635,18 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized AddEliteQuestMonstersUpdatePlugIn_Description text.</summary>
         public static string AddEliteQuestMonstersUpdatePlugIn_Description => ResourceManager.GetString("AddEliteQuestMonstersUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized PreLearnedSkillsAndEventItemShopUpdatePlugIn_Name text.</summary>
+        public static string PreLearnedSkillsAndEventItemShopUpdatePlugIn_Name => ResourceManager.GetString("PreLearnedSkillsAndEventItemShopUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized PreLearnedSkillsAndEventItemShopUpdatePlugIn_Description text.</summary>
+        public static string PreLearnedSkillsAndEventItemShopUpdatePlugIn_Description => ResourceManager.GetString("PreLearnedSkillsAndEventItemShopUpdatePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized AddLearnableSkillsForNewCharacters_Name text.</summary>
+        public static string AddLearnableSkillsForNewCharacters_Name => ResourceManager.GetString("AddLearnableSkillsForNewCharacters_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized AddLearnableSkillsForNewCharacters_Description text.</summary>
+        public static string AddLearnableSkillsForNewCharacters_Description => ResourceManager.GetString("AddLearnableSkillsForNewCharacters_Description", resourceCulture)!;
+
         /// <summary>Gets the localized AddCastleSiegeDataUpdatePlugIn_Name text.</summary>
         public static string AddCastleSiegeDataUpdatePlugIn_Name => ResourceManager.GetString("AddCastleSiegeDataUpdatePlugIn_Name", resourceCulture)!;
 
