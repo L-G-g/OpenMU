@@ -1,4 +1,4 @@
-// <copyright file="TestInitializationWithEfCore.cs" company="MUnique">
+﻿// <copyright file="TestInitializationWithEfCore.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -242,14 +242,14 @@ internal class TestInitializationWithEfCore
         Assert.That(map.DropItemGroups.Count(group => group.GetId() == CrestDropGroupId), Is.EqualTo(1));
 
         Assert.That(featherGroup.Chance, Is.EqualTo(0.001));
-        Assert.That(featherGroup.MinimumMonsterLevel, Is.EqualTo((byte)82));
+        Assert.That(featherGroup.MinimumMonsterLevel, Is.EqualTo((byte)74), "Moved by the MapLevelLadder.");
         Assert.That(featherGroup.ItemLevel, Is.Null);
         Assert.That(featherGroup.PossibleItems, Has.Count.EqualTo(1));
         Assert.That(featherGroup.PossibleItems.Single().Group, Is.EqualTo((byte)13));
         Assert.That(featherGroup.PossibleItems.Single().Number, Is.EqualTo((short)14));
 
         Assert.That(crestGroup.Chance, Is.EqualTo(0.001));
-        Assert.That(crestGroup.MinimumMonsterLevel, Is.EqualTo((byte)82));
+        Assert.That(crestGroup.MinimumMonsterLevel, Is.EqualTo((byte)74), "Moved by the MapLevelLadder.");
         Assert.That(crestGroup.ItemLevel, Is.EqualTo((byte)1));
         Assert.That(crestGroup.PossibleItems, Has.Count.EqualTo(1));
         Assert.That(crestGroup.PossibleItems.Single().Group, Is.EqualTo((byte)13));

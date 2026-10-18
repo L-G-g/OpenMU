@@ -36,6 +36,10 @@ public class DefaultDropGenerator : IDropGenerator
     private readonly IList<ItemDefinition> _droppableItems;
     private readonly IList<ItemDefinition>?[] _droppableItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
     private readonly IList<ItemDefinition>?[] _droppableSocketItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
+    private readonly IList<ItemDefinition>?[] _zoneEquipmentPerMaximumLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
+    private readonly IList<ItemDefinition>?[] _zoneExcellentEquipmentPerMaximumLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
+    private readonly IList<ItemDefinition>?[] _otherItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
+    private readonly IList<ItemDefinition>?[] _otherExcellentItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
 
     private readonly byte _maxItemOptionLevelDrop;
     private readonly byte _excellentItemDropLevelDelta;
@@ -293,6 +297,31 @@ public class DefaultDropGenerator : IDropGenerator
         return itemDefinition.MaximumDropLevel is not { } maxDropLevel || monsterLevel <= maxDropLevel;
     }
 
+    /// <summary>
+    /// Gets the item level of a weapon, shield or armor piece of a zone, which grows from 0 at the minimum level of the zone
+    /// up to the maximum item level at its maximum level.
+    /// </summary>
+    private static byte GetZoneItemLevel(int monsterLevel, int minimumLevel, int maximumLevel, byte maximumItemLevel)
+    {
+        if (maximumLevel <= minimumLevel)
+        {
+            return maximumItemLevel;
+        }
+
+        var level = (monsterLevel - minimumLevel) * (maximumItemLevel + 1) / (maximumLevel - minimumLevel + 1);
+        return (byte)Math.Clamp(level, 0, maximumItemLevel);
+    }
+
+    private static bool IsEquipment(ItemDefinition item)
+    {
+        return item.ItemSlot?.ItemSlots.Any(slot => slot >= InventoryConstants.LeftHandSlot && slot <= InventoryConstants.BootsSlot) ?? false;
+    }
+
+    private static bool HasExcellentOptions(ItemDefinition item)
+    {
+        return item.PossibleItemOptions.Any(o => o.PossibleOptions.Any(p => object.Equals(p.OptionType, ItemOptionTypes.Excellent)));
+    }
+
     private (IList<Item>? Items, uint Money) GenerateDrops(MonsterDefinition monster, int gainedExperience)
     {
         uint money = 0;
@@ -450,9 +479,14 @@ public class DefaultDropGenerator : IDropGenerator
             return null;
         }
 
+        return this.CreateRandomItem(possibleItems.ElementAt(this._randomizer.NextInt(0, possibleItems.Count)));
+    }
+
+    private Item CreateRandomItem(ItemDefinition definition)
+    {
         var item = new TemporaryItem
         {
-            Definition = possibleItems.ElementAt(this._randomizer.NextInt(0, possibleItems.Count)),
+            Definition = definition,
         };
 
         this.ApplyRandomOptions(item);
@@ -530,6 +564,11 @@ public class DefaultDropGenerator : IDropGenerator
     {
         droppedMoney = null;
 
+        if (selectedGroup.ItemType is SpecialItemType.ZoneItem or SpecialItemType.ZoneExcellentItem)
+        {
+            return this.GenerateZoneItem(monster, selectedGroup);
+        }
+
         if (selectedGroup.PossibleItems?.Count > 0)
         {
             return this.GenerateItemFromGroup(monster, selectedGroup);
@@ -561,6 +600,90 @@ public class DefaultDropGenerator : IDropGenerator
             .ToList();
 
         return this.GenerateItemDrop(selectedGroup, filteredPossibleItems);
+    }
+
+    /// <summary>
+    /// Generates an item of a <see cref="SpecialItemType.ZoneItem"/> or <see cref="SpecialItemType.ZoneExcellentItem"/> group.
+    /// </summary>
+    /// <remarks>
+    /// The weapons, shields and armor pieces come from <see cref="GetZoneEquipment"/>, or from the possible items of the group,
+    /// and the other items (e.g. potions, jewelry) are chosen by the monster level as usual.
+    /// </remarks>
+    private Item? GenerateZoneItem(MonsterDefinition monster, DropItemGroup group)
+    {
+        var monsterLevel = (int)monster[Stats.Level];
+        var minimumLevel = group.MinimumMonsterLevel ?? 0;
+        var maximumLevel = group.MaximumMonsterLevel ?? byte.MaxValue;
+        var isExcellent = group.ItemType == SpecialItemType.ZoneExcellentItem;
+
+        var equipment = group.PossibleItems.Count > 0 ? group.PossibleItems : this.GetZoneEquipment(maximumLevel, isExcellent);
+        var others = group.PossibleItems.Count > 0 ? null : this.GetOtherItems(monsterLevel, isExcellent);
+        var count = equipment.Count + (others?.Count ?? 0);
+        if (count == 0)
+        {
+            return null;
+        }
+
+        var index = this._randomizer.NextInt(0, count);
+        var isEquipment = index < equipment.Count;
+        var definition = isEquipment ? equipment.ElementAt(index) : others![index - equipment.Count];
+        var item = this.CreateRandomItem(definition);
+        if (isExcellent)
+        {
+            item.HasSkill = item.CanHaveSkill(); // every excellent item got skill
+            this.AddRandomExcOptions(item);
+        }
+        else
+        {
+            item.Level = isEquipment
+                ? GetZoneItemLevel(monsterLevel, minimumLevel, maximumLevel, group.ItemLevel ?? 0)
+                : GetItemLevelByMonsterLevel(definition, monsterLevel);
+            item.Level = Math.Min(item.Level, definition.MaximumItemLevel);
+        }
+
+        item.Durability = item.GetMaximumDurabilityOfOnePiece();
+        return item;
+    }
+
+    /// <summary>
+    /// Gets the weapons, shields and armor pieces which a zone drops: for each character class and each kind of item
+    /// (its group and slot type, e.g. bows and crossbows are different kinds), the items with the highest drop level which
+    /// isn't above the maximum level of the zone. If a class has no item of a kind up to this level, it's the item
+    /// with the lowest drop level.
+    /// Socket items are not included, they can be added to a zone with a group which has them as possible items.
+    /// </summary>
+    private IList<ItemDefinition> GetZoneEquipment(byte maximumLevel, bool isExcellent)
+    {
+        var cache = isExcellent ? this._zoneExcellentEquipmentPerMaximumLevel : this._zoneEquipmentPerMaximumLevel;
+        return cache[maximumLevel] ??= this._droppableItems
+            .Where(item => IsEquipment(item) && item.MaximumSockets == 0 && (!isExcellent || HasExcellentOptions(item)))
+            .SelectMany(item => item.QualifiedCharacters.Select(characterClass => (Kind: (characterClass, item.Group, item.ItemSlot), Item: item)))
+            .GroupBy(entry => entry.Kind, entry => entry.Item)
+            .SelectMany(kind =>
+            {
+                var possible = kind.Where(item => item.DropLevel <= maximumLevel).ToList();
+                var dropLevel = possible.Count > 0 ? possible.Max(item => item.DropLevel) : kind.Min(item => item.DropLevel);
+                return kind.Where(item => item.DropLevel == dropLevel);
+            })
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Gets the items which aren't weapons, shields or armor pieces, which drop from a monster of a zone as usual.
+    /// </summary>
+    private IList<ItemDefinition> GetOtherItems(int monsterLevel, bool isExcellent)
+    {
+        var level = isExcellent ? monsterLevel - this._excellentItemDropLevelDelta : monsterLevel;
+        if (this.GetPossibleList(level) is not { } possible)
+        {
+            return [];
+        }
+
+        var cache = isExcellent ? this._otherExcellentItemsPerMonsterLevel : this._otherItemsPerMonsterLevel;
+        return cache[level] ??= possible
+            .Where(item => !IsEquipment(item) && (!isExcellent || HasExcellentOptions(item)))
+            .ToList();
     }
 
     private Item? GenerateSpecialItem(MonsterDefinition monster, DropItemGroup selectedGroup)

@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.Tests;
 
 using Moq;
+using MUnique.OpenMU.DataModel;
 using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.DataModel.Configuration.Quests;
@@ -111,6 +112,54 @@ public class DropGeneratorTest
     }
 
     /// <summary>
+    /// Tests that a zone drops, of the weapons of a class, only the one with the highest drop level up to the maximum
+    /// level of the zone, with an item level which depends on the place of the monster in the zone.
+    /// </summary>
+    /// <param name="monsterLevel">The level of the monster.</param>
+    /// <param name="expectedItemLevel">The expected item level.</param>
+    [TestCase(20, 0)]
+    [TestCase(24, 1)]
+    [TestCase(29, 3)]
+    public async ValueTask TestZoneItemDropAsync(byte monsterLevel, byte expectedItemLevel)
+    {
+        var config = this.GetGameConfig();
+        var characterClass = new CharacterClass();
+        var slot = new Mock<ItemSlotType>();
+        slot.Setup(s => s.ItemSlots).Returns(new List<int> { InventoryConstants.LeftHandSlot });
+        var swords = new[] { 10, 20, 30 }.Select(dropLevel => this.CreateEquipment(0, (short)dropLevel, (byte)dropLevel, characterClass, slot.Object)).ToList();
+        swords.ForEach(config.Items.Add);
+        var potion = this.CreateItemDefinition(14, 0, 20);
+        potion.DropsFromMonsters = true;
+        config.Items.Add(potion);
+
+        var zoneGroup = new Mock<DropItemGroup>();
+        zoneGroup.SetupAllProperties();
+        zoneGroup.Object.Chance = 1.0;
+        zoneGroup.Object.ItemType = SpecialItemType.ZoneItem;
+        zoneGroup.Object.MinimumMonsterLevel = 20;
+        zoneGroup.Object.MaximumMonsterLevel = 29;
+        zoneGroup.Object.ItemLevel = 3;
+        zoneGroup.Setup(g => g.PossibleItems).Returns(new List<ItemDefinition>());
+
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup.Object);
+
+        // The first possible item is the sword of the zone, the second one is the potion.
+        var swordGenerator = new DefaultDropGenerator(config, this.GetRandomizer(0));
+        var (swordDrops, _) = await swordGenerator.GenerateItemDropsAsync(this.GetMonster(1, monsterLevel), 1, player).ConfigureAwait(false);
+        var potionGenerator = new DefaultDropGenerator(config, this.GetRandomizer2(1, 0));
+        var (potionDrops, _) = await potionGenerator.GenerateItemDropsAsync(this.GetMonster(1, monsterLevel), 1, player).ConfigureAwait(false);
+
+        var sword = swordDrops.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(sword.Definition, Is.EqualTo(swords[1]));
+            Assert.That(sword.Level, Is.EqualTo(expectedItemLevel));
+            Assert.That(potionDrops.Single().Definition, Is.EqualTo(potion));
+        });
+    }
+
+    /// <summary>
     /// Tests the drops defined by a player are getting considered.
     /// </summary>
     public void TestItemDropItemByPlayer()
@@ -187,6 +236,16 @@ public class DropGeneratorTest
         dropGroup.Object.ItemLevel = 0;
         dropGroup.Setup(g => g.PossibleItems).Returns(new List<ItemDefinition> { item });
         return dropGroup.Object;
+    }
+
+    private ItemDefinition CreateEquipment(byte group, short number, byte dropLevel, CharacterClass characterClass, ItemSlotType slot)
+    {
+        var itemDefinition = this.CreateItemDefinition(group, number, dropLevel);
+        itemDefinition.DropsFromMonsters = true;
+        itemDefinition.MaximumItemLevel = 15;
+        itemDefinition.ItemSlot = slot;
+        Mock.Get(itemDefinition).Setup(d => d.QualifiedCharacters).Returns(new List<CharacterClass> { characterClass });
+        return itemDefinition;
     }
 
     private ItemDefinition CreateItemDefinition(byte group, short number, byte dropLevel, byte? maximumDropLevel = null)

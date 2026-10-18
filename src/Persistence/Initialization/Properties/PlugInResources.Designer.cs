@@ -899,5 +899,11 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized ConfigureNpcTalkPlugInsPlugIn_Description text.</summary>
         public static string ConfigureNpcTalkPlugInsPlugIn_Description => ResourceManager.GetString("ConfigureNpcTalkPlugInsPlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized MapLevelLadderUpdatePlugIn_Name text.</summary>
+        public static string MapLevelLadderUpdatePlugIn_Name => ResourceManager.GetString("MapLevelLadderUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MapLevelLadderUpdatePlugIn_Description text.</summary>
+        public static string MapLevelLadderUpdatePlugIn_Description => ResourceManager.GetString("MapLevelLadderUpdatePlugIn_Description", resourceCulture)!;
+
     }
 }
