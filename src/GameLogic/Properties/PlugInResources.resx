@@ -1625,4 +1625,25 @@
   <data name="EliteMonsterEffectConfiguration_EffectNumber_Description" xml:space="preserve">
     <value>The number of the magic effect which the client shows on the elite monsters. 0 shows none.</value>
   </data>
+  <data name="DropSocketCountPlugIn_Name" xml:space="preserve">
+    <value>Drop socket count</value>
+  </data>
+  <data name="DropSocketCountPlugIn_Description" xml:space="preserve">
+    <value>Sets the number of sockets of the socket items which monsters drop, per monster or per map. Without a matching rule it stays random.</value>
+  </data>
+  <data name="DropSocketCountConfiguration_Rules_Name" xml:space="preserve">
+    <value>Rules</value>
+  </data>
+  <data name="DropSocketCountConfiguration_MonsterNumber_Name" xml:space="preserve">
+    <value>Monster number</value>
+  </data>
+  <data name="DropSocketCountConfiguration_MapNumber_Name" xml:space="preserve">
+    <value>Map number</value>
+  </data>
+  <data name="DropSocketCountConfiguration_MinimumSockets_Name" xml:space="preserve">
+    <value>Minimum sockets</value>
+  </data>
+  <data name="DropSocketCountConfiguration_MaximumSockets_Name" xml:space="preserve">
+    <value>Maximum sockets</value>
+  </data>
 </root>

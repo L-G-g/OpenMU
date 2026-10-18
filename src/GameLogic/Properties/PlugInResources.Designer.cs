@@ -718,6 +718,69 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Map number.
+        /// </summary>
+        public static string DropSocketCountConfiguration_MapNumber_Name {
+            get {
+                return ResourceManager.GetString("DropSocketCountConfiguration_MapNumber_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum sockets.
+        /// </summary>
+        public static string DropSocketCountConfiguration_MaximumSockets_Name {
+            get {
+                return ResourceManager.GetString("DropSocketCountConfiguration_MaximumSockets_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minimum sockets.
+        /// </summary>
+        public static string DropSocketCountConfiguration_MinimumSockets_Name {
+            get {
+                return ResourceManager.GetString("DropSocketCountConfiguration_MinimumSockets_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Monster number.
+        /// </summary>
+        public static string DropSocketCountConfiguration_MonsterNumber_Name {
+            get {
+                return ResourceManager.GetString("DropSocketCountConfiguration_MonsterNumber_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Rules.
+        /// </summary>
+        public static string DropSocketCountConfiguration_Rules_Name {
+            get {
+                return ResourceManager.GetString("DropSocketCountConfiguration_Rules_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Sets the number of sockets of the socket items which monsters drop, per monster or per map. Without a matching rule it stays random..
+        /// </summary>
+        public static string DropSocketCountPlugIn_Description {
+            get {
+                return ResourceManager.GetString("DropSocketCountPlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drop socket count.
+        /// </summary>
+        public static string DropSocketCountPlugIn_Name {
+            get {
+                return ResourceManager.GetString("DropSocketCountPlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Updates the durabilty of time-decaying items..
         /// </summary>
         public static string DurabilityDecayPlugIn_Description {

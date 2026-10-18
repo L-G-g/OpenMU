@@ -7,13 +7,15 @@ namespace MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.GameServer.MessageHandler.Quests;
 using MUnique.OpenMU.Network;
 using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix.Maps;
+using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// Puts the hunting maps on a ladder of levels which don't overlap, and lets each zone of the ladder drop only
-/// its own sets.
+/// its own sets, up to Karutan. Swamp of Calmness drops only jewels and Raklion only socket items.
 /// </summary>
 /// <remarks>
 /// This is a custom feature. In the original game the monster levels of the maps overlap a lot (e.g. the monsters of Elbeland
@@ -21,13 +23,17 @@ using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix.Maps;
 /// so higher maps keep dropping the sets of the maps before. Here:
 /// <list type="bullet">
 ///   <item>Each zone of <see cref="Zones"/> has its own range of monster levels, from Lorencia, Noria and Elbeland (1 to 19)
-///         up to Raklion (140 to 148). The monsters of <see cref="Monsters"/> keep their order of strength, and their stats
-///         are taken from the stats of the original monsters of the same rank.</item>
+///         up to Raklion (140 to 148). Vulcanus isn't on the ladder, because it's a map for player versus player.
+///         The monsters of <see cref="Monsters"/> keep their order of strength, and their stats are taken from the stats
+///         of the original monsters of the same rank.</item>
 ///   <item>A monster which also spawns outside the zone of its entry (e.g. in Devil Square) spawns there as a copy
 ///         with its original level and stats. The Skeleton Warrior spawns in Lorencia and Dungeon, so Dungeon gets a copy
 ///         with the stats of its own zone.</item>
-///   <item>The sets and weapons of each character class are spread over the zones by rank, so each zone drops
-///         its own sets (see <see cref="SpecialItemType.ZoneItem"/>). Swamp of Calmness and Raklion also drop the socket items.</item>
+///   <item>The sets and weapons of each character class are spread over the zones up to Karutan by rank, so each zone drops
+///         its own sets (see <see cref="SpecialItemType.ZoneItem"/>).</item>
+///   <item>Swamp of Calmness drops no items but jewels, more often than other maps, and gives more experience.</item>
+///   <item>Raklion drops socket items with up to two sockets, rarely, and Selupan always drops one with three sockets
+///         (see <see cref="DropSocketCountPlugIn"/>).</item>
 ///   <item>The drops which depend on the monster level (e.g. the Symbol of Kundun) are moved to the new levels.</item>
 ///   <item>The warps and gates require the level of the place of their map on the ladder, and the warps are free.</item>
 /// </list>
@@ -70,6 +76,32 @@ internal static class MapLevelLadder
     internal const double ZoneSocketItemDropChance = 0.01;
 
     /// <summary>
+    /// The chance of the drop item group of the jewels of a zone which drops only jewels. It's ten times the chance
+    /// of the common drop item group for jewels, which it replaces.
+    /// </summary>
+    internal const double ZoneJewelDropChance = 0.01;
+
+    /// <summary>
+    /// The experience multiplier of the maps of a zone which drops only jewels.
+    /// </summary>
+    internal const double JewelZoneExperienceMultiplier = 2;
+
+    /// <summary>
+    /// The number of Selupan, the boss of Raklion.
+    /// </summary>
+    internal const short SelupanNumber = 459;
+
+    /// <summary>
+    /// The number of sockets of the socket items which Selupan drops.
+    /// </summary>
+    internal const int SelupanSocketCount = 3;
+
+    /// <summary>
+    /// The maximum number of sockets of the socket items which the monsters of a zone drop.
+    /// </summary>
+    internal const int ZoneMaximumSocketCount = 2;
+
+    /// <summary>
     /// The item level of the weapons, shields and armor pieces dropped by the monsters with the highest level of a zone.
     /// </summary>
     internal const byte MaximumZoneItemLevel = 3;
@@ -78,25 +110,59 @@ internal static class MapLevelLadder
     private const short CommonExcellentItemDropItemGroupNumber = 3;
 
     /// <summary>
-    /// Gets the zones of the ladder: the range of the monster levels, the numbers of the maps,
-    /// and if it drops socket items. The danger level of a zone is its index plus one.
+    /// The kinds of drops of a zone of the ladder.
     /// </summary>
-    internal static IReadOnlyList<(byte MinimumLevel, byte MaximumLevel, byte[] MapNumbers, bool DropsSocketItems)> Zones { get; } =
+    internal enum ZoneDrops
+    {
+        /// <summary>
+        /// The zone drops its own weapons, shields and armor sets, see <see cref="SpecialItemType.ZoneItem"/>.
+        /// </summary>
+        Equipment,
+
+        /// <summary>
+        /// The zone drops only jewels, with <see cref="ZoneJewelDropChance"/>.
+        /// </summary>
+        Jewels,
+
+        /// <summary>
+        /// The zone drops socket items with up to <see cref="ZoneMaximumSocketCount"/> sockets
+        /// instead of weapons, shields and armor sets.
+        /// </summary>
+        SocketItems,
+    }
+
+    /// <summary>
+    /// Gets the jewels which drop in a zone which drops only jewels, by group and number.
+    /// </summary>
+    internal static IReadOnlyList<(byte Group, short Number)> ZoneJewels { get; } =
     [
-        (1, 19, [0, 3, 51], false), // Lorencia, Noria, Elbeland
-        (20, 29, [2], false), // Devias
-        (30, 39, [1], false), // Dungeon
-        (40, 49, [4], false), // Lost Tower
-        (50, 59, [7], false), // Atlans
-        (60, 69, [8], false), // Tarkan
-        (70, 79, [33], false), // Aida
-        (80, 89, [10], false), // Icarus
-        (90, 99, [37], false), // Kanturu Ruins
-        (100, 109, [38], false), // Kanturu Relics
-        (110, 119, [80, 81], false), // Karutan 1 and 2
-        (120, 129, [63], false), // Vulcanus
-        (130, 139, [56], true), // Swamp of Calmness
-        (140, 148, [57], true), // Raklion
+        (12, 15), // Jewel of Chaos
+        (14, 13), // Jewel of Bless
+        (14, 14), // Jewel of Soul
+        (14, 16), // Jewel of Life
+        (14, 22), // Jewel of Creation
+        (14, 31), // Jewel of Guardian
+    ];
+
+    /// <summary>
+    /// Gets the zones of the ladder: the range of the monster levels, the numbers of the maps,
+    /// and what they drop. The danger level of a zone is its index plus one.
+    /// </summary>
+    internal static IReadOnlyList<(byte MinimumLevel, byte MaximumLevel, byte[] MapNumbers, ZoneDrops Drops)> Zones { get; } =
+    [
+        (1, 19, [0, 3, 51], ZoneDrops.Equipment), // Lorencia, Noria, Elbeland
+        (20, 29, [2], ZoneDrops.Equipment), // Devias
+        (30, 39, [1], ZoneDrops.Equipment), // Dungeon
+        (40, 49, [4], ZoneDrops.Equipment), // Lost Tower
+        (50, 59, [7], ZoneDrops.Equipment), // Atlans
+        (60, 69, [8], ZoneDrops.Equipment), // Tarkan
+        (70, 79, [33], ZoneDrops.Equipment), // Aida
+        (80, 89, [10], ZoneDrops.Equipment), // Icarus
+        (90, 99, [37], ZoneDrops.Equipment), // Kanturu Ruins
+        (100, 109, [38], ZoneDrops.Equipment), // Kanturu Relics
+        (110, 119, [80, 81], ZoneDrops.Equipment), // Karutan 1 and 2
+        (130, 139, [56], ZoneDrops.Jewels), // Swamp of Calmness
+        (140, 148, [57, 58], ZoneDrops.SocketItems), // Raklion and the hatchery of Selupan
     ];
 
     /// <summary>
@@ -236,44 +302,30 @@ internal static class MapLevelLadder
         new(11, 575, 118, 68000, 655, 702, 516, 973, 332), // Condra, level 117 before
         new(11, 576, 119, 68000, 671, 713, 518, 987, 340), // Narcondra, level 120 before
 
-        // Vulcanus
-        new(12, 480, 120, 68432, 677, 727, 522, 1000, 345), // Zombie Fighter, level 90 before
-        new(12, 482, 121, 70416, 689, 738, 531, 1003, 365), // Resurrected Gladiator, level 93 before
-        new(12, 484, 122, 73000, 707, 751, 535, 1016, 381), // Ash Slaughterer, level 100 before
-        new(12, 486, 122, 77192, 716, 758, 537, 1032, 410), // Blood Assassin, level 107 before
-        new(12, 487, 123, 78920, 723, 774, 543, 1080, 426), // Cruel Blood Assassin, level 109 before
-        new(12, 489, 124, 83176, 738, 794, 548, 1084, 430), // Burning Lava Giant, level 111 before
-        new(12, 490, 125, 84286, 758, 818, 562, 1100, 432), // Ruthless Lava Giant, level 113 before
-        new(12, 481, 126, 7662364, 1023, 1143, 618, 1309, 1042), // Zombie Fighter481 (boss), level 120 before
-        new(12, 483, 127, 786159, 1035, 1155, 618, 1331, 1048), // Resurrected Gladiator483 (boss), level 121 before
-        new(12, 485, 127, 796886, 1047, 1167, 618, 1353, 1055), // Ash Slaughterer485 (boss), level 122 before
-        new(12, 488, 128, 801483, 1059, 1179, 618, 1375, 1061), // Cruel Blood Assassin488 (boss), level 123 before
-        new(12, 491, 129, 812211, 1071, 1191, 618, 1397, 1067), // Ruthless Lava Giant491 (boss), level 124 before
-
         // SwampOfCalmness
-        new(13, 441, 130, 85988, 801, 836, 571, 1114, 447), // Sapi Unus, level 95 before
-        new(13, 442, 131, 87576, 831, 888, 577, 1190, 525), // Sapi Duo, level 96 before
-        new(13, 444, 132, 88272, 919, 997, 611, 1207, 757), // Shadow Pawn, level 98 before
-        new(13, 447, 132, 88000, 847, 991, 589, 1191, 751), // Thunder Napin, level 97 before
-        new(13, 445, 133, 90512, 949, 1015, 615, 1252, 774), // Shadow Knight, level 100 before
-        new(13, 443, 134, 94120, 979, 1097, 616, 1259, 800), // Sapi Tres, level 102 before
-        new(13, 446, 135, 95112, 1060, 1185, 621, 1275, 802), // Shadow Look, level 104 before
-        new(13, 448, 136, 98184, 1175, 1230, 631, 1370, 822), // Ghost Napin, level 106 before
-        new(13, 449, 137, 118219, 1247, 1432, 641, 1545, 840), // Blaze Napin, level 107 before
-        new(13, 557, 137, 134511, 1322, 1970, 651, 1558, 843), // Sapi Queen, level 131 before
-        new(13, 558, 138, 185500, 1441, 2017, 661, 1570, 877), // Ice Napin, level 135 before
-        new(13, 559, 139, 198824, 1451, 2020, 672, 1580, 903), // Shadow Master, level 137 before
+        new(12, 441, 130, 85988, 801, 836, 571, 1114, 447), // Sapi Unus, level 95 before
+        new(12, 442, 131, 87576, 831, 888, 577, 1190, 525), // Sapi Duo, level 96 before
+        new(12, 444, 132, 88272, 919, 997, 611, 1207, 757), // Shadow Pawn, level 98 before
+        new(12, 447, 132, 88000, 847, 991, 589, 1191, 751), // Thunder Napin, level 97 before
+        new(12, 445, 133, 90512, 949, 1015, 615, 1252, 774), // Shadow Knight, level 100 before
+        new(12, 443, 134, 94120, 979, 1097, 616, 1259, 800), // Sapi Tres, level 102 before
+        new(12, 446, 135, 95112, 1060, 1185, 621, 1275, 802), // Shadow Look, level 104 before
+        new(12, 448, 136, 98184, 1175, 1230, 631, 1370, 822), // Ghost Napin, level 106 before
+        new(12, 449, 137, 118219, 1247, 1432, 641, 1545, 840), // Blaze Napin, level 107 before
+        new(12, 557, 137, 134511, 1322, 1970, 651, 1558, 843), // Sapi Queen, level 131 before
+        new(12, 558, 138, 185500, 1441, 2017, 661, 1570, 877), // Ice Napin, level 135 before
+        new(12, 559, 139, 198824, 1451, 2020, 672, 1580, 903), // Shadow Master, level 137 before
 
         // Raklion
-        new(14, 454, 140, 203960, 1585, 2060, 701, 1659, 907), // Ice Walker, level 102 before
-        new(14, 455, 141, 218028, 1594, 2062, 716, 1852, 922), // Giant Mammoth, level 112 before
-        new(14, 456, 142, 219052, 1741, 2092, 733, 1943, 960), // Ice Giant, level 122 before
-        new(14, 457, 143, 230280, 1743, 2100, 783, 2006, 971), // Coolutin, level 132 before
-        new(14, 562, 144, 237160, 1748, 2302, 786, 2145, 990), // Dark Mammoth, level 140 before
-        new(14, 458, 145, 242144, 1886, 2318, 821, 2245, 1001), // Iron Knight, level 142 before
-        new(14, 563, 146, 248096, 1919, 2361, 850, 2444, 1430), // Dark Giant, level 143 before
-        new(14, 564, 147, 254088, 2044, 2394, 860, 2717, 1440), // Dark Coolutin, level 145 before
-        new(14, 565, 148, 265000, 2217, 2601, 865, 11400, 1440), // Dark Iron Knight, level 148 before
+        new(13, 454, 140, 203960, 1585, 2060, 701, 1659, 907), // Ice Walker, level 102 before
+        new(13, 455, 141, 218028, 1594, 2062, 716, 1852, 922), // Giant Mammoth, level 112 before
+        new(13, 456, 142, 219052, 1741, 2092, 733, 1943, 960), // Ice Giant, level 122 before
+        new(13, 457, 143, 230280, 1743, 2100, 783, 2006, 971), // Coolutin, level 132 before
+        new(13, 562, 144, 237160, 1748, 2302, 786, 2145, 990), // Dark Mammoth, level 140 before
+        new(13, 458, 145, 242144, 1886, 2318, 821, 2245, 1001), // Iron Knight, level 142 before
+        new(13, 563, 146, 248096, 1919, 2361, 850, 2444, 1430), // Dark Giant, level 143 before
+        new(13, 564, 147, 254088, 2044, 2394, 860, 2717, 1440), // Dark Coolutin, level 145 before
+        new(13, 565, 148, 265000, 2217, 2601, 865, 11400, 1440), // Dark Iron Knight, level 148 before
     ];
 
     /// <summary>
@@ -301,7 +353,6 @@ internal static class MapLevelLadder
         { 45, 180 }, // Kanturu Ruins 3
         { 46, 240 }, // Karutan 1
         { 47, 250 }, // Karutan 2
-        { 42, 260 }, // Vulcanus
         { 33, 270 }, // Swamp of Calmness
     };
 
@@ -515,6 +566,7 @@ internal static class MapLevelLadder
 
     /// <summary>
     /// Replaces the common drop item groups for random and excellent items on the maps of each zone by the ones of the zone.
+    /// The maps of a zone which drops only jewels lose all their item drops but the money and get the jewels of the zone.
     /// </summary>
     private static void AddZoneDrops(IContext context, GameConfiguration gameConfiguration)
     {
@@ -526,39 +578,130 @@ internal static class MapLevelLadder
             var zone = Zones[i];
             var maps = gameConfiguration.Maps.Where(map => zone.MapNumbers.Contains((byte)map.Number)).ToList();
             var mapNames = string.Join(", ", maps.Where(map => map.Discriminator == 0).Select(map => map.Name.ValueInNeutralLanguage));
-            var groups = new List<DropItemGroup>
+            List<DropItemGroup> groups = zone.Drops switch
             {
-                GetOrCreateZoneGroup(context, gameConfiguration, i, 0, SpecialItemType.ZoneItem, ZoneItemDropChance, $"Items of the zone {mapNames}"),
-                GetOrCreateZoneGroup(context, gameConfiguration, i, 1, SpecialItemType.ZoneExcellentItem, ZoneExcellentItemDropChance, $"Excellent items of the zone {mapNames}"),
+                ZoneDrops.Equipment =>
+                [
+                    GetOrCreateZoneGroup(context, gameConfiguration, i, 0, SpecialItemType.ZoneItem, ZoneItemDropChance, $"Items of the zone {mapNames}"),
+                    GetOrCreateZoneGroup(context, gameConfiguration, i, 1, SpecialItemType.ZoneExcellentItem, ZoneExcellentItemDropChance, $"Excellent items of the zone {mapNames}"),
+                ],
+                ZoneDrops.SocketItems => [GetOrCreateSocketGroup(context, gameConfiguration, i, mapNames)],
+                ZoneDrops.Jewels => [GetOrCreateJewelGroup(context, gameConfiguration, i, mapNames)],
+                _ => [],
             };
-
-            if (zone.DropsSocketItems)
-            {
-                var socketGroup = GetOrCreateZoneGroup(context, gameConfiguration, i, 2, SpecialItemType.ZoneItem, ZoneSocketItemDropChance, $"Socket items of the zone {mapNames}");
-                if (socketGroup.PossibleItems.Count == 0)
-                {
-                    gameConfiguration.Items
-                        .Where(item => item.MaximumSockets > 0 && item.DropsFromMonsters && item.DropLevel <= zone.MaximumLevel)
-                        .ToList()
-                        .ForEach(socketGroup.PossibleItems.Add);
-                }
-
-                groups.Add(socketGroup);
-            }
 
             foreach (var map in maps)
             {
-                foreach (var commonGroup in map.DropItemGroups.Where(g => commonGroupIds.Contains(g.GetId())).ToList())
+                var removedGroups = zone.Drops == ZoneDrops.Jewels
+                    ? map.DropItemGroups.Where(g => g.ItemType != SpecialItemType.Money && !groups.Contains(g))
+                    : map.DropItemGroups.Where(g => commonGroupIds.Contains(g.GetId()));
+                foreach (var group in removedGroups.ToList())
                 {
-                    map.DropItemGroups.Remove(commonGroup);
+                    map.DropItemGroups.Remove(group);
                 }
 
                 foreach (var group in groups.Where(g => !map.DropItemGroups.Contains(g)))
                 {
                     map.DropItemGroups.Add(group);
                 }
+
+                if (zone.Drops == ZoneDrops.Jewels)
+                {
+                    map.ExpMultiplier = JewelZoneExperienceMultiplier;
+                }
             }
         }
+
+        AddSelupanDrop(context, gameConfiguration);
+        ConfigureSocketCounts(context, gameConfiguration);
+    }
+
+    private static DropItemGroup GetOrCreateSocketGroup(IContext context, GameConfiguration gameConfiguration, int zoneIndex, string mapNames)
+    {
+        var zone = Zones[zoneIndex];
+        var group = GetOrCreateZoneGroup(context, gameConfiguration, zoneIndex, 2, SpecialItemType.ZoneItem, ZoneSocketItemDropChance, $"Socket items of the zone {mapNames}");
+        if (group.PossibleItems.Count == 0)
+        {
+            GetSocketItems(gameConfiguration)
+                .Where(item => item.DropLevel <= zone.MaximumLevel)
+                .ToList()
+                .ForEach(group.PossibleItems.Add);
+        }
+
+        return group;
+    }
+
+    private static DropItemGroup GetOrCreateJewelGroup(IContext context, GameConfiguration gameConfiguration, int zoneIndex, string mapNames)
+    {
+        var group = GetOrCreateZoneGroup(context, gameConfiguration, zoneIndex, 3, SpecialItemType.Jewel, ZoneJewelDropChance, $"Jewels of the zone {mapNames}");
+        if (group.PossibleItems.Count == 0)
+        {
+            gameConfiguration.Items
+                .Where(item => ZoneJewels.Contains(((byte)item.Group, item.Number)))
+                .ToList()
+                .ForEach(group.PossibleItems.Add);
+        }
+
+        return group;
+    }
+
+    /// <summary>
+    /// Lets Selupan always drop a socket item. It gets <see cref="SelupanSocketCount"/> sockets by the <see cref="DropSocketCountPlugIn"/>.
+    /// </summary>
+    private static void AddSelupanDrop(IContext context, GameConfiguration gameConfiguration)
+    {
+        if (GetOriginalMonster(gameConfiguration, SelupanNumber) is not { } selupan)
+        {
+            return;
+        }
+
+        var id = GuidHelper.CreateGuid<DropItemGroup>(ZoneDropItemGroupIdNumber, SelupanNumber);
+        if (GetDropItemGroup(gameConfiguration, id) is not { } group)
+        {
+            group = context.CreateNew<DropItemGroup>();
+            group.SetGuid(id);
+            group.Description = "Socket items of Selupan";
+            group.ItemType = SpecialItemType.SocketItem;
+            group.Chance = 1;
+            group.ItemLevel = MaximumZoneItemLevel;
+            GetSocketItems(gameConfiguration).ForEach(group.PossibleItems.Add);
+            gameConfiguration.DropItemGroups.Add(group);
+        }
+
+        if (!selupan.DropItemGroups.Contains(group))
+        {
+            selupan.DropItemGroups.Add(group);
+        }
+    }
+
+    /// <summary>
+    /// Activates the <see cref="DropSocketCountPlugIn"/> with the number of sockets of the zones which drop socket items and of Selupan.
+    /// </summary>
+    private static void ConfigureSocketCounts(IContext context, GameConfiguration gameConfiguration)
+    {
+        var typeId = typeof(DropSocketCountPlugIn).GUID;
+        if (gameConfiguration.PlugInConfigurations.FirstOrDefault(c => c.TypeId == typeId) is not { } plugInConfiguration)
+        {
+            plugInConfiguration = context.CreateNew<PlugInConfiguration>();
+            plugInConfiguration.SetGuid(typeId);
+            plugInConfiguration.TypeId = typeId;
+            gameConfiguration.PlugInConfigurations.Add(plugInConfiguration);
+        }
+
+        var configuration = new DropSocketCountConfiguration();
+        configuration.Rules.Add(new() { MonsterNumber = SelupanNumber, MinimumSockets = SelupanSocketCount, MaximumSockets = SelupanSocketCount });
+        foreach (var mapNumber in Zones.Where(z => z.Drops == ZoneDrops.SocketItems).SelectMany(z => z.MapNumbers))
+        {
+            configuration.Rules.Add(new() { MapNumber = mapNumber, MinimumSockets = 1, MaximumSockets = ZoneMaximumSocketCount });
+        }
+
+        plugInConfiguration.IsActive = true;
+        plugInConfiguration.SetConfiguration(configuration, null);
+    }
+
+    private static List<ItemDefinition> GetSocketItems(GameConfiguration gameConfiguration)
+    {
+        return gameConfiguration.Items.Where(item => item.MaximumSockets > 0 && item.DropsFromMonsters).ToList();
     }
 
     private static DropItemGroup GetOrCreateZoneGroup(IContext context, GameConfiguration gameConfiguration, int zoneIndex, byte kind, SpecialItemType itemType, double chance, string description)

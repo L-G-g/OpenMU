@@ -9,7 +9,7 @@ using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// Puts the hunting maps on a ladder of levels and lets each zone drop only its best sets, see <see cref="MapLevelLadder"/>,
+/// Puts the hunting maps on a ladder of levels and lets each zone drop only its own sets, see <see cref="MapLevelLadder"/>,
 /// and sells the items to enter the events at Lumen the Barmaid instead of dropping them, see <see cref="EventEntryItemShop"/>.
 /// </summary>
 /// <remarks>
@@ -29,7 +29,7 @@ public class MapLevelLadderUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "Gives each hunting map a range of monster levels which doesn't overlap the others, from Lorencia, Noria and Elbeland (1 to 19) up to Raklion (140 to 148), and lets each zone drop only the best set it can give for each class. Swamp of Calmness and Raklion also drop socket items. Monsters which also spawn in other maps (e.g. Devil Square) keep their original level there. The Symbol of Kundun and other level based drops are moved to the new levels. The items to enter Blood Castle, Devil Square, Illusion Temple, Doppelganger and Imperial Guardian don't drop anymore, Lumen the Barmaid sells them (adds Old Scroll +6, Illusion Sorcerer Covenant +6, Mirror of Dimensions and Gaion's Order). Warps are free and the warps and gates require the level of their map on the ladder.";
+    internal const string PlugInDescription = "Gives each hunting map a range of monster levels which doesn't overlap the others, from Lorencia, Noria and Elbeland (1 to 19) up to Raklion (140 to 148), and spreads the sets, weapons and shields of each class over the zones up to Karutan. Vulcanus stays as it is. Swamp of Calmness drops only jewels, more often, and gives double experience. Raklion drops only socket items with up to two sockets, and Selupan always drops one with three sockets. Monsters which also spawn in other maps (e.g. Devil Square) keep their original level there. The Symbol of Kundun and other level based drops are moved to the new levels. The items to enter Blood Castle, Devil Square, Illusion Temple, Doppelganger and Imperial Guardian don't drop anymore, Lumen the Barmaid sells them (adds Old Scroll +6, Illusion Sorcerer Covenant +6, Mirror of Dimensions and Gaion's Order). Warps are free and the warps and gates require the level of their map on the ladder.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;

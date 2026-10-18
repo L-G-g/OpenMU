@@ -1,6 +1,6 @@
 """Rewrites the warp menu (M) of the Season 6 1.04 client for the map level ladder of the server.
 
-- Orders the maps by the ladder (Lorencia, Noria, Elbeland, Devias, ..., Raklion, Arena last).
+- Orders the maps by the ladder (Lorencia, Noria, Elbeland, Devias, ..., Raklion, then Vulcanus and Arena).
 - Sets the minimum levels of the maps which changed on the server.
 - Replaces the zen cost by the danger level of the map (the server doesn't charge zen for warps anymore),
   and renames the "Cost" column to "Danger level".
@@ -23,15 +23,16 @@ TEXT_COST_INDEX = 936
 TEXT_COST = 'Danger level'
 
 # The order of the entries by their index: Lorencia, Noria, Elbeland 1-3, Devias 1-4, Dungeon 1-3, Lost Tower 1-7,
-# Atlans 1-3, Tarkan 1-2, Aida 1-2, Icarus, Kanturu Ruins 1-3, Kanturu Relics, Karutan 1-2, Vulcanus,
-# Swamp of Calmness, Raklion, Arena. Unknown entries keep their relative order after these.
+# Atlans 1-3, Tarkan 1-2, Aida 1-2, Icarus, Kanturu Ruins 1-3, Kanturu Relics, Karutan 1-2,
+# Swamp of Calmness, Raklion, then Vulcanus, which isn't on the ladder, and Arena.
+# Unknown entries keep their relative order after these.
 ORDER = [2, 3, 31, 32, 43, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 18, 19, 20, 11, 12, 13, 21, 22, 25, 27, 23,
-         28, 29, 45, 30, 46, 47, 42, 33, 34, 1]
+         28, 29, 45, 30, 46, 47, 33, 34, 42, 1]
 
 # The minimum levels which changed on the server, by index.
-LEVELS = {28: 180, 29: 180, 45: 180, 46: 240, 47: 250, 42: 260, 33: 270, 34: 280}
+LEVELS = {28: 180, 29: 180, 45: 180, 46: 240, 47: 250, 33: 270, 34: 280}
 
-# The danger level, by index. Entries which aren't listed (e.g. Arena) get 0.
+# The danger level, by index. Entries which aren't listed (e.g. Arena and Vulcanus, which isn't on the ladder) get 0.
 DANGER = {}
 for danger, indexes in enumerate([
         [2, 3, 31, 32, 43],  # Lorencia, Noria, Elbeland
@@ -45,7 +46,6 @@ for danger, indexes in enumerate([
         [28, 29, 45],  # Kanturu Ruins
         [30],  # Kanturu Relics
         [46, 47],  # Karutan
-        [42],  # Vulcanus
         [33],  # Swamp of Calmness
         [34],  # Raklion
 ], start=1):

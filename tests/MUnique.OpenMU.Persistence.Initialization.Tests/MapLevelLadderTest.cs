@@ -8,9 +8,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.Persistence.Initialization.Updates;
 using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.Persistence.InMemory;
+using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// Tests that the season 6 data has the <see cref="MapLevelLadder"/> and the <see cref="EventEntryItemShop"/>,
@@ -22,6 +24,7 @@ internal class MapLevelLadderTest
     private const short SkeletonWarriorNumber = 14;
     private const short CyclopsNumber = 17;
     private const short DevilSquareMapNumber = 9;
+    private const short VulcanusMapNumber = 63;
 
     /// <summary>
     /// Tests that a new season 6 database has the ladder.
@@ -136,12 +139,45 @@ internal class MapLevelLadderTest
                 Assert.That(elite[Stats.Level], Is.EqualTo(original[Stats.Level]), name);
             }
 
-            foreach (var map in gameConfiguration.Maps.Where(map => ladderMapNumbers.Contains((byte)map.Number)))
+            foreach (var zone in MapLevelLadder.Zones)
             {
-                Assert.That(map.DropItemGroups.Where(g => commonGroupIds.Contains(g.GetId())), Is.Empty, map.Name.ValueInNeutralLanguage);
-                Assert.That(map.DropItemGroups.Count(g => g.ItemType == SpecialItemType.ZoneItem && g.PossibleItems.Count == 0), Is.EqualTo(1), map.Name.ValueInNeutralLanguage);
-                Assert.That(map.DropItemGroups.Count(g => g.ItemType == SpecialItemType.ZoneExcellentItem), Is.EqualTo(1), map.Name.ValueInNeutralLanguage);
+                foreach (var map in gameConfiguration.Maps.Where(map => zone.MapNumbers.Contains((byte)map.Number)))
+                {
+                    var name = map.Name.ValueInNeutralLanguage;
+                    Assert.That(map.DropItemGroups.Where(g => commonGroupIds.Contains(g.GetId())), Is.Empty, name);
+                    var equipmentGroupCount = zone.Drops == MapLevelLadder.ZoneDrops.Equipment ? 1 : 0;
+                    Assert.That(map.DropItemGroups.Count(g => g.ItemType == SpecialItemType.ZoneItem && g.PossibleItems.Count == 0), Is.EqualTo(equipmentGroupCount), name);
+                    Assert.That(map.DropItemGroups.Count(g => g.ItemType == SpecialItemType.ZoneExcellentItem), Is.EqualTo(equipmentGroupCount), name);
+                    var socketGroups = map.DropItemGroups.Where(g => g.ItemType == SpecialItemType.ZoneItem && g.PossibleItems.Count > 0).ToList();
+                    Assert.That(socketGroups, Has.Count.EqualTo(zone.Drops == MapLevelLadder.ZoneDrops.SocketItems ? 1 : 0), name);
+                    Assert.That(socketGroups.SelectMany(g => g.PossibleItems).Select(i => i.MaximumSockets), Is.All.GreaterThan(0), name);
+                    if (zone.Drops == MapLevelLadder.ZoneDrops.Jewels)
+                    {
+                        Assert.That(map.DropItemGroups.Select(g => g.ItemType), Is.EquivalentTo(new[] { SpecialItemType.Money, SpecialItemType.Jewel }), name);
+                        Assert.That(map.DropItemGroups.Single(g => g.ItemType == SpecialItemType.Jewel).PossibleItems.Select(i => (i.Group, i.Number)), Is.EquivalentTo(MapLevelLadder.ZoneJewels), name);
+                        Assert.That(map.ExpMultiplier, Is.EqualTo(MapLevelLadder.JewelZoneExperienceMultiplier), name);
+                    }
+                }
             }
+
+            // Vulcanus isn't on the ladder, so it keeps the common drops.
+            var vulcanus = gameConfiguration.Maps.Single(m => m.Number == VulcanusMapNumber);
+            Assert.That(vulcanus.DropItemGroups.Count(g => commonGroupIds.Contains(g.GetId())), Is.EqualTo(2));
+
+            // Selupan always drops a socket item with three sockets.
+            var selupan = MapLevelLadder.GetOriginalMonster(gameConfiguration, MapLevelLadder.SelupanNumber)!;
+            var selupanGroup = selupan.DropItemGroups.Single(g => g.ItemType == SpecialItemType.SocketItem);
+            Assert.That(selupanGroup.Chance, Is.EqualTo(1));
+            Assert.That(selupanGroup.PossibleItems.Select(i => i.MaximumSockets), Is.All.GreaterThan(0));
+            var socketCountPlugIn = gameConfiguration.PlugInConfigurations.Single(c => c.TypeId == typeof(DropSocketCountPlugIn).GUID);
+            Assert.That(socketCountPlugIn.IsActive, Is.True);
+            var rules = socketCountPlugIn.GetConfiguration<DropSocketCountConfiguration>(null)!.Rules;
+            Assert.That(rules.Select(r => (r.MonsterNumber, r.MapNumber, r.MinimumSockets, r.MaximumSockets)), Is.EquivalentTo(new (short?, short?, int, int)[]
+            {
+                (MapLevelLadder.SelupanNumber, null, 3, 3),
+                (null, 57, 1, 2),
+                (null, 58, 1, 2),
+            }));
 
             var symbolOfKundunGroups = gameConfiguration.DropItemGroups
                 .Where(g => g.PossibleItems.Any(i => i is { Group: 14, Number: 29 }))
