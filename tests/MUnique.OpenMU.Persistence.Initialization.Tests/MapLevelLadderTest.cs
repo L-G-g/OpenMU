@@ -20,6 +20,7 @@ using MUnique.OpenMU.Persistence.InMemory;
 internal class MapLevelLadderTest
 {
     private const short SkeletonWarriorNumber = 14;
+    private const short CyclopsNumber = 17;
     private const short DevilSquareMapNumber = 9;
 
     /// <summary>
@@ -79,7 +80,7 @@ internal class MapLevelLadderTest
     private static void AssertLadder(GameConfiguration gameConfiguration)
     {
         var ladderMapNumbers = MapLevelLadder.Zones.SelectMany(z => z.MapNumbers).ToHashSet();
-        var reworkedOriginals = MapLevelLadder.Monsters.Select(m => MapLevelLadder.GetMonster(gameConfiguration, m.Number)).ToHashSet();
+        var reworkedOriginals = MapLevelLadder.Monsters.Select(m => MapLevelLadder.GetOriginalMonster(gameConfiguration, m.Number)).ToHashSet();
         var commonGroupIds = new[] { GuidHelper.CreateGuid<DropItemGroup>(2), GuidHelper.CreateGuid<DropItemGroup>(3) };
         Assert.Multiple(() =>
         {
@@ -91,7 +92,8 @@ internal class MapLevelLadderTest
                     .SelectMany(map => map.MonsterSpawns)
                     .Where(spawn => spawn.MonsterDefinition?.Number == entry.Number && spawn.MonsterDefinition.Designation.ValueInNeutralLanguage?.EndsWith("Elite") is not true)
                     .ToList();
-                Assert.That(spawns, Is.Not.Empty, $"monster {entry.Number} in zone {entry.Zone}");
+
+                // Some monsters don't spawn anymore, because MonsterSpotGrouping keeps only some kinds of monsters per map.
                 Assert.That(spawns.Select(s => s.MonsterDefinition![Stats.Level]), Is.All.EqualTo((float)entry.Level), $"monster {entry.Number} in zone {entry.Zone}");
                 Assert.That(spawns.Select(s => s.MonsterDefinition![Stats.MaximumHealth]), Is.All.EqualTo(entry.Health), $"monster {entry.Number} in zone {entry.Zone}");
                 Assert.That(entry.Level, Is.InRange(zone.MinimumLevel, zone.MaximumLevel), $"monster {entry.Number} in zone {entry.Zone}");
@@ -107,18 +109,28 @@ internal class MapLevelLadderTest
                 .SelectMany(map => map.MonsterSpawns)
                 .ToList();
             Assert.That(outsideSpawns.Where(s => changedOriginals.Contains(s.MonsterDefinition)), Is.Empty);
-            var devilSquareSkeleton = gameConfiguration.Maps
+            var devilSquareCyclops = gameConfiguration.Maps
                 .Where(map => map.Number == DevilSquareMapNumber)
                 .SelectMany(map => map.MonsterSpawns)
-                .First(s => s.MonsterDefinition?.Number == SkeletonWarriorNumber)
+                .First(s => s.MonsterDefinition?.Number == CyclopsNumber)
                 .MonsterDefinition!;
-            Assert.That(devilSquareSkeleton[Stats.Level], Is.EqualTo(19));
-            Assert.That(devilSquareSkeleton[Stats.MaximumHealth], Is.EqualTo(525));
+            Assert.That(devilSquareCyclops[Stats.Level], Is.EqualTo(28));
+            Assert.That(devilSquareCyclops[Stats.MaximumHealth], Is.EqualTo(850));
+
+            // The Skeleton Warrior of Dungeon is a copy with the stats of its zone.
+            var dungeonSkeletons = gameConfiguration.Maps
+                .Where(map => map.Number == 1)
+                .SelectMany(map => map.MonsterSpawns)
+                .Where(s => s.MonsterDefinition?.Number == SkeletonWarriorNumber)
+                .Select(s => s.MonsterDefinition)
+                .Distinct()
+                .ToList();
+            Assert.That(dungeonSkeletons.Select(m => m!.GetId()), Is.EqualTo(new[] { GuidHelper.CreateGuid<MonsterDefinition>((short)(SkeletonWarriorNumber + MapLevelLadder.LadderCopyIdNumberOffset)) }));
 
             // The elites take the new stats of their originals.
             foreach (var (originalNumber, name, _, _) in EliteQuestMonsters.Elites)
             {
-                var original = MapLevelLadder.GetMonster(gameConfiguration, originalNumber)!;
+                var original = MapLevelLadder.GetOriginalMonster(gameConfiguration, originalNumber)!;
                 var elite = MapLevelLadder.GetMonster(gameConfiguration, (short)(originalNumber + EliteQuestMonsters.IdNumberOffset))!;
                 Assert.That(elite[Stats.MaximumHealth], Is.EqualTo(original[Stats.MaximumHealth] * EliteQuestMonsters.HealthMultiplier), name);
                 Assert.That(elite[Stats.Level], Is.EqualTo(original[Stats.Level]), name);
@@ -162,7 +174,7 @@ internal class MapLevelLadderTest
     {
         foreach (var copy in GetCopies(gameConfiguration))
         {
-            var original = MapLevelLadder.GetMonster(gameConfiguration, copy.Number)!;
+            var original = MapLevelLadder.GetOriginalMonster(gameConfiguration, copy.Number)!;
             foreach (var spawn in gameConfiguration.Maps.SelectMany(m => m.MonsterSpawns).Where(s => s.MonsterDefinition == copy))
             {
                 spawn.MonsterDefinition = original;

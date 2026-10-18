@@ -105,8 +105,7 @@ internal static class MapLevelLadder
     /// </summary>
     internal static IReadOnlyList<LadderMonster> Monsters { get; } =
     [
-        // Lorencia
-        new(1, 3, 1, 30, 4, 7, 1, 8, 1), // Spider, level 2 before
+        new(1, 3, 1, 30, 4, 7, 1, 8, 1), // Lorencia: Spider, level 2 before
         new(1, 2, 4, 60, 10, 13, 3, 10, 3), // Budge Dragon, level 4 before
         new(1, 0, 6, 119, 19, 23, 8, 10, 8), // Bull Fighter, level 6 before
         new(1, 1, 9, 188, 31, 36, 12, 13, 12), // Hound, level 9 before
@@ -337,6 +336,24 @@ internal static class MapLevelLadder
     }
 
     /// <summary>
+    /// Gets the original monster of the number, which isn't a copy of <see cref="EliteQuestMonsters"/> or of this class.
+    /// </summary>
+    /// <remarks>
+    /// The ids of the original monsters aren't always derived from their numbers, e.g. the ones of Lorencia have random ids.
+    /// </remarks>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    /// <param name="number">The number of the monster.</param>
+    /// <returns>The monster, if it exists.</returns>
+    internal static MonsterDefinition? GetOriginalMonster(GameConfiguration gameConfiguration, short number)
+    {
+        var copyIds = new[] { EliteQuestMonsters.IdNumberOffset, LadderCopyIdNumberOffset, ClassicCopyIdNumberOffset }
+            .Select(offset => GuidHelper.CreateGuid<MonsterDefinition>((short)(number + offset)))
+            .ToList();
+        var candidates = gameConfiguration.Monsters.Where(m => m.Number == number && !copyIds.Contains(m.GetId())).ToList();
+        return candidates.FirstOrDefault(m => m.GetId() == GuidHelper.CreateGuid<MonsterDefinition>(number)) ?? candidates.FirstOrDefault();
+    }
+
+    /// <summary>
     /// Gets the monster whose id was derived from the number.
     /// </summary>
     /// <param name="gameConfiguration">The game configuration.</param>
@@ -351,7 +368,7 @@ internal static class MapLevelLadder
     private static void ApplyMonster(IContext context, GameConfiguration gameConfiguration, IReadOnlyList<LadderMonster> entries)
     {
         var number = entries[0].Number;
-        if (GetMonster(gameConfiguration, number) is not { } original)
+        if (GetOriginalMonster(gameConfiguration, number) is not { } original)
         {
             return;
         }
@@ -476,7 +493,7 @@ internal static class MapLevelLadder
     {
         foreach (var (originalNumber, _, _, _) in EliteQuestMonsters.Elites)
         {
-            if (GetMonster(gameConfiguration, originalNumber) is not { } original
+            if (GetOriginalMonster(gameConfiguration, originalNumber) is not { } original
                 || GetMonster(gameConfiguration, (short)(originalNumber + EliteQuestMonsters.IdNumberOffset)) is not { } elite)
             {
                 continue;

@@ -258,6 +258,8 @@ public class DropGeneratorTest
         itemDefinition.Object.MaximumDropLevel = maximumDropLevel;
         itemDefinition.Object.Durability = 1;
         itemDefinition.Setup(d => d.PossibleItemOptions).Returns(new List<ItemOptionDefinition>());
+        itemDefinition.Setup(d => d.PossibleItemSetGroups).Returns(new List<ItemSetGroup>());
+        itemDefinition.Setup(d => d.QualifiedCharacters).Returns(new List<CharacterClass>());
         return itemDefinition.Object;
     }
 }

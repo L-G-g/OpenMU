@@ -61,9 +61,10 @@ internal class FixElvenlandMonsterNumbersTest
 
         Assert.Multiple(() =>
         {
-            Assert.That(GetMaximumHealth(gameConfiguration, HideousRabbitNumber), Is.EqualTo(520));
-            Assert.That(GetMaximumHealth(gameConfiguration, WerewolfNumber), Is.EqualTo(720));
-            Assert.That(GetMaximumHealth(gameConfiguration, PollutedButterflyNumber), Is.EqualTo(230));
+            // The health of the monster of the number, which MapLevelLadder sets for Elbeland.
+            Assert.That(GetMaximumHealth(gameConfiguration, HideousRabbitNumber), Is.EqualTo(GetLadderHealth(HideousRabbitNumber)));
+            Assert.That(GetMaximumHealth(gameConfiguration, WerewolfNumber), Is.EqualTo(GetLadderHealth(WerewolfNumber)));
+            Assert.That(GetMaximumHealth(gameConfiguration, PollutedButterflyNumber), Is.EqualTo(GetLadderHealth(PollutedButterflyNumber)));
             Assert.That(gameConfiguration.Monsters.Count(m => m.Number is HideousRabbitNumber or WerewolfNumber or PollutedButterflyNumber), Is.EqualTo(3));
 
             // The butterflies keep their own spawn area (0-251, 128-245), the rabbits and werewolves share theirs (0-128, 0-128).
@@ -96,6 +97,11 @@ internal class FixElvenlandMonsterNumbersTest
         SetNumber(butterfly, 419);
         SetNumber(rabbit, 420);
         SetNumber(werewolf, 421);
+    }
+
+    private static float GetLadderHealth(short number)
+    {
+        return MapLevelLadder.Monsters.Single(m => m.Number == number).Health;
     }
 
     private static void SetNumber(MonsterDefinition monster, short number)

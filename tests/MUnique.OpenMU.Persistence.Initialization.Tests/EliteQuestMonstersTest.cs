@@ -1,4 +1,4 @@
-// <copyright file="EliteQuestMonstersTest.cs" company="MUnique">
+﻿// <copyright file="EliteQuestMonstersTest.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -92,8 +92,8 @@ internal class EliteQuestMonstersTest
                 Assert.That(elite.DropItemGroups.Where(g => g.Chance >= 1).SelectMany(g => g.PossibleItems), Is.EquivalentTo(requiredItems), name);
             }
 
-            // The normal monsters stay as they are.
-            Assert.That(gameConfiguration.Monsters.Count(m => m.Number == 36), Is.EqualTo(2));
+            // The normal monsters stay as they are. The third Shadow is the copy of MapLevelLadder for Devil Square.
+            Assert.That(gameConfiguration.Monsters.Count(m => m.Number == 36), Is.EqualTo(3));
             Assert.That(gameConfiguration.Monsters.Single(m => m.GetId() == GuidHelper.CreateGuid<MonsterDefinition>(36)).DropItemGroups, Is.Empty);
         });
     }
