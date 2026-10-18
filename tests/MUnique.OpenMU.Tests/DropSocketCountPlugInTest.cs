@@ -138,7 +138,7 @@ public class DropSocketCountPlugInTest
         // A unique id, because the attributes of monster definitions are cached by their id.
         var monsterDefinition = new MonsterDefinition { Id = Guid.NewGuid(), Number = number, ObjectKind = NpcObjectKind.Monster };
         monsterDefinition.Attributes.Add(new MonsterAttribute { AttributeDefinition = Stats.MaximumHealth, Value = 100 });
-        var map = await gameContext.GetMapAsync(MapNumber).ConfigureAwait(false);
+        var map = await gameContext.GetMapAsync((ushort)MapNumber).ConfigureAwait(false);
         var spawnArea = new MonsterSpawnArea
         {
             MonsterDefinition = monsterDefinition,
