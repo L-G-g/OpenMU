@@ -234,6 +234,42 @@ public class DropGeneratorTest
     }
 
     /// <summary>
+    /// Tests that a character class drops only its own weapons in a zone, and not a weapon which every class can use.
+    /// </summary>
+    [Test]
+    public async ValueTask TestZoneDropsOnlyOwnWeaponsAsync()
+    {
+        var config = this.GetGameConfig();
+        var wizard = new CharacterClass();
+        var knight = new CharacterClass();
+        var slot = new Mock<ItemSlotType>();
+        slot.Setup(s => s.ItemSlots).Returns(new List<int> { InventoryConstants.LeftHandSlot });
+        var staff = this.CreateEquipment(5, 0, 10, wizard, slot.Object);
+        var sword = this.CreateEquipment(0, 0, 10, knight, slot.Object);
+        var kris = this.CreateEquipment(0, 1, 1, wizard, slot.Object);
+        Mock.Get(kris).Setup(d => d.QualifiedCharacters).Returns(new List<CharacterClass> { wizard, knight });
+        var potion = this.CreateItemDefinition(14, 0, 1);
+        potion.DropsFromMonsters = true;
+        new[] { staff, sword, kris, potion }.ToList().ForEach(config.Items.Add);
+
+        var zoneGroup = this.CreateZoneGroup(1, 19);
+        config.DropItemGroups.Add(zoneGroup);
+
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup);
+
+        var drops = new List<ItemDefinition>();
+        foreach (var index in new[] { 0, 1, 2 })
+        {
+            var generator = new DefaultDropGenerator(config, this.GetRandomizer2(index, 0));
+            var (items, _) = await generator.GenerateItemDropsAsync(this.GetMonster(1, 10), 1, player).ConfigureAwait(false);
+            drops.Add(items.Single().Definition!);
+        }
+
+        Assert.That(drops, Is.EquivalentTo(new[] { staff, sword, potion }));
+    }
+
+    /// <summary>
     /// Tests the drops defined by a player are getting considered.
     /// </summary>
     public void TestItemDropItemByPlayer()

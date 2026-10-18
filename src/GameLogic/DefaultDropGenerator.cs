@@ -47,6 +47,7 @@ public class DefaultDropGenerator : IDropGenerator
     private readonly byte _excellentItemDropLevelDelta;
 
     private IList<byte>? _zoneMaximumLevels;
+    private HashSet<(CharacterClass Family, ItemDefinition Item)>? _ownWeapons;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DefaultDropGenerator" /> class.
@@ -355,7 +356,8 @@ public class DefaultDropGenerator : IDropGenerator
 
     /// <summary>
     /// Gets the kind of a weapon, shield or armor piece. The armor pieces are ranked as sets, the shields on their own,
-    /// and all weapons of a character class together, so that a weapon type with few items doesn't drop in every zone.
+    /// and all own weapons of a character class together (see <see cref="GetOwnWeapons"/>),
+    /// so that a weapon type with few items doesn't drop in every zone.
     /// </summary>
     private static EquipmentKind GetEquipmentKind(ItemDefinition item)
     {
@@ -365,6 +367,20 @@ public class DefaultDropGenerator : IDropGenerator
         }
 
         return item.Group == ShieldGroup ? EquipmentKind.Shield : EquipmentKind.Weapon;
+    }
+
+    /// <summary>
+    /// Gets the family of a character class, which is the class of its highest generation (e.g. the Blade Master for the Dark Knight).
+    /// </summary>
+    private static CharacterClass GetFamily(CharacterClass characterClass)
+    {
+        var family = characterClass;
+        for (var generation = 0; family.NextGenerationClass is { } next && generation < 10; generation++)
+        {
+            family = next;
+        }
+
+        return family;
     }
 
     /// <summary>
@@ -767,9 +783,11 @@ public class DefaultDropGenerator : IDropGenerator
         }
 
         var (zoneIndex, zoneCount) = this.GetZonePosition(maximumLevel);
+        var ownWeapons = this._ownWeapons ??= this.GetOwnWeapons();
         return cache[maximumLevel] = this._droppableItems
             .Where(item => IsEquipment(item) && item.MaximumSockets == 0)
             .SelectMany(item => item.QualifiedCharacters.Select(characterClass => (Class: characterClass, Kind: GetEquipmentKind(item), Item: item)))
+            .Where(entry => entry.Kind != EquipmentKind.Weapon || ownWeapons.Contains((GetFamily(entry.Class), entry.Item)))
             .GroupBy(entry => (entry.Class, entry.Kind), entry => entry.Item)
             .Select(classKind => (classKind.Key.Kind, Ranks: GetRanks(classKind)))
             .GroupBy(entry => entry.Kind, entry => entry.Ranks)
@@ -779,6 +797,36 @@ public class DefaultDropGenerator : IDropGenerator
             .Where(item => !isExcellent || HasExcellentOptions(item))
             .Distinct()
             .ToList();
+    }
+
+    /// <summary>
+    /// Gets the weapons which belong to each family of character classes (e.g. the Dark Knight, Blade Knight and Blade Master),
+    /// so that each class drops only its own weapons in the zones: the ones of the item groups in which the family has
+    /// weapons which only it can use (e.g. the staffs of the Dark Wizard), without the weapons which every family can use.
+    /// A family without such weapons gets all weapons which it can use.
+    /// </summary>
+    private HashSet<(CharacterClass Family, ItemDefinition Item)> GetOwnWeapons()
+    {
+        var weapons = this._droppableItems
+            .Where(item => IsEquipment(item) && item.MaximumSockets == 0 && GetEquipmentKind(item) == EquipmentKind.Weapon)
+            .Select(item => (Item: item, Families: item.QualifiedCharacters.Select(GetFamily).ToHashSet()))
+            .ToList();
+        var familyCount = weapons.SelectMany(weapon => weapon.Families).Distinct().Count();
+        var result = new HashSet<(CharacterClass Family, ItemDefinition Item)>();
+        foreach (var family in weapons.SelectMany(weapon => weapon.Families).Distinct())
+        {
+            var usable = weapons.Where(weapon => weapon.Families.Contains(family)).ToList();
+            var ownGroups = usable.Where(weapon => weapon.Families.Count == 1).Select(weapon => weapon.Item.Group).ToHashSet();
+            var own = usable
+                .Where(weapon => ownGroups.Contains(weapon.Item.Group) && (familyCount == 1 || weapon.Families.Count < familyCount))
+                .ToList();
+            foreach (var weapon in own.Count > 0 ? own : usable)
+            {
+                result.Add((family, weapon.Item));
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
