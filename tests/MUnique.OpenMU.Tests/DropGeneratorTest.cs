@@ -270,6 +270,42 @@ public class DropGeneratorTest
     }
 
     /// <summary>
+    /// Tests that the own weapons of a character class start to drop in the zone of their drop level,
+    /// and that the zones before drop the weaker weapons which the class shares with other classes.
+    /// </summary>
+    [Test]
+    public async ValueTask TestZoneOwnWeaponsStartAtTheirDropLevelAsync()
+    {
+        var config = this.GetGameConfig();
+        var fighter = new CharacterClass();
+        var lord = new CharacterClass();
+        var slot = new Mock<ItemSlotType>();
+        slot.Setup(s => s.ItemSlots).Returns(new List<int> { InventoryConstants.LeftHandSlot });
+        var glove = this.CreateEquipment(0, 0, 25, fighter, slot.Object);
+        var scepter = this.CreateEquipment(2, 0, 5, lord, slot.Object);
+        var mace = this.CreateEquipment(2, 1, 5, fighter, slot.Object);
+        Mock.Get(mace).Setup(d => d.QualifiedCharacters).Returns(new List<CharacterClass> { fighter, lord });
+        new[] { glove, scepter, mace }.ToList().ForEach(config.Items.Add);
+
+        var zoneGroup = this.CreateZoneGroup(1, 19);
+        config.DropItemGroups.Add(zoneGroup);
+        config.DropItemGroups.Add(this.CreateZoneGroup(20, 29));
+
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup);
+
+        var drops = new List<ItemDefinition>();
+        foreach (var index in new[] { 0, 1 })
+        {
+            var generator = new DefaultDropGenerator(config, this.GetRandomizer2(index, 0));
+            var (items, _) = await generator.GenerateItemDropsAsync(this.GetMonster(1, 10), 1, player).ConfigureAwait(false);
+            drops.Add(items.Single().Definition!);
+        }
+
+        Assert.That(drops, Is.EquivalentTo(new[] { scepter, mace }));
+    }
+
+    /// <summary>
     /// Tests the drops defined by a player are getting considered.
     /// </summary>
     public void TestItemDropItemByPlayer()

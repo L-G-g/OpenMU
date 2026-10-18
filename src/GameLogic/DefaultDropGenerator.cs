@@ -86,9 +86,15 @@ public class DefaultDropGenerator : IDropGenerator
         Shield,
 
         /// <summary>
-        /// The weapons.
+        /// The own weapons of a family of character classes (see <see cref="GetOwnWeapons"/>).
         /// </summary>
         Weapon,
+
+        /// <summary>
+        /// The weapons which a family of character classes can use, but which aren't its own.
+        /// They drop only in the zones before the ones of its own weapons.
+        /// </summary>
+        SharedWeapon,
     }
 
     /// <inheritdoc/>
@@ -370,6 +376,15 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
+    /// Gets the kind of a weapon, shield or armor piece for a family of character classes.
+    /// </summary>
+    private static EquipmentKind GetEquipmentKind(ItemDefinition item, CharacterClass family, HashSet<(CharacterClass Family, ItemDefinition Item)> ownWeapons)
+    {
+        var kind = GetEquipmentKind(item);
+        return kind == EquipmentKind.Weapon && !ownWeapons.Contains((family, item)) ? EquipmentKind.SharedWeapon : kind;
+    }
+
+    /// <summary>
     /// Gets the family of a character class, which is the class of its highest generation (e.g. the Blade Master for the Dark Knight).
     /// </summary>
     private static CharacterClass GetFamily(CharacterClass characterClass)
@@ -399,21 +414,15 @@ public class DefaultDropGenerator : IDropGenerator
     {
         return items
             .GroupBy(GetRankKey)
-            .OrderBy(rank => rank.FirstOrDefault(item => item.ItemSlot?.ItemSlots.Contains(InventoryConstants.ArmorSlot) ?? false)?.DropLevel
-                             ?? rank.Min(item => item.DropLevel))
+            .OrderBy(GetRankLevel)
             .ThenBy(rank => rank.Key)
             .ToList();
     }
 
-    /// <summary>
-    /// Removes the ranks of character classes whose items are all part of the ranks of another class of the same kind,
-    /// e.g. the ones of a class whose higher rank (like the Soul Master of the Dark Wizard) can use more items.
-    /// Otherwise, a zone would drop two different sets for the same kind of character.
-    /// </summary>
-    private static IEnumerable<List<IGrouping<int, ItemDefinition>>> WithoutContainedRanks(IList<List<IGrouping<int, ItemDefinition>>> ranksOfClasses)
+    private static int GetRankLevel(IGrouping<int, ItemDefinition> rank)
     {
-        return ranksOfClasses.Where(ranks => !ranksOfClasses.Any(other =>
-            other.Count > ranks.Count && ranks.All(rank => other.Any(otherRank => otherRank.Key == rank.Key))));
+        return rank.FirstOrDefault(item => item.ItemSlot?.ItemSlots.Contains(InventoryConstants.ArmorSlot) ?? false)?.DropLevel
+               ?? rank.Min(item => item.DropLevel);
     }
 
     /// <summary>
@@ -437,6 +446,36 @@ public class DefaultDropGenerator : IDropGenerator
 
         var index = zoneCount > 1 ? DivideRounded(zoneIndex * (ranks.Count - 1), zoneCount - 1) : ranks.Count - 1;
         return [ranks[index]];
+    }
+
+    /// <summary>
+    /// Gets the ranks which the zone with the specified index drops for a kind of equipment of a family of character classes.
+    /// The own weapons of a family start in the first zone whose maximum level reaches the drop level of its weakest one,
+    /// and the zones before drop the weaker weapons which it shares with other families. This way, a family with few own
+    /// weapons (e.g. the gloves of the Rage Fighter) doesn't drop a strong weapon in the first zones.
+    /// </summary>
+    private static IEnumerable<IGrouping<int, ItemDefinition>> GetZoneRanks(
+        EquipmentKind kind,
+        List<IGrouping<int, ItemDefinition>> ranks,
+        List<IGrouping<int, ItemDefinition>>? sharedWeapons,
+        IList<byte> zoneMaximumLevels,
+        int zoneIndex)
+    {
+        var zoneCount = zoneMaximumLevels.Count;
+        if (kind == EquipmentKind.Weapon && sharedWeapons is not null)
+        {
+            var firstLevel = GetRankLevel(ranks[0]);
+            var start = zoneMaximumLevels.Count(level => level < firstLevel);
+            var weaker = sharedWeapons.Where(rank => GetRankLevel(rank) < firstLevel).ToList();
+            if (start > 0 && start < zoneCount && weaker.Count > 0)
+            {
+                return zoneIndex < start
+                    ? GetZoneRanks(kind, weaker, zoneIndex, start)
+                    : GetZoneRanks(kind, ranks, zoneIndex - start, zoneCount - start);
+            }
+        }
+
+        return GetZoneRanks(kind, ranks, zoneIndex, zoneCount);
     }
 
     private static int DivideRounded(int dividend, int divisor)
@@ -768,9 +807,9 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
-    /// Gets the weapons, shields and armor pieces which a zone drops. For each character class and each kind of item
-    /// (armor sets, shields and weapons), the items are ordered by their drop level and spread evenly over the zones,
-    /// which are ordered by their maximum level (see <see cref="GetZoneRanks"/>).
+    /// Gets the weapons, shields and armor pieces which a zone drops. For each family of character classes (see <see cref="GetFamily"/>)
+    /// and each kind of item (armor sets, shields and own weapons), the items are ordered by their drop level and spread evenly
+    /// over the zones, which are ordered by their maximum level.
     /// The pieces of an armor set are ranked together by the drop level of its armor, so they drop in the same zone.
     /// Socket items are not included, they can be added to a zone with a group which has them as possible items.
     /// </summary>
@@ -782,17 +821,23 @@ public class DefaultDropGenerator : IDropGenerator
             return cached;
         }
 
-        var (zoneIndex, zoneCount) = this.GetZonePosition(maximumLevel);
+        var zoneMaximumLevels = this.GetZoneMaximumLevels(maximumLevel);
+        var zoneIndex = zoneMaximumLevels.IndexOf(maximumLevel);
         var ownWeapons = this._ownWeapons ??= this.GetOwnWeapons();
-        return cache[maximumLevel] = this._droppableItems
+        var ranksOfFamilies = this._droppableItems
             .Where(item => IsEquipment(item) && item.MaximumSockets == 0)
-            .SelectMany(item => item.QualifiedCharacters.Select(characterClass => (Class: characterClass, Kind: GetEquipmentKind(item), Item: item)))
-            .Where(entry => entry.Kind != EquipmentKind.Weapon || ownWeapons.Contains((GetFamily(entry.Class), entry.Item)))
-            .GroupBy(entry => (entry.Class, entry.Kind), entry => entry.Item)
-            .Select(classKind => (classKind.Key.Kind, Ranks: GetRanks(classKind)))
-            .GroupBy(entry => entry.Kind, entry => entry.Ranks)
-            .SelectMany(kind => WithoutContainedRanks(kind.ToList()).Select(ranks => (kind.Key, Ranks: ranks)))
-            .SelectMany(entry => GetZoneRanks(entry.Key, entry.Ranks, zoneIndex, zoneCount))
+            .SelectMany(item => item.QualifiedCharacters.Select(GetFamily).Distinct()
+                .Select(family => (Family: family, Kind: GetEquipmentKind(item, family, ownWeapons), Item: item)))
+            .GroupBy(entry => (entry.Family, entry.Kind), entry => entry.Item)
+            .ToDictionary(familyKind => familyKind.Key, GetRanks);
+        return cache[maximumLevel] = ranksOfFamilies
+            .Where(entry => entry.Key.Kind != EquipmentKind.SharedWeapon)
+            .SelectMany(entry => GetZoneRanks(
+                entry.Key.Kind,
+                entry.Value,
+                ranksOfFamilies.GetValueOrDefault((entry.Key.Family, EquipmentKind.SharedWeapon)),
+                zoneMaximumLevels,
+                zoneIndex))
             .SelectMany(rank => rank)
             .Where(item => !isExcellent || HasExcellentOptions(item))
             .Distinct()
@@ -830,11 +875,10 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
-    /// Gets the index of the zone with the specified maximum level, and the number of zones.
-    /// The zones are the ones of all <see cref="SpecialItemType.ZoneItem"/> and <see cref="SpecialItemType.ZoneExcellentItem"/>
-    /// groups without possible items, ordered by their maximum level.
+    /// Gets the maximum levels of all zones in ascending order, including the specified one. The zones are the ones of all
+    /// <see cref="SpecialItemType.ZoneItem"/> and <see cref="SpecialItemType.ZoneExcellentItem"/> groups without possible items.
     /// </summary>
-    private (int Index, int Count) GetZonePosition(byte maximumLevel)
+    private IList<byte> GetZoneMaximumLevels(byte maximumLevel)
     {
         this._zoneMaximumLevels ??= this._dropItemGroups
             .Where(group => group.ItemType is SpecialItemType.ZoneItem or SpecialItemType.ZoneExcellentItem && group.PossibleItems.Count == 0)
@@ -842,9 +886,9 @@ public class DefaultDropGenerator : IDropGenerator
             .Distinct()
             .Order()
             .ToList();
-        var index = this._zoneMaximumLevels.Count(level => level < maximumLevel);
-        var count = this._zoneMaximumLevels.Count + (this._zoneMaximumLevels.Contains(maximumLevel) ? 0 : 1);
-        return (index, count);
+        return this._zoneMaximumLevels.Contains(maximumLevel)
+            ? this._zoneMaximumLevels
+            : this._zoneMaximumLevels.Append(maximumLevel).Order().ToList();
     }
 
     /// <summary>
