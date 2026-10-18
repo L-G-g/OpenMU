@@ -34,6 +34,7 @@ public class DefaultDropGenerator : IDropGenerator
     private readonly IRandomizer _randomizer;
     private readonly IList<ItemDefinition> _ancientItems;
     private readonly IList<ItemDefinition> _droppableItems;
+    private readonly ICollection<DropItemGroup> _dropItemGroups;
     private readonly IList<ItemDefinition>?[] _droppableItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
     private readonly IList<ItemDefinition>?[] _droppableSocketItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
     private readonly IList<ItemDefinition>?[] _zoneEquipmentPerMaximumLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
@@ -43,6 +44,8 @@ public class DefaultDropGenerator : IDropGenerator
 
     private readonly byte _maxItemOptionLevelDrop;
     private readonly byte _excellentItemDropLevelDelta;
+
+    private IList<byte>? _zoneMaximumLevels;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DefaultDropGenerator" /> class.
@@ -57,6 +60,7 @@ public class DefaultDropGenerator : IDropGenerator
             ? config.MaximumItemOptionLevelDrop
             : DefaultMaxItemOptionLevelDrop;
         this._droppableItems = config.Items.Where(i => i.DropsFromMonsters).ToList();
+        this._dropItemGroups = config.DropItemGroups;
         this._ancientItems = this._droppableItems.Where(
             i => i.PossibleItemSetGroups.Any(
                 g => g.Options?.PossibleOptions.Any(
@@ -320,6 +324,54 @@ public class DefaultDropGenerator : IDropGenerator
     private static bool HasExcellentOptions(ItemDefinition item)
     {
         return item.PossibleItemOptions.Any(o => o.PossibleOptions.Any(p => object.Equals(p.OptionType, ItemOptionTypes.Excellent)));
+    }
+
+    private static bool IsArmorPiece(ItemDefinition item)
+    {
+        return item.ItemSlot?.ItemSlots.Any(slot => slot >= InventoryConstants.HelmSlot && slot <= InventoryConstants.BootsSlot) ?? false;
+    }
+
+    /// <summary>
+    /// Gets the kind of a weapon, shield or armor piece: all armor pieces are of the same kind, because they're ranked as sets.
+    /// </summary>
+    private static (int Group, ItemSlotType? Slot) GetEquipmentKind(ItemDefinition item)
+    {
+        return IsArmorPiece(item) ? (-1, null) : (item.Group, item.ItemSlot);
+    }
+
+    /// <summary>
+    /// Gets the ranks of the items of one kind, from the weakest to the strongest. A rank contains the items with the same number,
+    /// which are the pieces of an armor set, and is ordered by the drop level of the armor, or of its lowest piece.
+    /// </summary>
+    private static List<IGrouping<short, ItemDefinition>> GetRanks(IEnumerable<ItemDefinition> items)
+    {
+        return items
+            .GroupBy(item => item.Number)
+            .OrderBy(rank => rank.FirstOrDefault(item => item.ItemSlot?.ItemSlots.Contains(InventoryConstants.ArmorSlot) ?? false)?.DropLevel
+                             ?? rank.Min(item => item.DropLevel))
+            .ThenBy(rank => rank.Key)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Removes the ranks of character classes whose items are all part of the ranks of another class of the same kind,
+    /// e.g. the ones of a class whose higher rank (like the Soul Master of the Dark Wizard) can use more items.
+    /// Otherwise, a zone would drop two different sets for the same kind of character.
+    /// </summary>
+    private static IEnumerable<List<IGrouping<short, ItemDefinition>>> WithoutContainedRanks(IList<List<IGrouping<short, ItemDefinition>>> ranksOfClasses)
+    {
+        return ranksOfClasses.Where(ranks => !ranksOfClasses.Any(other =>
+            other.Count > ranks.Count && ranks.All(rank => other.Any(otherRank => otherRank.Key == rank.Key))));
+    }
+
+    /// <summary>
+    /// Gets the ranks which the zone with the specified index drops, when the ranks are spread evenly over all zones.
+    /// </summary>
+    private static IEnumerable<IGrouping<short, ItemDefinition>> GetZoneRanks(List<IGrouping<short, ItemDefinition>> ranks, int zoneIndex, int zoneCount)
+    {
+        var first = ((zoneIndex * ranks.Count) + zoneCount - 1) / zoneCount;
+        var end = (((zoneIndex + 1) * ranks.Count) + zoneCount - 1) / zoneCount;
+        return end > first ? ranks.GetRange(first, end - first) : [ranks[zoneIndex * ranks.Count / zoneCount]];
     }
 
     private (IList<Item>? Items, uint Money) GenerateDrops(MonsterDefinition monster, int gainedExperience)
@@ -646,27 +698,53 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
-    /// Gets the weapons, shields and armor pieces which a zone drops: for each character class and each kind of item
-    /// (its group and slot type, e.g. bows and crossbows are different kinds), the items with the highest drop level which
-    /// isn't above the maximum level of the zone. If a class has no item of a kind up to this level, it's the item
-    /// with the lowest drop level.
+    /// Gets the weapons, shields and armor pieces which a zone drops. For each character class and each kind of item
+    /// (armor sets, or a group and slot type of weapons, e.g. bows and crossbows are different kinds), the items are ordered
+    /// by their drop level and spread evenly over the zones, which are ordered by their maximum level.
+    /// The pieces of an armor set are ranked together by the drop level of its armor, so they drop in the same zone.
+    /// If a class has more items of a kind than there are zones, a zone drops several of them; if it has less,
+    /// neighboring zones drop the same one.
     /// Socket items are not included, they can be added to a zone with a group which has them as possible items.
     /// </summary>
     private IList<ItemDefinition> GetZoneEquipment(byte maximumLevel, bool isExcellent)
     {
         var cache = isExcellent ? this._zoneExcellentEquipmentPerMaximumLevel : this._zoneEquipmentPerMaximumLevel;
-        return cache[maximumLevel] ??= this._droppableItems
-            .Where(item => IsEquipment(item) && item.MaximumSockets == 0 && (!isExcellent || HasExcellentOptions(item)))
-            .SelectMany(item => item.QualifiedCharacters.Select(characterClass => (Kind: (characterClass, item.Group, item.ItemSlot), Item: item)))
-            .GroupBy(entry => entry.Kind, entry => entry.Item)
-            .SelectMany(kind =>
-            {
-                var possible = kind.Where(item => item.DropLevel <= maximumLevel).ToList();
-                var dropLevel = possible.Count > 0 ? possible.Max(item => item.DropLevel) : kind.Min(item => item.DropLevel);
-                return kind.Where(item => item.DropLevel == dropLevel);
-            })
+        if (cache[maximumLevel] is { } cached)
+        {
+            return cached;
+        }
+
+        var (zoneIndex, zoneCount) = this.GetZonePosition(maximumLevel);
+        return cache[maximumLevel] = this._droppableItems
+            .Where(item => IsEquipment(item) && item.MaximumSockets == 0)
+            .SelectMany(item => item.QualifiedCharacters.Select(characterClass => (Class: characterClass, Kind: GetEquipmentKind(item), Item: item)))
+            .GroupBy(entry => (entry.Class, entry.Kind), entry => entry.Item)
+            .Select(classKind => (classKind.Key.Kind, Ranks: GetRanks(classKind)))
+            .GroupBy(entry => entry.Kind, entry => entry.Ranks)
+            .SelectMany(kind => WithoutContainedRanks(kind.ToList()))
+            .SelectMany(ranks => GetZoneRanks(ranks, zoneIndex, zoneCount))
+            .SelectMany(rank => rank)
+            .Where(item => !isExcellent || HasExcellentOptions(item))
             .Distinct()
             .ToList();
+    }
+
+    /// <summary>
+    /// Gets the index of the zone with the specified maximum level, and the number of zones.
+    /// The zones are the ones of all <see cref="SpecialItemType.ZoneItem"/> and <see cref="SpecialItemType.ZoneExcellentItem"/>
+    /// groups without possible items, ordered by their maximum level.
+    /// </summary>
+    private (int Index, int Count) GetZonePosition(byte maximumLevel)
+    {
+        this._zoneMaximumLevels ??= this._dropItemGroups
+            .Where(group => group.ItemType is SpecialItemType.ZoneItem or SpecialItemType.ZoneExcellentItem && group.PossibleItems.Count == 0)
+            .Select(group => group.MaximumMonsterLevel ?? byte.MaxValue)
+            .Distinct()
+            .Order()
+            .ToList();
+        var index = this._zoneMaximumLevels.Count(level => level < maximumLevel);
+        var count = this._zoneMaximumLevels.Count + (this._zoneMaximumLevels.Contains(maximumLevel) ? 0 : 1);
+        return (index, count);
     }
 
     /// <summary>

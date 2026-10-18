@@ -13,7 +13,7 @@ using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix.Maps;
 
 /// <summary>
 /// Puts the hunting maps on a ladder of levels which don't overlap, and lets each zone of the ladder drop only
-/// the best sets it can give.
+/// its own sets.
 /// </summary>
 /// <remarks>
 /// This is a custom feature. In the original game the monster levels of the maps overlap a lot (e.g. the monsters of Elbeland
@@ -26,8 +26,8 @@ using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix.Maps;
 ///   <item>A monster which also spawns outside the zone of its entry (e.g. in Devil Square) spawns there as a copy
 ///         with its original level and stats. The Skeleton Warrior spawns in Lorencia and Dungeon, so Dungeon gets a copy
 ///         with the stats of its own zone.</item>
-///   <item>Each zone drops, for each character class and kind of item, only the best set it can give
-///         (see <see cref="SpecialItemType.ZoneItem"/>). Swamp of Calmness and Raklion also drop the socket items.</item>
+///   <item>The sets and weapons of each character class are spread over the zones by rank, so each zone drops
+///         its own sets (see <see cref="SpecialItemType.ZoneItem"/>). Swamp of Calmness and Raklion also drop the socket items.</item>
 ///   <item>The drops which depend on the monster level (e.g. the Symbol of Kundun) are moved to the new levels.</item>
 ///   <item>The warps and gates require the level of the place of their map on the ladder, and the warps are free.</item>
 /// </list>

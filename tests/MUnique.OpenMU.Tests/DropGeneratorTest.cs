@@ -132,17 +132,14 @@ public class DropGeneratorTest
         potion.DropsFromMonsters = true;
         config.Items.Add(potion);
 
-        var zoneGroup = new Mock<DropItemGroup>();
-        zoneGroup.SetupAllProperties();
-        zoneGroup.Object.Chance = 1.0;
-        zoneGroup.Object.ItemType = SpecialItemType.ZoneItem;
-        zoneGroup.Object.MinimumMonsterLevel = 20;
-        zoneGroup.Object.MaximumMonsterLevel = 29;
-        zoneGroup.Object.ItemLevel = 3;
-        zoneGroup.Setup(g => g.PossibleItems).Returns(new List<ItemDefinition>());
+        // The three swords are spread over the three zones, so the second zone drops the second sword.
+        var zoneGroup = this.CreateZoneGroup(20, 29);
+        config.DropItemGroups.Add(this.CreateZoneGroup(1, 19));
+        config.DropItemGroups.Add(zoneGroup);
+        config.DropItemGroups.Add(this.CreateZoneGroup(30, 39));
 
         var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
-        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup.Object);
+        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup);
 
         // The first possible item is the sword of the zone, the second one is the potion.
         var swordGenerator = new DefaultDropGenerator(config, this.GetRandomizer(0));
@@ -157,6 +154,43 @@ public class DropGeneratorTest
             Assert.That(sword.Level, Is.EqualTo(expectedItemLevel));
             Assert.That(potionDrops.Single().Definition, Is.EqualTo(potion));
         });
+    }
+
+    /// <summary>
+    /// Tests that the pieces of an armor set drop in the same zone, which is given by the drop level of the armor,
+    /// even if other pieces of the set have a higher drop level than the ones of the next set.
+    /// </summary>
+    [Test]
+    public async ValueTask TestZoneArmorSetDropAsync()
+    {
+        var config = this.GetGameConfig();
+        var characterClass = new CharacterClass();
+        var armorSlot = new Mock<ItemSlotType>();
+        armorSlot.Setup(s => s.ItemSlots).Returns(new List<int> { InventoryConstants.ArmorSlot });
+        var glovesSlot = new Mock<ItemSlotType>();
+        glovesSlot.Setup(s => s.ItemSlots).Returns(new List<int> { InventoryConstants.GlovesSlot });
+        var firstArmor = this.CreateEquipment(8, 0, 5, characterClass, armorSlot.Object);
+        var firstGloves = this.CreateEquipment(10, 0, 25, characterClass, glovesSlot.Object);
+        var secondArmor = this.CreateEquipment(8, 1, 15, characterClass, armorSlot.Object);
+        var secondGloves = this.CreateEquipment(10, 1, 12, characterClass, glovesSlot.Object);
+        new[] { firstArmor, firstGloves, secondArmor, secondGloves }.ToList().ForEach(config.Items.Add);
+
+        var zoneGroup = this.CreateZoneGroup(1, 19);
+        config.DropItemGroups.Add(zoneGroup);
+        config.DropItemGroups.Add(this.CreateZoneGroup(20, 29));
+
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup);
+
+        var drops = new List<ItemDefinition>();
+        foreach (var index in new[] { 0, 1 })
+        {
+            var generator = new DefaultDropGenerator(config, this.GetRandomizer(index));
+            var (items, _) = await generator.GenerateItemDropsAsync(this.GetMonster(1, 10), 1, player).ConfigureAwait(false);
+            drops.Add(items.Single().Definition!);
+        }
+
+        Assert.That(drops, Is.EquivalentTo(new[] { firstArmor, firstGloves }));
     }
 
     /// <summary>
@@ -225,7 +259,21 @@ public class DropGeneratorTest
     {
         var gameConfiguration = new Mock<GameConfiguration>();
         gameConfiguration.Setup(c => c.Items).Returns(new List<ItemDefinition>());
+        gameConfiguration.Setup(c => c.DropItemGroups).Returns(new List<DropItemGroup>());
         return gameConfiguration.Object;
+    }
+
+    private DropItemGroup CreateZoneGroup(byte minimumLevel, byte maximumLevel)
+    {
+        var zoneGroup = new Mock<DropItemGroup>();
+        zoneGroup.SetupAllProperties();
+        zoneGroup.Object.Chance = 1.0;
+        zoneGroup.Object.ItemType = SpecialItemType.ZoneItem;
+        zoneGroup.Object.MinimumMonsterLevel = minimumLevel;
+        zoneGroup.Object.MaximumMonsterLevel = maximumLevel;
+        zoneGroup.Object.ItemLevel = 3;
+        zoneGroup.Setup(g => g.PossibleItems).Returns(new List<ItemDefinition>());
+        return zoneGroup.Object;
     }
 
     private DropItemGroup CreateDropItemGroup(double chance, ItemDefinition item)
