@@ -23,6 +23,7 @@ public class DefaultDropGenerator : IDropGenerator
     private const byte DefaultMaxItemOptionLevelDrop = 3;
     private const byte MinItemOptionLevelDrop = 1;
     private const byte MaxItemOptionLevelDrop = 4;
+    private const byte ShieldGroup = 6;
 
     /// <summary>
     /// A re-usable list of drop item groups.
@@ -66,6 +67,27 @@ public class DefaultDropGenerator : IDropGenerator
                 g => g.Options?.PossibleOptions.Any(
                     o => object.Equals(o.OptionType, ItemOptionTypes.AncientOption)) ?? false))
             .ToList();
+    }
+
+    /// <summary>
+    /// The kinds of equipment which are ranked separately for the zone drops.
+    /// </summary>
+    private enum EquipmentKind
+    {
+        /// <summary>
+        /// The pieces of the armor sets.
+        /// </summary>
+        ArmorSet,
+
+        /// <summary>
+        /// The shields.
+        /// </summary>
+        Shield,
+
+        /// <summary>
+        /// The weapons.
+        /// </summary>
+        Weapon,
     }
 
     /// <inheritdoc/>
@@ -332,21 +354,35 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
-    /// Gets the kind of a weapon, shield or armor piece: all armor pieces are of the same kind, because they're ranked as sets.
+    /// Gets the kind of a weapon, shield or armor piece. The armor pieces are ranked as sets, the shields on their own,
+    /// and all weapons of a character class together, so that a weapon type with few items doesn't drop in every zone.
     /// </summary>
-    private static (int Group, ItemSlotType? Slot) GetEquipmentKind(ItemDefinition item)
+    private static EquipmentKind GetEquipmentKind(ItemDefinition item)
     {
-        return IsArmorPiece(item) ? (-1, null) : (item.Group, item.ItemSlot);
+        if (IsArmorPiece(item))
+        {
+            return EquipmentKind.ArmorSet;
+        }
+
+        return item.Group == ShieldGroup ? EquipmentKind.Shield : EquipmentKind.Weapon;
+    }
+
+    /// <summary>
+    /// Gets the key of the rank of an item: the pieces of an armor set share their number, the other items are ranked alone.
+    /// </summary>
+    private static int GetRankKey(ItemDefinition item)
+    {
+        return IsArmorPiece(item) ? item.Number : (item.Group << 9) + item.Number;
     }
 
     /// <summary>
     /// Gets the ranks of the items of one kind, from the weakest to the strongest. A rank contains the items with the same number,
     /// which are the pieces of an armor set, and is ordered by the drop level of the armor, or of its lowest piece.
     /// </summary>
-    private static List<IGrouping<short, ItemDefinition>> GetRanks(IEnumerable<ItemDefinition> items)
+    private static List<IGrouping<int, ItemDefinition>> GetRanks(IEnumerable<ItemDefinition> items)
     {
         return items
-            .GroupBy(item => item.Number)
+            .GroupBy(GetRankKey)
             .OrderBy(rank => rank.FirstOrDefault(item => item.ItemSlot?.ItemSlots.Contains(InventoryConstants.ArmorSlot) ?? false)?.DropLevel
                              ?? rank.Min(item => item.DropLevel))
             .ThenBy(rank => rank.Key)
@@ -358,20 +394,38 @@ public class DefaultDropGenerator : IDropGenerator
     /// e.g. the ones of a class whose higher rank (like the Soul Master of the Dark Wizard) can use more items.
     /// Otherwise, a zone would drop two different sets for the same kind of character.
     /// </summary>
-    private static IEnumerable<List<IGrouping<short, ItemDefinition>>> WithoutContainedRanks(IList<List<IGrouping<short, ItemDefinition>>> ranksOfClasses)
+    private static IEnumerable<List<IGrouping<int, ItemDefinition>>> WithoutContainedRanks(IList<List<IGrouping<int, ItemDefinition>>> ranksOfClasses)
     {
         return ranksOfClasses.Where(ranks => !ranksOfClasses.Any(other =>
             other.Count > ranks.Count && ranks.All(rank => other.Any(otherRank => otherRank.Key == rank.Key))));
     }
 
     /// <summary>
-    /// Gets the ranks which the zone with the specified index drops, when the ranks are spread evenly over all zones.
+    /// Gets the ranks which the zone with the specified index drops, when the ranks are spread evenly over all zones,
+    /// from the weakest one in the first zone to the strongest one in the last zone.
+    /// An armor set kind gives exactly one set per zone; if there are more sets than zones, some are skipped,
+    /// and if there are less, neighboring zones drop the same set. The weapons and shields are split into
+    /// consecutive parts, one per zone, or one item per zone if there are less items than zones.
     /// </summary>
-    private static IEnumerable<IGrouping<short, ItemDefinition>> GetZoneRanks(List<IGrouping<short, ItemDefinition>> ranks, int zoneIndex, int zoneCount)
+    private static IEnumerable<IGrouping<int, ItemDefinition>> GetZoneRanks(EquipmentKind kind, List<IGrouping<int, ItemDefinition>> ranks, int zoneIndex, int zoneCount)
     {
-        var first = ((zoneIndex * ranks.Count) + zoneCount - 1) / zoneCount;
-        var end = (((zoneIndex + 1) * ranks.Count) + zoneCount - 1) / zoneCount;
-        return end > first ? ranks.GetRange(first, end - first) : [ranks[zoneIndex * ranks.Count / zoneCount]];
+        if (kind != EquipmentKind.ArmorSet)
+        {
+            var first = DivideRounded(zoneIndex * ranks.Count, zoneCount);
+            var end = DivideRounded((zoneIndex + 1) * ranks.Count, zoneCount);
+            if (end > first)
+            {
+                return ranks.GetRange(first, end - first);
+            }
+        }
+
+        var index = zoneCount > 1 ? DivideRounded(zoneIndex * (ranks.Count - 1), zoneCount - 1) : ranks.Count - 1;
+        return [ranks[index]];
+    }
+
+    private static int DivideRounded(int dividend, int divisor)
+    {
+        return ((2 * dividend) + divisor) / (2 * divisor);
     }
 
     private (IList<Item>? Items, uint Money) GenerateDrops(MonsterDefinition monster, int gainedExperience)
@@ -699,11 +753,9 @@ public class DefaultDropGenerator : IDropGenerator
 
     /// <summary>
     /// Gets the weapons, shields and armor pieces which a zone drops. For each character class and each kind of item
-    /// (armor sets, or a group and slot type of weapons, e.g. bows and crossbows are different kinds), the items are ordered
-    /// by their drop level and spread evenly over the zones, which are ordered by their maximum level.
+    /// (armor sets, shields and weapons), the items are ordered by their drop level and spread evenly over the zones,
+    /// which are ordered by their maximum level (see <see cref="GetZoneRanks"/>).
     /// The pieces of an armor set are ranked together by the drop level of its armor, so they drop in the same zone.
-    /// If a class has more items of a kind than there are zones, a zone drops several of them; if it has less,
-    /// neighboring zones drop the same one.
     /// Socket items are not included, they can be added to a zone with a group which has them as possible items.
     /// </summary>
     private IList<ItemDefinition> GetZoneEquipment(byte maximumLevel, bool isExcellent)
@@ -721,8 +773,8 @@ public class DefaultDropGenerator : IDropGenerator
             .GroupBy(entry => (entry.Class, entry.Kind), entry => entry.Item)
             .Select(classKind => (classKind.Key.Kind, Ranks: GetRanks(classKind)))
             .GroupBy(entry => entry.Kind, entry => entry.Ranks)
-            .SelectMany(kind => WithoutContainedRanks(kind.ToList()))
-            .SelectMany(ranks => GetZoneRanks(ranks, zoneIndex, zoneCount))
+            .SelectMany(kind => WithoutContainedRanks(kind.ToList()).Select(ranks => (kind.Key, Ranks: ranks)))
+            .SelectMany(entry => GetZoneRanks(entry.Key, entry.Ranks, zoneIndex, zoneCount))
             .SelectMany(rank => rank)
             .Where(item => !isExcellent || HasExcellentOptions(item))
             .Distinct()

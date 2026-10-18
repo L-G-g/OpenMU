@@ -194,6 +194,46 @@ public class DropGeneratorTest
     }
 
     /// <summary>
+    /// Tests that all weapons of a character class are ranked together, so that a weapon type with only one item
+    /// doesn't drop in every zone.
+    /// </summary>
+    [Test]
+    public async ValueTask TestZoneWeaponsAreRankedTogetherAsync()
+    {
+        var config = this.GetGameConfig();
+        var characterClass = new CharacterClass();
+        var slot = new Mock<ItemSlotType>();
+        slot.Setup(s => s.ItemSlots).Returns(new List<int> { InventoryConstants.LeftHandSlot });
+        var firstSword = this.CreateEquipment(0, 0, 10, characterClass, slot.Object);
+        config.Items.Add(firstSword);
+        config.Items.Add(this.CreateEquipment(0, 1, 20, characterClass, slot.Object));
+        config.Items.Add(this.CreateEquipment(1, 0, 30, characterClass, slot.Object));
+        var potion = this.CreateItemDefinition(14, 0, 1);
+        potion.DropsFromMonsters = true;
+        config.Items.Add(potion);
+
+        var zoneGroup = this.CreateZoneGroup(1, 19);
+        config.DropItemGroups.Add(zoneGroup);
+        config.DropItemGroups.Add(this.CreateZoneGroup(20, 29));
+        config.DropItemGroups.Add(this.CreateZoneGroup(30, 39));
+
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup);
+
+        // The first zone drops only the weakest sword, so the second possible item is the potion and not the axe.
+        var swordGenerator = new DefaultDropGenerator(config, this.GetRandomizer(0));
+        var (swordDrops, _) = await swordGenerator.GenerateItemDropsAsync(this.GetMonster(1, 10), 1, player).ConfigureAwait(false);
+        var potionGenerator = new DefaultDropGenerator(config, this.GetRandomizer2(1, 0));
+        var (potionDrops, _) = await potionGenerator.GenerateItemDropsAsync(this.GetMonster(1, 10), 1, player).ConfigureAwait(false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(swordDrops.Single().Definition, Is.EqualTo(firstSword));
+            Assert.That(potionDrops.Single().Definition, Is.EqualTo(potion));
+        });
+    }
+
+    /// <summary>
     /// Tests the drops defined by a player are getting considered.
     /// </summary>
     public void TestItemDropItemByPlayer()
