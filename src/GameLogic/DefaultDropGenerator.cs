@@ -36,6 +36,8 @@ public class DefaultDropGenerator : IDropGenerator
     private readonly IList<ItemDefinition> _ancientItems;
     private readonly IList<ItemDefinition> _droppableItems;
     private readonly ICollection<DropItemGroup> _dropItemGroups;
+    private readonly ICollection<GameMapDefinition> _maps;
+    private readonly Dictionary<DropItemGroup, int> _strongestMonsterLevelPerZoneGroup = new();
     private readonly IList<ItemDefinition>?[] _droppableItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
     private readonly IList<ItemDefinition>?[] _droppableSocketItemsPerMonsterLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
     private readonly IList<ItemDefinition>?[] _zoneEquipmentPerMaximumLevel = new IList<ItemDefinition>?[byte.MaxValue + 1];
@@ -63,6 +65,7 @@ public class DefaultDropGenerator : IDropGenerator
             : DefaultMaxItemOptionLevelDrop;
         this._droppableItems = config.Items.Where(i => i.DropsFromMonsters).ToList();
         this._dropItemGroups = config.DropItemGroups;
+        this._maps = config.Maps ?? [];
         this._ancientItems = this._droppableItems.Where(
             i => i.PossibleItemSetGroups.Any(
                 g => g.Options?.PossibleOptions.Any(
@@ -797,13 +800,36 @@ public class DefaultDropGenerator : IDropGenerator
         else
         {
             item.Level = isEquipment
-                ? GetZoneItemLevel(monsterLevel, minimumLevel, maximumLevel, group.ItemLevel ?? 0)
+                ? GetZoneItemLevel(monsterLevel, minimumLevel, this.GetStrongestMonsterLevel(group, minimumLevel, maximumLevel), group.ItemLevel ?? 0)
                 : GetItemLevelByMonsterLevel(definition, monsterLevel);
             item.Level = Math.Min(item.Level, definition.MaximumItemLevel);
         }
 
         item.Durability = item.GetMaximumDurabilityOfOnePiece();
         return item;
+    }
+
+    /// <summary>
+    /// Gets the level of the strongest monster in the level range of a zone group which spawns on the maps of the group,
+    /// so that it drops the maximum item level even if the strongest monsters of the range don't spawn there,
+    /// e.g. because the monsters are grouped into spots.
+    /// </summary>
+    private int GetStrongestMonsterLevel(DropItemGroup group, int minimumLevel, int maximumLevel)
+    {
+        if (this._strongestMonsterLevelPerZoneGroup.TryGetValue(group, out var level))
+        {
+            return level;
+        }
+
+        level = this._maps
+            .Where(map => map.DropItemGroups.Contains(group))
+            .SelectMany(map => map.MonsterSpawns)
+            .Select(spawn => (int)(spawn.MonsterDefinition?[Stats.Level] ?? 0))
+            .Where(monsterLevel => monsterLevel >= minimumLevel && monsterLevel <= maximumLevel)
+            .DefaultIfEmpty(maximumLevel)
+            .Max();
+        this._strongestMonsterLevelPerZoneGroup[group] = level;
+        return level;
     }
 
     /// <summary>

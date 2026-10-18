@@ -57,7 +57,8 @@ public enum SpecialItemType
     /// the weakest ones, the last zone the strongest ones. The pieces of an armor set always drop in the same zone.
     /// All other items drop as <see cref="RandomItem"/> does. If it has possible items, the zone drops only them.
     /// The item level of weapons, shields and armor pieces grows from 0 at the minimum monster level
-    /// up to <see cref="DropItemGroup.ItemLevel"/> at the maximum monster level.
+    /// up to <see cref="DropItemGroup.ItemLevel"/> at the level of the strongest monster of the range which spawns on the maps
+    /// of the group.
     /// </remarks>
     ZoneItem,
 

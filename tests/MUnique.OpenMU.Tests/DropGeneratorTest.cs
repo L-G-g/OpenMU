@@ -157,6 +157,39 @@ public class DropGeneratorTest
     }
 
     /// <summary>
+    /// Tests that the item level of a zone reaches its maximum at the strongest monster which spawns on the maps of the zone,
+    /// when the strongest monsters of its level range don't spawn there.
+    /// </summary>
+    /// <param name="monsterLevel">The level of the monster.</param>
+    /// <param name="expectedItemLevel">The expected item level.</param>
+    [TestCase(20, 0)]
+    [TestCase(23, 1)]
+    [TestCase(26, 3)]
+    public async ValueTask TestZoneItemLevelOfStrongestSpawnedMonsterAsync(byte monsterLevel, byte expectedItemLevel)
+    {
+        var config = this.GetGameConfig();
+        var characterClass = new CharacterClass();
+        var slot = new Mock<ItemSlotType>();
+        slot.Setup(s => s.ItemSlots).Returns(new List<int> { InventoryConstants.LeftHandSlot });
+        config.Items.Add(this.CreateEquipment(0, 20, 20, characterClass, slot.Object));
+        var zoneGroup = this.CreateZoneGroup(20, 29);
+        config.DropItemGroups.Add(zoneGroup);
+
+        var map = new Mock<GameMapDefinition>();
+        map.Setup(m => m.DropItemGroups).Returns(new List<DropItemGroup> { zoneGroup });
+        map.Setup(m => m.MonsterSpawns).Returns(new[] { 20, 26 }.Select(level => new MonsterSpawnArea { MonsterDefinition = this.GetMonster(1, (byte)level) }).ToList());
+        config.Maps.Add(map.Object);
+
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        player.CurrentMap!.Definition.DropItemGroups.Add(zoneGroup);
+
+        var generator = new DefaultDropGenerator(config, this.GetRandomizer(0));
+        var (drops, _) = await generator.GenerateItemDropsAsync(this.GetMonster(1, monsterLevel), 1, player).ConfigureAwait(false);
+
+        Assert.That(drops.Single().Level, Is.EqualTo(expectedItemLevel));
+    }
+
+    /// <summary>
     /// Tests that the pieces of an armor set drop in the same zone, which is given by the drop level of the armor,
     /// even if other pieces of the set have a higher drop level than the ones of the next set.
     /// </summary>
@@ -372,6 +405,7 @@ public class DropGeneratorTest
         var gameConfiguration = new Mock<GameConfiguration>();
         gameConfiguration.Setup(c => c.Items).Returns(new List<ItemDefinition>());
         gameConfiguration.Setup(c => c.DropItemGroups).Returns(new List<DropItemGroup>());
+        gameConfiguration.Setup(c => c.Maps).Returns(new List<GameMapDefinition>());
         return gameConfiguration.Object;
     }
 
