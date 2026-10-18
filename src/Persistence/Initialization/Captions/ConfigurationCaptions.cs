@@ -199,6 +199,7 @@ public static class ConfigurationCaptions
             .GroupBy(entry => entry.NumberKey)
             .Where(g => g.Key is not null && g.Count() == 1)
             .ToDictionary(g => g.Key!.Value, g => g.Single().Value);
+
         // Targets which are linked by their id don't make the number of another target ambiguous,
         // e.g. a copy of a monster with a deterministic id and the original with a random id.
         var ambiguousTargetNumbers = targets
