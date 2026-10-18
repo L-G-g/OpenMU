@@ -177,7 +177,15 @@ public class DropGeneratorTest
 
         var map = new Mock<GameMapDefinition>();
         map.Setup(m => m.DropItemGroups).Returns(new List<DropItemGroup> { zoneGroup });
-        map.Setup(m => m.MonsterSpawns).Returns(new[] { 20, 26 }.Select(level => new MonsterSpawnArea { MonsterDefinition = this.GetMonster(1, (byte)level) }).ToList());
+        var spawns = new[] { 20, 26 }.Select(level => new MonsterSpawnArea { MonsterDefinition = this.GetMonster(1, (byte)level) }).ToList();
+
+        // An NPC without a level, e.g. a merchant, doesn't count.
+        var npc = new Mock<MonsterDefinition>();
+        npc.SetupAllProperties();
+        npc.Setup(m => m.Attributes).Returns(new List<MonsterAttribute>());
+        npc.Object.ObjectKind = NpcObjectKind.PassiveNpc;
+        spawns.Add(new MonsterSpawnArea { MonsterDefinition = npc.Object });
+        map.Setup(m => m.MonsterSpawns).Returns(spawns);
         config.Maps.Add(map.Object);
 
         var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);

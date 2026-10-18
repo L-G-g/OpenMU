@@ -824,7 +824,8 @@ public class DefaultDropGenerator : IDropGenerator
         level = this._maps
             .Where(map => map.DropItemGroups.Contains(group))
             .SelectMany(map => map.MonsterSpawns)
-            .Select(spawn => (int)(spawn.MonsterDefinition?[Stats.Level] ?? 0))
+            .Where(spawn => spawn.MonsterDefinition?.ObjectKind == NpcObjectKind.Monster)
+            .Select(spawn => (int)(spawn.MonsterDefinition!.Attributes.FirstOrDefault(a => a.AttributeDefinition == Stats.Level)?.Value ?? 0))
             .Where(monsterLevel => monsterLevel >= minimumLevel && monsterLevel <= maximumLevel)
             .DefaultIfEmpty(maximumLevel)
             .Max();
