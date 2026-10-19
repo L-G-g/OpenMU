@@ -109,15 +109,27 @@ def convert_text(path):
 
 
 def main():
-    local = os.path.join(sys.argv[1] if len(sys.argv) > 1 else '.', 'Data', 'Local')
+    if len(sys.argv) != 2:
+        sys.exit('Usage: python warpmenu.py "<client folder>" (quote the path if it has spaces)')
+
+    local = os.path.join(sys.argv[1], 'Data', 'Local')
+    if not os.path.isdir(local):
+        sys.exit(f'Not a client folder, {local} does not exist. Quote the path if it has spaces.')
+
+    converted = 0
     for name in ['Movereq.bmd', 'Eng/movereq_eng.bmd', 'Por/movereq_por.bmd', 'Spn/movereq_spn.bmd']:
         path = os.path.join(local, name)
         if os.path.exists(path):
             convert_movereq(path)
+            converted += 1
 
     text = os.path.join(local, 'Eng', 'Text_eng.bmd')
     if os.path.exists(text):
         convert_text(text)
+        converted += 1
+
+    if converted == 0:
+        sys.exit(f'No movereq or Text_eng.bmd file found in {local}.')
 
 
 if __name__ == '__main__':
