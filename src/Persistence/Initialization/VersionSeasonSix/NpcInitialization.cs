@@ -161,11 +161,7 @@ internal partial class NpcInitialization : Version095d.NpcInitialization
             damagePowerUp.Boost.RelatedValues.Add(damagePerLevel);
             buffEffect.PowerUpDefinitions.Add(damagePowerUp);
 
-            var elfSoldier = this.GameConfiguration.Monsters.First(m => m.Number == 257);
-            var buff = this.Context.CreateNew<Buff>();
-            buff.MagicEffectDefinition = buffEffect;
-            buff.MaximumLevel = 220;
-            elfSoldier.Buffs.Add(buff);
+            // The Elf Soldier doesn't give the buff, the characters below 10 resets have it permanently, see ResetExperienceScheme.
         }
 
         {

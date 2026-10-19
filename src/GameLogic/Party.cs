@@ -380,27 +380,21 @@ public sealed class Party : AsyncDisposable
 
         if (isAtMaxLevel && isMasterClass)
         {
-            var exp = (int)await CalculateExperienceByPlugInsAsync(
-                player,
-                killed,
-                true,
-                perLevel
-                    * attributes[Stats.TotalLevel]
-                    * player.GameContext.MasterExperienceRate
-                    * (attributes[Stats.MasterExperienceRate] + attributes[Stats.BonusExperienceRate])).ConfigureAwait(false);
+            var masterExperience = perLevel
+                                   * attributes[Stats.TotalLevel]
+                                   * player.GameContext.MasterExperienceRate
+                                   * (attributes[Stats.MasterExperienceRate] + attributes[Stats.BonusExperienceRate]);
+            var exp = (int)await CalculateExperienceByPlugInsAsync(player, killed, true, masterExperience).ConfigureAwait(false);
 
             await player.AddMasterExperienceAsync(exp, killed).ConfigureAwait(false);
             return exp;
         }
 
-        var normalExperience = (int)await CalculateExperienceByPlugInsAsync(
-            player,
-            killed,
-            false,
-            perLevel
-                * attributes[Stats.Level]
-                * player.GameContext.ExperienceRate
-                * (attributes[Stats.ExperienceRate] + attributes[Stats.BonusExperienceRate])).ConfigureAwait(false);
+        var experience = perLevel
+                         * attributes[Stats.Level]
+                         * player.GameContext.ExperienceRate
+                         * (attributes[Stats.ExperienceRate] + attributes[Stats.BonusExperienceRate]);
+        var normalExperience = (int)await CalculateExperienceByPlugInsAsync(player, killed, false, experience).ConfigureAwait(false);
 
         if (!isAtMaxLevel)
         {

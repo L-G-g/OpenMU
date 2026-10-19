@@ -49,9 +49,9 @@ public class ResetExperienceSchemeUpdatePlugIn : UpdatePlugInBase
     public override DateTime CreatedAt => new(2026, 10, 19, 0, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
-    protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
+    protected override async ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
     {
         ResetExperienceScheme.Apply(context, gameConfiguration);
-        return ValueTask.CompletedTask;
+        await ResetExperienceScheme.RemoveElfSoldierBuffAsync(context, gameConfiguration).ConfigureAwait(false);
     }
 }

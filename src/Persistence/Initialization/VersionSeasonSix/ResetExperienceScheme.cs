@@ -79,7 +79,6 @@ internal static class ResetExperienceScheme
     {
         SetRequiredLevelTiers(context, gameConfiguration);
         MakeExperienceFixed(context, gameConfiguration);
-        RemoveElfSoldierBuff(gameConfiguration);
         ActivatePlugIn(context, gameConfiguration, typeof(PermanentBuffBelowResetCountPlugIn), new PermanentBuffBelowResetCountConfiguration());
         ActivatePlugIn(context, gameConfiguration, typeof(LevelRangeExperiencePlugIn), new LevelRangeExperienceConfiguration());
     }
@@ -129,12 +128,21 @@ internal static class ResetExperienceScheme
 
     /// <summary>
     /// Removes the buff from the Elf Soldier, because the <see cref="PermanentBuffBelowResetCountPlugIn"/> gives it.
+    /// A new database doesn't need it, because the Elf Soldier is created without the buff.
     /// </summary>
-    private static void RemoveElfSoldierBuff(GameConfiguration gameConfiguration)
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    internal static async ValueTask RemoveElfSoldierBuffAsync(IContext context, GameConfiguration gameConfiguration)
     {
-        if (gameConfiguration.Monsters.FirstOrDefault(m => m.Number == ElfSoldierNumber) is { } elfSoldier)
+        if (gameConfiguration.Monsters.FirstOrDefault(m => m.Number == ElfSoldierNumber) is not { } elfSoldier)
         {
-            elfSoldier.Buffs.Clear();
+            return;
+        }
+
+        foreach (var buff in elfSoldier.Buffs.ToList())
+        {
+            elfSoldier.Buffs.Remove(buff);
+            await context.DeleteAsync(buff).ConfigureAwait(false);
         }
     }
 
