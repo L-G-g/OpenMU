@@ -312,8 +312,11 @@ def cargar_config_servidor(config, archivo):
             r["multiplicar_por_resets"] = valor(cfg, "MultiplyPointsByResetCount", r["multiplicar_por_resets"])
             r["reemplazar_puntos"] = valor(cfg, "ReplacePointsPerReset", r["reemplazar_puntos"])
             r["resetear_stats"] = valor(cfg, "ResetStats", r["resetear_stats"])
-            r["tramos_puntos"] = sorted([valor(t, "MinimumResetCount", 0), valor(t, "PointsGranted", 0)]
-                                        for t in valor(cfg, "PointsTiers", []) or [])
+            tramos = valor(cfg, "PointsTiers", []) or []
+            if isinstance(tramos, dict):  # serializado con referencias: {"$id": ..., "$values": [...]}
+                tramos = tramos.get("$values", [])
+            r["tramos_puntos"] = sorted([valor(t, "MinimumResetCount", 0), valor(t, "PointsGranted", 0)] for t in tramos)
+            r["limite"] = valor(cfg, "ResetLimit")
         elif tipo == "59E5B45F-0A3D-4BAF-8B6C-9E1D2F3A4B5C":  # Monster Attribute Scaler
             esc = servidor["escalado_mobs_pct"]
             if not plugin.get("activo"):
@@ -499,6 +502,8 @@ def main():
     sim_cfg = config["simulacion"]
     jugadores = args.jugadores or sim_cfg["jugadores"]
     resets = args.resets or sim_cfg["resets"]
+    if config["servidor"]["reset"].get("limite"):
+        resets = min(resets, config["servidor"]["reset"]["limite"])
 
     zonas, _, equipo_zona = datos.cargar(args.src)
     if args.evaluar:
