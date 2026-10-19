@@ -905,5 +905,11 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized MapLevelLadderUpdatePlugIn_Description text.</summary>
         public static string MapLevelLadderUpdatePlugIn_Description => ResourceManager.GetString("MapLevelLadderUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized ResetExperienceSchemeUpdatePlugIn_Name text.</summary>
+        public static string ResetExperienceSchemeUpdatePlugIn_Name => ResourceManager.GetString("ResetExperienceSchemeUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ResetExperienceSchemeUpdatePlugIn_Description text.</summary>
+        public static string ResetExperienceSchemeUpdatePlugIn_Description => ResourceManager.GetString("ResetExperienceSchemeUpdatePlugIn_Description", resourceCulture)!;
+
     }
 }
