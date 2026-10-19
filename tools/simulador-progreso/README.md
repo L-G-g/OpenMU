@@ -16,6 +16,8 @@ de mapas salen de `MapLevelLadder.cs`, que hoy está en la rama del PR #25.
 
 Otras opciones:
 
+- `--server server.json`: usa la config real del servidor (tasa de exp, plugin de reset, Monster Attribute
+  Scaler). El archivo se genera en la PC del servidor con `exportar-config.ps1`, que solo lee la base.
 - `--config archivo.json`: la configuración (ver abajo). Por defecto `config.json` de esta carpeta.
 - `--traza`: muestra en qué nivel el primer jugador cambia de zona, con sus stats.
 - `--evaluar NIVEL,FUE,AGI,VIT,ENE`: no simula; muestra para un personaje sin equipo cuánto tarda en

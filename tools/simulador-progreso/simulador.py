@@ -275,6 +275,57 @@ class Personaje:
             self.equipo.pop("escudo", None)
 
 
+def puntos_de_reset(req, reset):
+    """ResetProgressionCalculator.GetPointsForReset."""
+    tramos = [t for t in req.get("tramos_puntos", []) if t[0] <= reset]
+    if tramos:
+        return max(0, max(tramos)[1])
+    return max(0, req["puntos_por_reset"] * (reset if req["multiplicar_por_resets"] else 1))
+
+
+def puntos_despues_de_reset(req, reset):
+    """ResetProgressionCalculator.GetTotalPointsAfterReset: con tramos se suman los de todos los resets."""
+    if not req.get("tramos_puntos"):
+        return puntos_de_reset(req, reset)
+    return sum(puntos_de_reset(req, r) for r in range(1, reset + 1))
+
+
+def cargar_config_servidor(config, archivo):
+    """Pisa la config con la que exportó exportar-config.ps1 de la base del server."""
+    datos_server = json.loads(Path(archivo).read_text(encoding="utf-8-sig"))
+
+    def valor(d, clave, defecto=None):
+        return next((v for k, v in (d or {}).items() if k.lower() == clave.lower()), defecto)
+
+    servidor = config["servidor"]
+    tasas = [s["exp"] for s in datos_server.get("servidores") or [] if s.get("exp")]
+    servidor["exp_rate"] = datos_server["exp_config"] * (max(tasas) if tasas else 1)
+    for plugin in datos_server.get("plugins") or []:
+        cfg = plugin.get("config")
+        cfg = json.loads(cfg) if isinstance(cfg, str) and cfg else (cfg or {})
+        tipo = plugin["tipo"].upper()
+        if tipo == "6A9D585D-79D7-4674-B6EA-7E87392FA501":  # ResetFeaturePlugIn
+            r = servidor["reset"]
+            r["nivel_requerido"] = valor(cfg, "RequiredLevel", r["nivel_requerido"])
+            r["nivel_despues"] = valor(cfg, "LevelAfterReset", r["nivel_despues"])
+            r["puntos_por_reset"] = valor(cfg, "PointsPerReset", r["puntos_por_reset"])
+            r["multiplicar_por_resets"] = valor(cfg, "MultiplyPointsByResetCount", r["multiplicar_por_resets"])
+            r["reemplazar_puntos"] = valor(cfg, "ReplacePointsPerReset", r["reemplazar_puntos"])
+            r["resetear_stats"] = valor(cfg, "ResetStats", r["resetear_stats"])
+            r["tramos_puntos"] = sorted([valor(t, "MinimumResetCount", 0), valor(t, "PointsGranted", 0)]
+                                        for t in valor(cfg, "PointsTiers", []) or [])
+        elif tipo == "59E5B45F-0A3D-4BAF-8B6C-9E1D2F3A4B5C":  # Monster Attribute Scaler
+            esc = servidor["escalado_mobs_pct"]
+            if not plugin.get("activo"):
+                for k in esc:
+                    esc[k] = 0
+                continue
+            todo = valor(cfg, "ScaleAllPercentage", 0) or 0
+            for k, nombre in (("danio", "Damage"), ("defensa", "Defense"), ("vida", "Health"),
+                              ("attack_rate", "AttackRate"), ("defense_rate", "DefenseRate")):
+                esc[k] = todo if todo > 0 else valor(cfg, nombre + "Percentage", 25.0)
+
+
 def zona_multiplicador(zona):
     return 2.0 if zona.drops == "Jewels" else 1.0
 
@@ -355,7 +406,7 @@ class Simulacion:
         self.pj.resets += 1
         self.pj.nivel = req["nivel_despues"]
         self.pj.exp = 0
-        puntos = req["puntos_por_reset"] * (self.pj.resets if req["multiplicar_por_resets"] else 1)
+        puntos = puntos_despues_de_reset(req, self.pj.resets)
         if req["resetear_stats"]:
             self.pj.stats = dict(self.pj.c["base"])
         if req["reemplazar_puntos"]:
@@ -433,6 +484,7 @@ def main():
     ap.add_argument("--jugadores", type=int, default=None)
     ap.add_argument("--resets", type=int, default=None)
     ap.add_argument("--exp-rate", type=float, default=None, help="pisa servidor.exp_rate de la config")
+    ap.add_argument("--server", help="config real exportada con exportar-config.ps1 (exp, reset, escalado de mobs)")
     ap.add_argument("--json", help="guarda el detalle por reset en este archivo")
     ap.add_argument("--traza", action="store_true", help="muestra los cambios de zona del primer jugador")
     ap.add_argument("--evaluar", metavar="NIVEL,FUE,AGI,VIT,ENE",
@@ -440,6 +492,8 @@ def main():
     args = ap.parse_args()
 
     config = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    if args.server:
+        cargar_config_servidor(config, args.server)
     if args.exp_rate is not None:
         config["servidor"]["exp_rate"] = args.exp_rate
     sim_cfg = config["simulacion"]
@@ -463,7 +517,10 @@ def main():
         return
     sims = [Simulacion(config, zonas, equipo_zona, args.clase, sim_cfg["semilla"] + i, args.traza and i == 0).correr(resets) for i in range(jugadores)]
 
-    print(f"Clase {args.clase}, exp x{config['servidor']['exp_rate']:g}, {jugadores} jugadores, {resets} resets")
+    r = config["servidor"]["reset"]
+    print(f"Clase {args.clase}, exp x{config['servidor']['exp_rate']:g}, {jugadores} jugadores, {resets} resets."
+          f" Reset a nivel {r['nivel_requerido']}, {r['puntos_por_reset']} puntos"
+          f"{' x resets' if r['multiplicar_por_resets'] else ''}{', reemplaza los puntos' if r['reemplazar_puntos'] else ''}")
     print("(promedio / p10 / mediana / p90; horas de juego efectivas, cazando sin parar)\n")
     print(f"{'Reset':>5} {'Horas del reset':>18} {'Acumulado':>12} {'Kills':>9} {'Exc':>5} {'Joyas':>6}  Dónde caza más")
     marcas = sorted({1, 2, 3, 5, 10, 20, 50, 100, 200, 300, 350, 360, resets} & set(range(1, resets + 1)))
