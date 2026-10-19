@@ -20,6 +20,7 @@
   },
   "comportamiento": {
     "repartir_cada_niveles": 100,
+    "muchos_resets": 100,
     "repartir_siempre_hasta_nivel": 400,
     "reparto": {
       "fuerza": 0.45,
@@ -28,6 +29,7 @@
       "energia": 0.1
     },
     "politica_zona": "mayor_viable",
+    "zonas_excluidas": ["Swamp of Calmness"],
     "segundos_maximos_por_spot": 60
   },
   "combate": {

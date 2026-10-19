@@ -193,9 +193,10 @@ class Personaje:
     def elegir(self, zonas):
         """Devuelve (zona, monstruo, evaluación) donde va a cazar."""
         cfg = self.config["comportamiento"]
+        excluidas = cfg.get("zonas_excluidas", [])
         opciones = []
         for z in zonas:
-            if z.nivel_requerido > self.nivel:
+            if z.nivel_requerido > self.nivel or any(nombre in z.nombre for nombre in excluidas):
                 continue
             for m in z.monstruos:
                 if m.jefe:
@@ -361,8 +362,11 @@ class Simulacion:
         cfg = self.config
         req = cfg["servidor"]["reset"]
         puntos_por_nivel = self.pj.c["puntos_por_nivel"]
-        cada = cfg["comportamiento"]["repartir_cada_niveles"]
+        comportamiento = cfg["comportamiento"]
+        cada = comportamiento["repartir_cada_niveles"]
         while self.pj.resets < resets_objetivo:
+            # Con mas de muchos_resets los puntos de cada nivel no cambian nada al lado de los del reset: no los reparte.
+            reparte_niveles = self.pj.resets <= comportamiento["muchos_resets"]
             inicio_horas, inicio_kills = self.horas, self.kills
             inicio_exc, inicio_joyas = self.totales["exc"], sum(self.totales["joyas"].values())
             horas_zona = {}
@@ -388,7 +392,8 @@ class Simulacion:
                 while self.pj.nivel < req["nivel_requerido"] and self.pj.exp >= experiencia_para_nivel(self.pj.nivel + 1):
                     self.pj.nivel += 1
                     self.pj.puntos += puntos_por_nivel
-                    if self.pj.nivel % cada == 0 or self.pj.resets == 0 and self.pj.nivel < cfg["comportamiento"]["repartir_siempre_hasta_nivel"]:
+                    if reparte_niveles and (self.pj.nivel % cada == 0 or self.pj.resets == 0
+                                            and self.pj.nivel < comportamiento["repartir_siempre_hasta_nivel"]):
                         self.pj.repartir()
                         zona = None
             self.resetear()
