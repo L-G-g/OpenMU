@@ -20,6 +20,7 @@
 //   smooth 0|1             pruebas: movimiento interpolado
 //   block N 0|1            pruebas: bloqueo en cuadros extra de la funcion N (0 uniones, 1 particulas, 2 efectos)
 //   info                   datos del personaje (mapa, posicion, vida) en done.txt
+//   focus                  ventana con foco, la ultima que eligio el juego (SetFocus) y si el juego esta al frente
 //
 // Comandos de juego (gamecommands.cpp): por intencion, usando la logica del propio juego, sin
 // coordenadas de pantalla. Cada uno deja una linea "nombre: clave=valor ..." en done.txt (objects, una
@@ -155,9 +156,98 @@ namespace
         flags[2] = down ? 1 : 0;
     }
 
+    // Ultima ventana a la que el juego le dio el foco (por ejemplo la caja del chat al apretar Enter). Con el
+    // juego en segundo plano GetFocus() devuelve nullptr aunque el chat este abierto, y el texto le llegaba a
+    // la ventana principal como atajos de teclado (P abria el party) en vez de a la caja.
+    using SetFocusType = HWND(WINAPI*)(HWND);
+    SetFocusType g_originalSetFocus = nullptr;
+    HWND g_gameFocus = nullptr;
+
+    HWND WINAPI SetFocusHook(HWND window)
+    {
+        g_gameFocus = window;
+        return g_originalSetFocus(window);
+    }
+
+    // El juego pregunta GetFocus() antes de abrir el chat con Enter y de atender atajos como C o M; en segundo
+    // plano la respuesta es nullptr. Mientras la automatizacion manda una tecla o un texto (unos pasos), para el
+    // juego el foco es el que el mismo eligio. Solo entonces: el juego lee el teclado real de toda la PC, y con el
+    // foco fingido siempre, lo que se escribe en otras ventanas le llegaba como atajos.
+    using GetFocusType = HWND(WINAPI*)();
+    GetFocusType g_originalGetFocus = nullptr;
+    constexpr int FakeFocusTicks = 50;
+    int g_fakeFocusTicks = 0;
+
+    HWND WINAPI GetFocusHook()
+    {
+        const HWND focus = g_originalGetFocus();
+        if (focus != nullptr || g_fakeFocusTicks <= 0)
+        {
+            return focus;
+        }
+
+        return g_gameFocus != nullptr && IsWindow(g_gameFocus) ? g_gameFocus : *MainWindow;
+    }
+
+    // Entrada de la tabla de importaciones de main.exe que apunta a la funcion, o nullptr.
+    DWORD* FindImport(FARPROC function)
+    {
+        BYTE* const base = reinterpret_cast<BYTE*>(GetModuleHandleA(nullptr));
+        const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+        const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
+        const IMAGE_DATA_DIRECTORY& imports = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+        for (auto* module = reinterpret_cast<const IMAGE_IMPORT_DESCRIPTOR*>(base + imports.VirtualAddress);
+             module->Name != 0; module++)
+        {
+            for (auto* entry = reinterpret_cast<DWORD*>(base + module->FirstThunk); *entry != 0; entry++)
+            {
+                if (*entry == reinterpret_cast<DWORD>(function))
+                {
+                    return entry;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    // Reemplaza en la tabla de importaciones de main.exe una funcion de user32; devuelve la original o nullptr.
+    FARPROC HookUser32Import(const char* name, const void* hook)
+    {
+        const HMODULE user32 = GetModuleHandleA("user32.dll");
+        const FARPROC function = user32 != nullptr ? GetProcAddress(user32, name) : nullptr;
+        DWORD* const slot = function != nullptr ? FindImport(function) : nullptr;
+        if (slot == nullptr)
+        {
+            g_log("Automatizacion: no se encontro %s en main.exe.", name);
+            return nullptr;
+        }
+
+        const DWORD address = reinterpret_cast<DWORD>(hook);
+        return WriteCode(reinterpret_cast<DWORD>(slot), &address, sizeof(address)) ? function : nullptr;
+    }
+
+    void InstallFocusHooks()
+    {
+        g_originalSetFocus = reinterpret_cast<SetFocusType>(HookUser32Import("SetFocus", &SetFocusHook));
+        g_originalGetFocus = reinterpret_cast<GetFocusType>(HookUser32Import("GetFocus", &GetFocusHook));
+    }
+
+    // Adonde mandar teclas y texto: la ventana con foco o, en segundo plano, la que el juego eligio.
+    HWND KeyboardTarget()
+    {
+        const HWND focus = GetFocus();
+        if (focus != nullptr)
+        {
+            return focus;
+        }
+
+        return g_gameFocus != nullptr && IsWindow(g_gameFocus) ? g_gameFocus : *MainWindow;
+    }
+
     void SendKeyMessages(int key)
     {
-        const HWND focus = GetFocus() != nullptr ? GetFocus() : *MainWindow;
+        const HWND focus = KeyboardTarget();
         SendMessageA(focus, WM_KEYDOWN, key, 1);
         if (key == VK_RETURN || key == VK_TAB || key == VK_ESCAPE || key == VK_BACK)
         {
@@ -231,11 +321,13 @@ namespace
             keyStates[key] = KeyPressed;
             g_heldKey = key;
             g_releaseKey = key;
+            g_fakeFocusTicks = FakeFocusTicks;
             SendKeyMessages(key);
         }
         else if (_stricmp(name, "text") == 0)
         {
-            const HWND focus = GetFocus() != nullptr ? GetFocus() : *MainWindow;
+            g_fakeFocusTicks = FakeFocusTicks;
+            const HWND focus = KeyboardTarget();
             for (const char* c = rest; *c != '\0'; c++)
             {
                 SendMessageA(focus, WM_CHAR, static_cast<unsigned char>(*c), 1);
@@ -288,6 +380,13 @@ namespace
         else if (_stricmp(name, "info") == 0)
         {
             Info();
+        }
+        else if (_stricmp(name, "focus") == 0)
+        {
+            char line[160];
+            sprintf_s(line, "focus: getfocus=%p game=%p main=%p foreground=%d", static_cast<void*>(GetFocus()),
+                static_cast<void*>(g_gameFocus), static_cast<void*>(*MainWindow), GetForegroundWindow() == *MainWindow ? 1 : 0);
+            g_results += line;
         }
         else
         {
@@ -490,6 +589,18 @@ void AutomationTick(BYTE* keyStates)
 
     *WindowActive = 1;
     g_keyStates = keyStates;
+    if (g_fakeFocusTicks > 0)
+    {
+        g_fakeFocusTicks--;
+    }
+
+    // El juego lee el teclado real de toda la PC (no solo el de su ventana). Si no esta al frente, lo que se
+    // escribe en otras ventanas no es para el: se borran las teclas (los botones del mouse, por debajo de 8, no).
+    // Las de la automatizacion se ponen despues.
+    if (GetForegroundWindow() != *MainWindow)
+    {
+        memset(keyStates + 8, KeyUp, 256 - 8);
+    }
 
     // Soltar lo que se apreto en el paso anterior.
     if (g_releaseKey >= 0 && g_heldKey != g_releaseKey)
@@ -585,6 +696,7 @@ bool InstallAutomation(LogFunction log)
     }
 
     InstallInputHook();
+    InstallFocusHooks();
     g_enabled = true;
     g_log("Automatizacion activa en %s", g_folder);
     return true;

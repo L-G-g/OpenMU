@@ -75,6 +75,10 @@ trabajando en la PC. Cuentas del servidor de prueba: la contraseña es el nombre
   monstruos (`hp=na`): para saber si murió, `result=killed` o `target`.
 - Comandos de bajo nivel (`move`, `click`, `key`, `text`, `wait`, `shot`, ...) siguen disponibles con
   `Invoke-Mu`; ver `src/muauto/automation.cpp`.
+- El chat y los atajos (C, M, ...) funcionan con el juego en segundo plano: `key enter`, `text /move
+  lorencia`, `key enter`. `focus` dice si la caja del chat tiene el foco (`game` distinto de `main`): si
+  quedó abierta, no hay que apretar Enter antes de escribir. Con el juego en segundo plano, lo que se
+  escribe en otras ventanas no le llega.
 
 ## Ejemplo: matar el monstruo más cercano
 
