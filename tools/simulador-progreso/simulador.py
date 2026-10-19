@@ -174,7 +174,8 @@ class Personaje:
             golpes_spot = golpes * por_spot
             atacando = por_spot * 0.5
         segundos_pelea = golpes_spot * cfg["segundos_por_golpe"]
-        segundos_spot = segundos_pelea + cfg["segundos_entre_spots"]
+        # El jugador se queda en su spot: si lo limpia antes de que reaparezcan los mobs, espera el respawn.
+        segundos_spot = segundos_pelea + cfg["segundos_entre_spots"] + max(0.0, cfg["segundos_respawn"] - segundos_pelea)
 
         neto = dps_mob * atacando - cfg["curacion_pct_vida_por_segundo"] * self.vida()
         segundos_para_morir = math.inf if neto <= 0 else self.vida() / neto
@@ -371,9 +372,17 @@ class Simulacion:
             inicio_exc, inicio_joyas = self.totales["exc"], sum(self.totales["joyas"].values())
             horas_zona = {}
             zona = mob = ev = None
+            zona_anterior = None
+            combate = cfg["combate"]
+            # Despues del reset vuelve a nivel bajo: buff del NPC antes de salir a cazar.
+            self.horas += combate["segundos_buff"] / 3600
             while self.pj.nivel < req["nivel_requerido"]:
                 if zona is None or self.pj.nivel % 5 == 0:
                     zona, mob, ev = self.pj.elegir(self.zonas)
+                    if zona_anterior is not None and zona.indice != zona_anterior:
+                        # Warp y caminar hasta el spot de la zona nueva.
+                        self.horas += combate["segundos_por_cambio_de_zona"] / 3600
+                    zona_anterior = zona.indice
                     if self.traza and (zona.nombre, mob.nombre) != self._ultimo:
                         self._ultimo = (zona.nombre, mob.nombre)
                         print(f"  reset {self.pj.resets} nivel {self.pj.nivel}: {mob.nombre} ({zona.nombre}),"
@@ -383,6 +392,8 @@ class Simulacion:
                 faltan = experiencia_para_nivel(self.pj.nivel + 1) - self.pj.exp
                 kills = max(1, math.ceil(faltan / max(exp_kill, 1)))
                 horas = kills / ev["kills_hora"]
+                if self.pj.nivel <= combate["nivel_maximo_buff"]:
+                    horas *= 1 + combate["segundos_buff"] / 3600  # el buff dura una hora
                 self.horas += horas
                 self.kills += kills
                 donde = f"{mob.nombre} ({zona.nombre.split(',')[0].split(' and')[0]})"

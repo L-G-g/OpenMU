@@ -54,9 +54,11 @@ warp lleva unos 15 s, y la ida y vuelta a Lorencia por el buff, unos 30 s.
   11 minutos, ningún nivel ganado. Casi todo el tiempo se fue en reaparecer, buscar el buff y volver. Coincide
   con el simulador, que marca Tarkan como "no sobrevive" para ese nivel.
 
-## Comparación con `config.json` (sección `combate`)
+## Primeras mediciones contra `config.json` (sección `combate`)
 
-| Parámetro | Valor actual | Medido | Comentario |
+Valores del `config.json` antes de calibrar. Los que quedaron están en "Valores calibrados", más abajo.
+
+| Parámetro | Valor de entonces | Medido | Comentario |
 |---|---|---|---|
 | `segundos_por_golpe` | 0,8 | **0,9** | Twisting Slash parado al lado del objetivo (Lost Tower). En Dungeon da 1,2 porque incluye acercarse. |
 | `mobs_por_spot` | 5,4 | 5–7 en la base; **~2 vivos** en Lost Tower, 7 en Tarkan | En Lost Tower el respawn y los bots dejan pocos vivos. |
@@ -98,15 +100,32 @@ Slash; buff hasta nivel 220.
 Simulador con la config real del servidor (`exportar-config.ps1`), con las reglas nuevas (sin Swamp y sin repartir
 puntos de nivel con más de 100 resets). Su equipo sale de los drops (+3, sin alas ni excelentes):
 
-| | Simulador | Juego |
-|---|---|---|
-| Reset completo | ~9 min (1 → 300, solo cazando) | ~30 min hasta 280 (con warps, caminatas y buff) |
-| Kills/h antes de Raklion | 1.600–2.150 | 250–900 |
-| Raklion | 703 kills/h, sobrevive | 1.469 kills/h, sobrevive |
+| | Simulador antes | Simulador calibrado | Juego |
+|---|---|---|---|
+| Reset completo | ~9 min (1 → 300) | **~19 min** (1 → 300) | ~30 min hasta 280, ~33 hasta 300 |
+| Kills/h antes de Raklion | 1.600–2.150 | **943** | ~944 sin warps, buff ni puntos (250–900 con todo) |
+| Raklion | 703 kills/h | 536 kills/h | 1.469 kills/h |
+| ¿Sobrevive en Raklion? | sí | sí | sí, 15 min sin morir |
 
-El simulador es ~3 veces más rápido en la subida: no cuenta los warps, caminar al spot, el buff ni el tiempo de
-los spots con pocos mobs, que en zonas cortas (1 a 6 minutos) pesan mucho. En Raklion el juego da el doble que el
-simulador porque el set +13 y las alas pegan bastante más que su equipo +3.
+El simulador sin calibrar no contaba la espera del respawn en un spot fijo, los warps, caminar al spot ni el buff.
+Lo que queda de diferencia:
+- **Spot:** el script farmeó el spot más cercano al warp (en Lorencia, spiders), y el simulador va al monstruo
+  más fuerte que puede matar, que da mucha más experiencia: en el juego hicieron falta 368 kills hasta el 280 y el
+  simulador hace 187 en todo el reset. Un jugador que va al mejor spot de cada zona tarda menos que la medición.
+- **Raklion:** el simulador no modela el nivel del ítem por encima de su +3 ni las alas, así que con el set +13 y
+  alas S2 el juego pega mucho más.
+
+### Valores calibrados (`config.json`, sección `combate`)
+
+| Parámetro | Antes | Ahora | De dónde sale |
+|---|---|---|---|
+| `segundos_por_golpe` | 0,8 | 0,8 | 0,77 s por cast en Raklion, 0,89 en Lost Tower |
+| `mobs_por_spot` | 5,4 | 5,5 | promedio de las 975 áreas de spawn de la escalera |
+| `fraccion_en_rango` | 0,8 | 0,45 | 3,2 mobs en rango por cast en un spot de 7 (Raklion) |
+| `segundos_respawn` | — | 19 | respawn de 10 s más lo que tardan en aparecer y acercarse: ~21 s por spot en las zonas que mata de un cast |
+| `segundos_entre_spots` | 8 | 2 | en Raklion, con la pelea más larga que el respawn, ~2 s perdidos por spot |
+| `segundos_por_cambio_de_zona` | — | 25 | warp ~11 s y caminar al spot ~10–15 s |
+| `segundos_buff` | — | 30 | ida y vuelta a Lorencia por el buff (hasta nivel 220) |
 
 ## Limitaciones
 
