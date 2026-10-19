@@ -26,16 +26,15 @@ internal class ResetExperienceSchemeTest
     private const short ElfSoldierNumber = 257;
 
     /// <summary>
-    /// Tests the required levels of the scheme: 100 for the first 10 resets, then 10 more every 3 resets, and 400 at the 100th reset.
+    /// Tests the required levels of the scheme: 300 for the first 10 resets, then 10 more every 10 resets, up to 400.
     /// </summary>
-    [TestCase(1, 100)]
-    [TestCase(10, 100)]
-    [TestCase(11, 110)]
-    [TestCase(13, 110)]
-    [TestCase(14, 120)]
-    [TestCase(97, 390)]
-    [TestCase(98, 400)]
-    [TestCase(100, 400)]
+    [TestCase(1, 300)]
+    [TestCase(10, 300)]
+    [TestCase(11, 310)]
+    [TestCase(20, 310)]
+    [TestCase(21, 320)]
+    [TestCase(100, 390)]
+    [TestCase(101, 400)]
     [TestCase(360, 400)]
     public void RequiredLevels(int resetCount, int expectedLevel)
     {

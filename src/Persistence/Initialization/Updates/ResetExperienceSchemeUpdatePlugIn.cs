@@ -27,7 +27,7 @@ public class ResetExperienceSchemeUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "The resets 1 to 10 require level 100, then the required level rises by 10 every 3 resets up to 400 at the 98th reset (configured as required level tiers of the reset feature, the other reset settings stay as they are). Characters with less than 10 resets have the buff of the Elf Soldier permanently, and the Elf Soldier doesn't give it anymore. Characters of level 300 to 399 gain 5 times the experience. A monster always gives the same experience, because the random experience multipliers are set to 1.";
+    internal const string PlugInDescription = "The resets 1 to 10 require level 300, then the required level rises by 10 every 10 resets up to 400 from the 101st reset on (configured as required level tiers of the reset feature, the other reset settings stay as they are). Characters with less than 10 resets have the buff of the Elf Soldier permanently, and the Elf Soldier doesn't give it anymore. Characters of level 300 to 399 gain 5 times the experience. A monster always gives the same experience, because the random experience multipliers are set to 1.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;

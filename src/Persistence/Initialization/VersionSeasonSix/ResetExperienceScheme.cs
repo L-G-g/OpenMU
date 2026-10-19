@@ -14,7 +14,7 @@ using MUnique.OpenMU.GameLogic.Resets;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// A scheme of resets and experience: the required level of the resets rises from 100 to 400, the buff of the
+/// A scheme of resets and experience: the required level of the resets rises from 300 to 400, the buff of the
 /// Elf Soldier is permanent below 10 resets instead of given by the NPC, the levels 300 to 399 gain more experience
 /// and a monster always gives the same experience.
 /// </summary>
@@ -23,7 +23,7 @@ internal static class ResetExperienceScheme
     /// <summary>
     /// The required level of the first resets.
     /// </summary>
-    internal const int FirstRequiredLevel = 100;
+    internal const int FirstRequiredLevel = 300;
 
     /// <summary>
     /// The number of resets which require the <see cref="FirstRequiredLevel"/>.
@@ -38,10 +38,10 @@ internal static class ResetExperienceScheme
     /// <summary>
     /// The number of resets per step of the required level.
     /// </summary>
-    internal const int ResetsPerRequiredLevelStep = 3;
+    internal const int ResetsPerRequiredLevelStep = 10;
 
     /// <summary>
-    /// The highest required level. It's reached at the 98th reset, so that the 100th reset requires it.
+    /// The highest required level. It's reached at the 101st reset.
     /// </summary>
     internal const int LastRequiredLevel = 400;
 
