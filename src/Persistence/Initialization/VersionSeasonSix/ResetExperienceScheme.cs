@@ -84,6 +84,26 @@ internal static class ResetExperienceScheme
     }
 
     /// <summary>
+    /// Removes the buff from the Elf Soldier, because the <see cref="PermanentBuffBelowResetCountPlugIn"/> gives it.
+    /// A new database doesn't need it, because the Elf Soldier is created without the buff.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    internal static async ValueTask RemoveElfSoldierBuffAsync(IContext context, GameConfiguration gameConfiguration)
+    {
+        if (gameConfiguration.Monsters.FirstOrDefault(m => m.Number == ElfSoldierNumber) is not { } elfSoldier)
+        {
+            return;
+        }
+
+        foreach (var buff in elfSoldier.Buffs.ToList())
+        {
+            elfSoldier.Buffs.Remove(buff);
+            await context.DeleteAsync(buff).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
     /// Sets the required level tiers in the configuration of the reset feature and keeps the other values of it.
     /// </summary>
     private static void SetRequiredLevelTiers(IContext context, GameConfiguration gameConfiguration)
@@ -123,26 +143,6 @@ internal static class ResetExperienceScheme
             }
 
             gameConfiguration.GlobalBaseAttributeValues.Add(context.CreateNew<ConstValueAttribute>(1f, definition));
-        }
-    }
-
-    /// <summary>
-    /// Removes the buff from the Elf Soldier, because the <see cref="PermanentBuffBelowResetCountPlugIn"/> gives it.
-    /// A new database doesn't need it, because the Elf Soldier is created without the buff.
-    /// </summary>
-    /// <param name="context">The context.</param>
-    /// <param name="gameConfiguration">The game configuration.</param>
-    internal static async ValueTask RemoveElfSoldierBuffAsync(IContext context, GameConfiguration gameConfiguration)
-    {
-        if (gameConfiguration.Monsters.FirstOrDefault(m => m.Number == ElfSoldierNumber) is not { } elfSoldier)
-        {
-            return;
-        }
-
-        foreach (var buff in elfSoldier.Buffs.ToList())
-        {
-            elfSoldier.Buffs.Remove(buff);
-            await context.DeleteAsync(buff).ConfigureAwait(false);
         }
     }
 
