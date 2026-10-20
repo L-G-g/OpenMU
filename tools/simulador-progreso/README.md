@@ -29,9 +29,10 @@ Otras opciones:
 
 1. Sube de nivel en la zona más alta donde **no muere** y donde limpiar un spot no lleva más de
    `segundos_maximos_por_spot` (`politica_zona: "mayor_viable"`). Con `"mejor_exp"` elige en cambio la
-   zona que da más exp por hora.
+   zona que da más exp por hora. No caza en las zonas de `zonas_excluidas` (hoy Swamp of Calmness).
 2. Reparte los puntos en cada nivel durante el primer reset y después cada `repartir_cada_niveles`
-   niveles (y apenas resetea), primero lo que pide su equipo y el resto según `reparto`.
+   niveles (y apenas resetea), primero lo que pide su equipo y el resto según `reparto`. Con más de
+   `muchos_resets` resets (100) no reparte los puntos de cada nivel, solo los del reset.
 3. Se pone las piezas de su clase que caen en su zona si son mejores que las que tiene
    (cada zona tira sus propios sets y armas, igual que `DefaultDropGenerator`).
 4. Resetea al llegar al nivel pedido, con los puntos que da el plugin de reset.
@@ -46,11 +47,21 @@ Otras opciones:
   Swamp joyas 1 %, Raklion socket 1 %. El pool de ítems de cada zona replica `GetZoneEquipment`.
 - Puntos por reset (`ResetProgressionCalculator`) y el tope de 32.767 por stat del cliente.
 
-## Qué es supuesto (calibrar)
+## Qué es supuesto (calibrado con el juego)
 
-Todo lo de la sección `combate` de `config.json`: segundos entre golpes, mobs por spot y cuántos entran
-en el área, segundos para caminar al spot siguiente, cuánto cura el jugador con pociones por segundo y
-el margen para decir "no muere". También la tasa de exp y la configuración del reset del servidor real.
+La sección `combate` de `config.json`, medida con el cliente real (ver `calibracion.md`):
+
+- `segundos_por_golpe` (0,8): un Twisting Slash.
+- `mobs_por_spot` (5,5): promedio de las áreas de spawn de la escalera.
+- `fraccion_en_rango` (0,45): parte del spot que entra en el área de un cast.
+- `segundos_respawn` (19): el jugador se queda en su spot; si lo limpia antes, espera hasta tener mobs otra vez
+  (respawn de 10 s más lo que tardan en aparecer y acercarse).
+- `segundos_entre_spots` (2): lo que pierde entre un spot limpio y el siguiente, además de esa espera.
+- `segundos_por_cambio_de_zona` (25): warp y caminar al spot de la zona nueva.
+- `segundos_buff` (30) y `nivel_maximo_buff` (220): el buff del NPC al empezar cada reset y cada hora.
+
+Siguen supuestos la curación con pociones por segundo y el margen para decir "no muere". La tasa de exp y la
+configuración del reset salen del servidor real con `--server`.
 
 No modela todavía: otras clases, alas, mascotas, subir ítems con joyas, opciones excelentes en el daño,
 fiestas, MU Helper, eventos (Blood Castle, Devil Square), muertes y pérdida de exp, ni que dos jugadores
@@ -64,4 +75,6 @@ Con la skill `mu-test-client` (muauto) contra el servidor de prueba:
 1. Poner un DK con stats conocidos (panel), ir a una zona con `/move`, atacar spots con Twisting Slash
    durante unos minutos y contar kills y tiempo.
 2. Correr `--evaluar` con esos mismos stats y comparar kills por hora.
-3. Ajustar `segundos_por_golpe` y `segundos_entre_spots` hasta que coincidan.
+3. Ajustar los valores de `combate` hasta que coincidan.
+
+Las mediciones hechas con el cliente real contra el servidor en vivo están en `calibracion.md`.
