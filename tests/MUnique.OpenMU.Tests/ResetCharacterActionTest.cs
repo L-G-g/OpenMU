@@ -77,6 +77,40 @@ public class ResetCharacterActionTest
     }
 
     /// <summary>
+    /// Verifies that the required level of a matching required level tier applies instead of the required level.
+    /// </summary>
+    /// <param name="level">The level of the character.</param>
+    /// <param name="expectedResets">The expected reset count after the reset attempt.</param>
+    [TestCase(119, 1)]
+    [TestCase(120, 2)]
+    public async Task RequiredLevelTierAppliesAsync(int level, int expectedResets)
+    {
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        player.Attributes![Stats.Level] = level;
+        player.Attributes[Stats.Resets] = 1;
+        player.Money = 1_000;
+
+        var configuration = new ResetConfiguration
+        {
+            RequiredLevel = 400,
+            RequiredLevelTiers =
+            [
+                new() { MinimumResetCount = 1, RequiredLevel = 100 },
+                new() { MinimumResetCount = 2, RequiredLevel = 120 },
+            ],
+            RequiredMoney = 0,
+            MoveHome = false,
+            LogOut = false,
+        };
+        player.GameContext.FeaturePlugIns.AddPlugIn(new ResetFeaturePlugIn { Configuration = configuration }, true);
+        var action = new ResetCharacterAction(player, await CreateResetNpcAsync(player).ConfigureAwait(false));
+
+        await action.ResetCharacterAsync().ConfigureAwait(false);
+
+        Assert.That((int)player.Attributes[Stats.Resets], Is.EqualTo(expectedResets));
+    }
+
+    /// <summary>
     /// Verifies cumulative point replacement across multiple resets when point tiers are configured.
     /// </summary>
     [Test]

@@ -1,4 +1,4 @@
-// <copyright file="ConfigurationCaptions.cs" company="MUnique">
+﻿// <copyright file="ConfigurationCaptions.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -199,7 +199,11 @@ public static class ConfigurationCaptions
             .GroupBy(entry => entry.NumberKey)
             .Where(g => g.Key is not null && g.Count() == 1)
             .ToDictionary(g => g.Key!.Value, g => g.Single().Value);
+
+        // Targets which are linked by their id don't make the number of another target ambiguous,
+        // e.g. a copy of a monster with a deterministic id and the original with a random id.
         var ambiguousTargetNumbers = targets
+            .Where(caption => !referencesById.ContainsKey(caption.Key))
             .GroupBy(GetNumberKey)
             .Where(g => g.Key is not null && g.Count() > 1)
             .Select(g => g.Key!.Value)

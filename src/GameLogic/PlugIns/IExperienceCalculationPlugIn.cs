@@ -15,6 +15,7 @@ using MUnique.OpenMU.PlugIns;
 /// The plugins are called after the configured experience rates and the map multiplier have been
 /// applied, and before the random multiplier of <see cref="Attributes.Stats.RandomExperienceMinMultiplier"/>
 /// and <see cref="Attributes.Stats.RandomExperienceMaxMultiplier"/> is applied.
+/// In a party, they are called for the share of each member.
 /// Because the plugins are not called in a defined order, they should only apply factors or
 /// summands which are independent of each other.
 /// </remarks>

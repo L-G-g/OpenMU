@@ -93,7 +93,7 @@ public partial class DropItemGroupTable
             return group.ItemType switch
             {
                 SpecialItemType.Money => Resources.Money,
-                SpecialItemType.RandomItem or SpecialItemType.Excellent or SpecialItemType.SocketItem => Resources.RandomItemsByMonsterLevel,
+                SpecialItemType.RandomItem or SpecialItemType.Excellent or SpecialItemType.SocketItem or SpecialItemType.ZoneItem or SpecialItemType.ZoneExcellentItem => Resources.RandomItemsByMonsterLevel,
                 SpecialItemType.Ancient => Resources.RandomAncientItems,
                 _ => Resources.NoItems,
             };

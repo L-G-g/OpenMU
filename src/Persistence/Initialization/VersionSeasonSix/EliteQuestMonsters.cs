@@ -132,6 +132,21 @@ internal static class EliteQuestMonsters
         }
     }
 
+    /// <summary>
+    /// Gets the multiplier for the value of an attribute of the original monster.
+    /// </summary>
+    /// <param name="definition">The definition of the attribute.</param>
+    /// <returns>The multiplier.</returns>
+    internal static float GetMultiplier(AttributeDefinition definition)
+    {
+        if (definition.Id == Stats.MaximumHealth.Id)
+        {
+            return HealthMultiplier;
+        }
+
+        return CombatAttributes.Any(a => a.Id == definition.Id) ? CombatMultiplier : 1;
+    }
+
     private static MonsterDefinition GetOrCreateElite(IContext context, GameConfiguration gameConfiguration, MonsterDefinition original, string name)
     {
         var idNumber = (short)(original.Number + IdNumberOffset);
@@ -172,16 +187,6 @@ internal static class EliteQuestMonsters
 
         gameConfiguration.Monsters.Add(elite);
         return elite;
-    }
-
-    private static float GetMultiplier(AttributeDefinition definition)
-    {
-        if (definition.Id == Stats.MaximumHealth.Id)
-        {
-            return HealthMultiplier;
-        }
-
-        return CombatAttributes.Any(a => a.Id == definition.Id) ? CombatMultiplier : 1;
     }
 
     /// <summary>

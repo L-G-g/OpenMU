@@ -71,6 +71,47 @@ public class ResetProgressionCalculatorTest
     }
 
     /// <summary>
+    /// Verifies the required level of the required level tiers, and the fallback to the required level without a matching tier.
+    /// </summary>
+    [TestCase(0, 100)]
+    [TestCase(9, 100)]
+    [TestCase(10, 110)]
+    [TestCase(12, 110)]
+    [TestCase(13, 120)]
+    public void RequiredLevelTiers(int currentResetCount, int expectedRequiredLevel)
+    {
+        var configuration = new ResetConfiguration
+        {
+            RequiredLevel = 400,
+            RequiredLevelTiers =
+            {
+                new ResetConfiguration.ResetLevelTier { MinimumResetCount = 1, RequiredLevel = 100 },
+                new ResetConfiguration.ResetLevelTier { MinimumResetCount = 14, RequiredLevel = 120 },
+                new ResetConfiguration.ResetLevelTier { MinimumResetCount = 11, RequiredLevel = 110 },
+            },
+        };
+
+        var progression = ResetProgressionCalculator.Calculate(currentResetCount, 0, configuration);
+
+        Assert.That(progression.RequiredLevel, Is.EqualTo(expectedRequiredLevel));
+    }
+
+    /// <summary>
+    /// Verifies that the required level applies when no tier matches.
+    /// </summary>
+    [Test]
+    public void RequiredLevelWithoutMatchingTier()
+    {
+        var configuration = new ResetConfiguration
+        {
+            RequiredLevel = 300,
+            RequiredLevelTiers = { new ResetConfiguration.ResetLevelTier { MinimumResetCount = 5, RequiredLevel = 350 } },
+        };
+
+        Assert.That(ResetProgressionCalculator.Calculate(3, 0, configuration).RequiredLevel, Is.EqualTo(300));
+    }
+
+    /// <summary>
     /// Verifies legacy fallback behavior when no tier collections are configured.
     /// </summary>
     [Test]

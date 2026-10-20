@@ -491,6 +491,10 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
         var firstItem = !droppedMoney.HasValue;
         foreach (var item in generatedItems)
         {
+            await killer.GameContext.PlugInManager.NotifyPlugInsAsync<IMonsterItemDroppingPlugIn>(
+                p => p.MonsterItemDroppingAsync(this, killer, item),
+                killer.Logger).ConfigureAwait(false);
+
             Point dropCoordinates;
             if (firstItem)
             {

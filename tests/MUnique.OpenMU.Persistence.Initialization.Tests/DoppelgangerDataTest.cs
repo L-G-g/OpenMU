@@ -1,4 +1,4 @@
-// <copyright file="DoppelgangerDataTest.cs" company="MUnique">
+﻿// <copyright file="DoppelgangerDataTest.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -147,8 +147,8 @@ internal class DoppelgangerDataTest
         Assert.That(gameConfiguration.Items.Count(item => item is { Group: 13, Number: 125 }), Is.EqualTo(1), "Doppelganger Free Ticket");
         var sign = gameConfiguration.Items.Single(item => item is { Group: 14, Number: 110 });
         Assert.That(sign.Durability, Is.EqualTo(5), "A stack of five signs transforms into a mirror.");
-        var signDropGroup = gameConfiguration.DropItemGroups.Single(group => group.PossibleItems.Contains(sign));
-        Assert.That(gameConfiguration.Maps.Single(map => map.Number == 0 && map.Discriminator == 0).DropItemGroups, Does.Contain(signDropGroup));
+        // The drop item group exists, but a new database doesn't drop the sign: Lumen sells the mirror, see EventEntryItemShop.
+        Assert.That(gameConfiguration.DropItemGroups.Count(group => group.PossibleItems.Contains(sign)), Is.EqualTo(1));
         var definitions = gameConfiguration.MiniGameDefinitions.Where(d => d.Type == MiniGameType.Doppelganger).ToList();
 
         Assert.That(definitions.Select(d => (short)d.GameLevel), Is.EquivalentTo(new short[] { 1, 2, 3, 4 }));

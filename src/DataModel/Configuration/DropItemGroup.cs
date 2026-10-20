@@ -46,6 +46,26 @@ public enum SpecialItemType
     /// The jewel special item type.
     /// </summary>
     Jewel,
+
+    /// <summary>
+    /// The items of a zone of maps, whose monsters have the levels between <see cref="DropItemGroup.MinimumMonsterLevel"/>
+    /// and <see cref="DropItemGroup.MaximumMonsterLevel"/>.
+    /// </summary>
+    /// <remarks>
+    /// If the group has no <see cref="DropItemGroup.PossibleItems"/>, the zones are ordered by their maximum monster level,
+    /// and the weapons, shields and armor sets of each character class are spread over them by rank: the first zone drops
+    /// the weakest ones, the last zone the strongest ones. The pieces of an armor set always drop in the same zone.
+    /// All other items drop as <see cref="RandomItem"/> does. If it has possible items, the zone drops only them.
+    /// The item level of weapons, shields and armor pieces grows from 0 at the minimum monster level
+    /// up to <see cref="DropItemGroup.ItemLevel"/> at the level of the strongest monster of the range which spawns on the maps
+    /// of the group.
+    /// </remarks>
+    ZoneItem,
+
+    /// <summary>
+    /// The excellent items of a zone of maps, chosen like <see cref="ZoneItem"/>.
+    /// </summary>
+    ZoneExcellentItem,
 }
 
 /// <summary>

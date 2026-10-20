@@ -134,6 +134,12 @@ public abstract class DataInitializationBase : IDataInitializationPlugIn
         plugInManager.DiscoverAndRegisterPlugIns();
         plugInManager.KnownPlugInTypes.ForEach(plugInType =>
         {
+            if (this.GameConfiguration.PlugInConfigurations.Any(c => c.TypeId == plugInType.GUID))
+            {
+                // The initialization of the version already configured it, e.g. the MapLevelLadder of season 6.
+                return;
+            }
+
             var plugInConfiguration = this.Context.CreateNew<PlugInConfiguration>();
             plugInConfiguration.SetGuid(plugInType.GUID);
             plugInConfiguration.TypeId = plugInType.GUID;
