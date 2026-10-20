@@ -388,6 +388,7 @@ namespace
         InstallMiniMapHotspots(&Log);
         LoadHealthBars(&Log);
         LoadElites(&Log);
+        LoadWarpMap(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())
