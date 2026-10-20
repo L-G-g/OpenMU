@@ -911,5 +911,11 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized ResetExperienceSchemeUpdatePlugIn_Description text.</summary>
         public static string ResetExperienceSchemeUpdatePlugIn_Description => ResourceManager.GetString("ResetExperienceSchemeUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized RestoreElfSoldierBuffEffectUpdatePlugIn_Name text.</summary>
+        public static string RestoreElfSoldierBuffEffectUpdatePlugIn_Name => ResourceManager.GetString("RestoreElfSoldierBuffEffectUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized RestoreElfSoldierBuffEffectUpdatePlugIn_Description text.</summary>
+        public static string RestoreElfSoldierBuffEffectUpdatePlugIn_Description => ResourceManager.GetString("RestoreElfSoldierBuffEffectUpdatePlugIn_Description", resourceCulture)!;
+
     }
 }

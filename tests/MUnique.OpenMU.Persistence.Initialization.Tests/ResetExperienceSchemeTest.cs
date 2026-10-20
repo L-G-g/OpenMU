@@ -25,6 +25,8 @@ internal class ResetExperienceSchemeTest
 {
     private const short ElfSoldierNumber = 257;
 
+    private const short ElfSoldierBuffEffectNumber = 3;
+
     /// <summary>
     /// Tests the required levels of the scheme: 300 for the first 10 resets, then 10 more every 10 resets, up to 400.
     /// </summary>
@@ -87,6 +89,50 @@ internal class ResetExperienceSchemeTest
         });
     }
 
+    /// <summary>
+    /// Tests that the update unlinks the effect from the buff of the Elf Soldier before deleting the buff,
+    /// because the effect is a member of the aggregate of the buff and would be deleted with it.
+    /// </summary>
+    [Test]
+    public async Task UpdateKeepsElfSoldierBuffEffectAsync()
+    {
+        var (context, gameConfiguration) = await CreateSeason6ConfigurationAsync().ConfigureAwait(false);
+        using var _ = context;
+        RestorePreviousData(context, gameConfiguration);
+        var buff = gameConfiguration.Monsters.Single(m => m.Number == ElfSoldierNumber).Buffs.Single();
+
+        await new ResetExperienceSchemeUpdatePlugIn().ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(buff.MagicEffectDefinition, Is.Null);
+            Assert.That(gameConfiguration.MagicEffects.Count(e => e.Number == ElfSoldierBuffEffectNumber), Is.EqualTo(1));
+        });
+    }
+
+    /// <summary>
+    /// Tests that the repair creates the effect of the buff of the Elf Soldier again where the first version of
+    /// the update deleted it, and that it doesn't create a second one.
+    /// </summary>
+    [Test]
+    public async Task RestoreCreatesMissingElfSoldierBuffEffectAsync()
+    {
+        var (context, gameConfiguration) = await CreateSeason6ConfigurationAsync().ConfigureAwait(false);
+        using var _ = context;
+        gameConfiguration.MagicEffects.Remove(gameConfiguration.MagicEffects.Single(e => e.Number == ElfSoldierBuffEffectNumber));
+
+        var update = new RestoreElfSoldierBuffEffectUpdatePlugIn();
+        await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+        await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+
+        var effect = gameConfiguration.MagicEffects.Single(e => e.Number == ElfSoldierBuffEffectNumber);
+        Assert.Multiple(() =>
+        {
+            Assert.That(effect.PowerUpDefinitions, Has.Count.EqualTo(2));
+            Assert.That(effect.Duration!.ConstantValue.Value, Is.EqualTo(3600));
+        });
+    }
+
     private static void AssertScheme(GameConfiguration gameConfiguration)
     {
         var resetConfiguration = GetResetConfiguration(gameConfiguration, ReferenceHandler.Preserve);
@@ -141,7 +187,7 @@ internal class ResetExperienceSchemeTest
         }
 
         var buff = context.CreateNew<Buff>();
-        buff.MagicEffectDefinition = gameConfiguration.MagicEffects.Single(e => e.Number == 3);
+        buff.MagicEffectDefinition = gameConfiguration.MagicEffects.Single(e => e.Number == ElfSoldierBuffEffectNumber);
         buff.MaximumLevel = 220;
         gameConfiguration.Monsters.Single(m => m.Number == ElfSoldierNumber).Buffs.Add(buff);
 

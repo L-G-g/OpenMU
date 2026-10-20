@@ -87,6 +87,10 @@ internal static class ResetExperienceScheme
     /// Removes the buff from the Elf Soldier, because the <see cref="PermanentBuffBelowResetCountPlugIn"/> gives it.
     /// A new database doesn't need it, because the Elf Soldier is created without the buff.
     /// </summary>
+    /// <remarks>
+    /// The effect of the buff is a member of the aggregate of the <see cref="Buff"/>, so deleting the buff with it
+    /// would delete the effect, which the plugin needs. It's unlinked first.
+    /// </remarks>
     /// <param name="context">The context.</param>
     /// <param name="gameConfiguration">The game configuration.</param>
     internal static async ValueTask RemoveElfSoldierBuffAsync(IContext context, GameConfiguration gameConfiguration)
@@ -98,9 +102,21 @@ internal static class ResetExperienceScheme
 
         foreach (var buff in elfSoldier.Buffs.ToList())
         {
+            buff.MagicEffectDefinition = null;
             elfSoldier.Buffs.Remove(buff);
             await context.DeleteAsync(buff).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Creates the effect of the buff of the Elf Soldier again, if it's missing. The first version of the update
+    /// deleted it together with the buff of the Elf Soldier.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    internal static void RestoreElfSoldierBuffEffect(IContext context, GameConfiguration gameConfiguration)
+    {
+        ElfSoldierBuffEffect.GetOrCreate(context, gameConfiguration);
     }
 
     /// <summary>
