@@ -905,9 +905,10 @@ namespace
                 left = mouse.x * toX - 12.0f - boxWidth;
             }
 
-            if (top + boxHeight > 476.0f)
+            // La barra de abajo del juego se dibuja encima: si no entra arriba de ella, va arriba del mouse.
+            if (top + boxHeight > 480.0f - MainBarHeight)
             {
-                top = 476.0f - boxHeight;
+                top = mouse.y * toY - 6.0f - boxHeight;
             }
 
             DrawBox(left / toX, top / toY, (left + boxWidth) / toX, (top + boxHeight) / toY);
