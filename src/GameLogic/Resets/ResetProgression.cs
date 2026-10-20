@@ -12,9 +12,11 @@ namespace MUnique.OpenMU.GameLogic.Resets;
 /// <param name="RequiredItemAmount">The required number of configured reset items.</param>
 /// <param name="PointsForReset">The number of points granted for the reset.</param>
 /// <param name="TotalPointsAfterReset">The total number of points after the reset when replacement mode is active.</param>
+/// <param name="RequiredLevel">The character level which is required for the reset.</param>
 public readonly record struct ResetProgression(
     int NextResetCount,
     int RequiredZen,
     int RequiredItemAmount,
     int PointsForReset,
-    int TotalPointsAfterReset);
+    int TotalPointsAfterReset,
+    int RequiredLevel);

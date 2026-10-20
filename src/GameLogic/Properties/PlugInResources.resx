@@ -1646,4 +1646,55 @@
   <data name="DropSocketCountConfiguration_MaximumSockets_Name" xml:space="preserve">
     <value>Maximum sockets</value>
   </data>
+  <data name="ResetConfiguration_RequiredLevelTiers_Name" xml:space="preserve">
+    <value>Required level tiers</value>
+  </data>
+  <data name="ResetConfiguration_RequiredLevelTiers_Description" xml:space="preserve">
+    <value>The required level per reset range. A tier applies from its minimum reset count on, which is the count after the reset. Without a matching tier, the required level above applies.</value>
+  </data>
+  <data name="ResetLevelTier_MinimumResetCount_Name" xml:space="preserve">
+    <value>Minimum reset count</value>
+  </data>
+  <data name="ResetLevelTier_RequiredLevel_Name" xml:space="preserve">
+    <value>Required level</value>
+  </data>
+  <data name="PermanentBuffBelowResetCountPlugIn_Name" xml:space="preserve">
+    <value>Permanent buff below a reset count</value>
+  </data>
+  <data name="PermanentBuffBelowResetCountPlugIn_Description" xml:space="preserve">
+    <value>Gives the characters with less resets than configured a buff which doesn't run out, e.g. the buff of the Elf Soldier. It comes back after a death and is removed when a reset reaches the configured count.</value>
+  </data>
+  <data name="PermanentBuffBelowResetCountConfiguration_EffectNumber_Name" xml:space="preserve">
+    <value>Effect number</value>
+  </data>
+  <data name="PermanentBuffBelowResetCountConfiguration_EffectNumber_Description" xml:space="preserve">
+    <value>The number of the magic effect, e.g. 3 for the buff of the Elf Soldier.</value>
+  </data>
+  <data name="PermanentBuffBelowResetCountConfiguration_ResetCount_Name" xml:space="preserve">
+    <value>Reset count</value>
+  </data>
+  <data name="PermanentBuffBelowResetCountConfiguration_ResetCount_Description" xml:space="preserve">
+    <value>Characters with less resets have the buff.</value>
+  </data>
+  <data name="LevelRangeExperiencePlugIn_Name" xml:space="preserve">
+    <value>Experience multiplier by level range</value>
+  </data>
+  <data name="LevelRangeExperiencePlugIn_Description" xml:space="preserve">
+    <value>Multiplies the experience which a character gains for a kill by the multiplier of its level range, also in a party. It doesn't apply to master experience.</value>
+  </data>
+  <data name="LevelRangeExperienceConfiguration_Ranges_Name" xml:space="preserve">
+    <value>Level ranges</value>
+  </data>
+  <data name="LevelRangeExperienceConfiguration_Ranges_Description" xml:space="preserve">
+    <value>The ranges of character levels with their experience multiplier. The minimum and maximum level are included.</value>
+  </data>
+  <data name="LevelRange_MinimumLevel_Name" xml:space="preserve">
+    <value>Minimum level</value>
+  </data>
+  <data name="LevelRange_MaximumLevel_Name" xml:space="preserve">
+    <value>Maximum level</value>
+  </data>
+  <data name="LevelRange_Multiplier_Name" xml:space="preserve">
+    <value>Multiplier</value>
+  </data>
 </root>

@@ -8,6 +8,7 @@ using System.Diagnostics.Metrics;
 using System.Threading;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
+using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.GameLogic.Views.Party;
 using MUnique.OpenMU.Persistence;
@@ -379,19 +380,21 @@ public sealed class Party : AsyncDisposable
 
         if (isAtMaxLevel && isMasterClass)
         {
-            var exp = (int)(perLevel
-                            * attributes[Stats.TotalLevel]
-                            * player.GameContext.MasterExperienceRate
-                            * (attributes[Stats.MasterExperienceRate] + attributes[Stats.BonusExperienceRate]));
+            var masterExperience = perLevel
+                                   * attributes[Stats.TotalLevel]
+                                   * player.GameContext.MasterExperienceRate
+                                   * (attributes[Stats.MasterExperienceRate] + attributes[Stats.BonusExperienceRate]);
+            var exp = (int)await CalculateExperienceByPlugInsAsync(player, killed, true, masterExperience).ConfigureAwait(false);
 
             await player.AddMasterExperienceAsync(exp, killed).ConfigureAwait(false);
             return exp;
         }
 
-        var normalExperience = (int)(perLevel
-                                     * attributes[Stats.Level]
-                                     * player.GameContext.ExperienceRate
-                                     * (attributes[Stats.ExperienceRate] + attributes[Stats.BonusExperienceRate]));
+        var experience = perLevel
+                         * attributes[Stats.Level]
+                         * player.GameContext.ExperienceRate
+                         * (attributes[Stats.ExperienceRate] + attributes[Stats.BonusExperienceRate]);
+        var normalExperience = (int)await CalculateExperienceByPlugInsAsync(player, killed, false, experience).ConfigureAwait(false);
 
         if (!isAtMaxLevel)
         {
@@ -402,6 +405,22 @@ public sealed class Party : AsyncDisposable
         // still returned: the money drop is derived from it, and a solo kill returns it as well
         // (see Player.AddExpAfterKillAsync), so such a member must not end up without any money.
         return normalExperience;
+    }
+
+    /// <summary>
+    /// Lets the <see cref="IExperienceCalculationPlugIn"/>s modify the experience share of a party member,
+    /// like they do for the experience of a kill without a party.
+    /// </summary>
+    private static async ValueTask<double> CalculateExperienceByPlugInsAsync(Player player, IAttackable killed, bool isMasterExperience, double experience)
+    {
+        if (player.GameContext.PlugInManager.GetPlugInPoint<IExperienceCalculationPlugIn>() is not { } plugInPoint)
+        {
+            return experience;
+        }
+
+        var args = new ExperienceCalculationArgs(killed, isMasterExperience, experience);
+        await plugInPoint.CalculateExperienceAsync(player, args).ConfigureAwait(false);
+        return args.Experience;
     }
 
     private async ValueTask ExitPartyAsync(IPartyMember member, byte index)

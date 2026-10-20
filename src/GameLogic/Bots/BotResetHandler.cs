@@ -72,12 +72,12 @@ internal static class BotResetHandler
             return false;
         }
 
-        if (player.Level < configuration.RequiredLevel)
+        var nextResetCount = (int)attributes[Stats.Resets] + 1;
+        if (player.Level < ResetProgressionCalculator.GetRequiredLevel(configuration, nextResetCount))
         {
             return false;
         }
 
-        var nextResetCount = (int)attributes[Stats.Resets] + 1;
         return configuration.ResetLimit is not > 0 || nextResetCount <= configuration.ResetLimit;
     }
 

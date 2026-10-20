@@ -29,7 +29,25 @@ public static class ResetProgressionCalculator
         var totalPointsAfterReset = GetTotalPointsAfterReset(configuration, pointsPerResetOverride, nextResetCount, pointsForReset);
         var requiredItemAmount = GetRequiredItemAmount(configuration, nextResetCount);
 
-        return new ResetProgression(nextResetCount, requiredZen, requiredItemAmount, pointsForReset, totalPointsAfterReset);
+        var requiredLevel = GetRequiredLevel(configuration, nextResetCount);
+
+        return new ResetProgression(nextResetCount, requiredZen, requiredItemAmount, pointsForReset, totalPointsAfterReset, requiredLevel);
+    }
+
+    /// <summary>
+    /// Gets the character level which is required for the reset with the specified number.
+    /// </summary>
+    /// <param name="configuration">The reset configuration.</param>
+    /// <param name="nextResetCount">The reset count which the character has after the reset.</param>
+    /// <returns>The required level of the matching <see cref="ResetConfiguration.RequiredLevelTiers"/>, or <see cref="ResetConfiguration.RequiredLevel"/> if none matches.</returns>
+    public static int GetRequiredLevel(ResetConfiguration configuration, int nextResetCount)
+    {
+        if (GetMatchingTier(configuration.RequiredLevelTiers, nextResetCount, tier => tier.MinimumResetCount) is { } tier)
+        {
+            return tier.RequiredLevel;
+        }
+
+        return configuration.RequiredLevel;
     }
 
     private static int GetPointsForReset(ResetConfiguration configuration, int pointsPerResetOverride, int nextResetCount)

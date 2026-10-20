@@ -25,6 +25,16 @@ public class ResetConfiguration
     public int RequiredLevel { get; set; } = 400;
 
     /// <summary>
+    /// Gets or sets the required levels per reset range. The tier with the highest
+    /// <see cref="ResetLevelTier.MinimumResetCount"/> which the next reset reaches applies;
+    /// without a matching tier, <see cref="RequiredLevel"/> is required.
+    /// </summary>
+    [Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.ResetConfiguration_RequiredLevelTiers_Name), Description = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.ResetConfiguration_RequiredLevelTiers_Description), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
+    [MemberOfAggregate]
+    [ScaffoldColumn(true)]
+    public ICollection<ResetLevelTier> RequiredLevelTiers { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets the character level after a reset.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.ResetConfiguration_LevelAfterReset_Name))]
@@ -128,6 +138,25 @@ public class ResetConfiguration
         /// </summary>
         [Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.ResetPointTier_PointsGranted_Name), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
         public int PointsGranted { get; set; }
+    }
+
+    /// <summary>
+    /// Tier definition for the character level which is required for a reset.
+    /// </summary>
+    public class ResetLevelTier
+    {
+        /// <summary>
+        /// Gets or sets the minimum reset count at which this tier applies.
+        /// It's the count which the character has after the reset, e.g. 11 for its eleventh reset.
+        /// </summary>
+        [Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.ResetLevelTier_MinimumResetCount_Name), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
+        public int MinimumResetCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the character level which is required for the resets of this tier.
+        /// </summary>
+        [Display(Name = nameof(MUnique.OpenMU.GameLogic.Properties.PlugInResources.ResetLevelTier_RequiredLevel_Name), ResourceType = typeof(MUnique.OpenMU.GameLogic.Properties.PlugInResources))]
+        public int RequiredLevel { get; set; }
     }
 
     /// <summary>

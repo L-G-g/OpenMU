@@ -4515,5 +4515,56 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized EliteMonsterEffectConfiguration_EffectNumber_Description text.</summary>
         public static string EliteMonsterEffectConfiguration_EffectNumber_Description => ResourceManager.GetString("EliteMonsterEffectConfiguration_EffectNumber_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized ResetConfiguration_RequiredLevelTiers_Name text.</summary>
+        public static string ResetConfiguration_RequiredLevelTiers_Name => ResourceManager.GetString("ResetConfiguration_RequiredLevelTiers_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ResetConfiguration_RequiredLevelTiers_Description text.</summary>
+        public static string ResetConfiguration_RequiredLevelTiers_Description => ResourceManager.GetString("ResetConfiguration_RequiredLevelTiers_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized ResetLevelTier_MinimumResetCount_Name text.</summary>
+        public static string ResetLevelTier_MinimumResetCount_Name => ResourceManager.GetString("ResetLevelTier_MinimumResetCount_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ResetLevelTier_RequiredLevel_Name text.</summary>
+        public static string ResetLevelTier_RequiredLevel_Name => ResourceManager.GetString("ResetLevelTier_RequiredLevel_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized PermanentBuffBelowResetCountPlugIn_Name text.</summary>
+        public static string PermanentBuffBelowResetCountPlugIn_Name => ResourceManager.GetString("PermanentBuffBelowResetCountPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized PermanentBuffBelowResetCountPlugIn_Description text.</summary>
+        public static string PermanentBuffBelowResetCountPlugIn_Description => ResourceManager.GetString("PermanentBuffBelowResetCountPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized PermanentBuffBelowResetCountConfiguration_EffectNumber_Name text.</summary>
+        public static string PermanentBuffBelowResetCountConfiguration_EffectNumber_Name => ResourceManager.GetString("PermanentBuffBelowResetCountConfiguration_EffectNumber_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized PermanentBuffBelowResetCountConfiguration_EffectNumber_Description text.</summary>
+        public static string PermanentBuffBelowResetCountConfiguration_EffectNumber_Description => ResourceManager.GetString("PermanentBuffBelowResetCountConfiguration_EffectNumber_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized PermanentBuffBelowResetCountConfiguration_ResetCount_Name text.</summary>
+        public static string PermanentBuffBelowResetCountConfiguration_ResetCount_Name => ResourceManager.GetString("PermanentBuffBelowResetCountConfiguration_ResetCount_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized PermanentBuffBelowResetCountConfiguration_ResetCount_Description text.</summary>
+        public static string PermanentBuffBelowResetCountConfiguration_ResetCount_Description => ResourceManager.GetString("PermanentBuffBelowResetCountConfiguration_ResetCount_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized LevelRangeExperiencePlugIn_Name text.</summary>
+        public static string LevelRangeExperiencePlugIn_Name => ResourceManager.GetString("LevelRangeExperiencePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized LevelRangeExperiencePlugIn_Description text.</summary>
+        public static string LevelRangeExperiencePlugIn_Description => ResourceManager.GetString("LevelRangeExperiencePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized LevelRangeExperienceConfiguration_Ranges_Name text.</summary>
+        public static string LevelRangeExperienceConfiguration_Ranges_Name => ResourceManager.GetString("LevelRangeExperienceConfiguration_Ranges_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized LevelRangeExperienceConfiguration_Ranges_Description text.</summary>
+        public static string LevelRangeExperienceConfiguration_Ranges_Description => ResourceManager.GetString("LevelRangeExperienceConfiguration_Ranges_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized LevelRange_MinimumLevel_Name text.</summary>
+        public static string LevelRange_MinimumLevel_Name => ResourceManager.GetString("LevelRange_MinimumLevel_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized LevelRange_MaximumLevel_Name text.</summary>
+        public static string LevelRange_MaximumLevel_Name => ResourceManager.GetString("LevelRange_MaximumLevel_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized LevelRange_Multiplier_Name text.</summary>
+        public static string LevelRange_Multiplier_Name => ResourceManager.GetString("LevelRange_Multiplier_Name", resourceCulture)!;
     }
 }

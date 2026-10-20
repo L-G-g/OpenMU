@@ -51,7 +51,7 @@ public class ResetInfoChatCommandPlugIn : IChatCommandPlugIn
             await player.ShowLocalizedBlueMessageAsync(
                     nameof(PlayerMessage.NextResetInfoCompactWithItem),
                     progression.NextResetCount,
-                    configuration.RequiredLevel,
+                    progression.RequiredLevel,
                     progression.RequiredZen,
                     itemName,
                     progression.RequiredItemAmount,
@@ -64,7 +64,7 @@ public class ResetInfoChatCommandPlugIn : IChatCommandPlugIn
         await player.ShowLocalizedBlueMessageAsync(
                 nameof(PlayerMessage.NextResetInfoCompactNoItem),
                 progression.NextResetCount,
-                configuration.RequiredLevel,
+                progression.RequiredLevel,
                 progression.RequiredZen,
                 progression.PointsForReset,
                 progression.TotalPointsAfterReset)
