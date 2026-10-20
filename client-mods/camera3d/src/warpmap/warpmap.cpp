@@ -759,12 +759,12 @@ namespace
                 if (!warp.canMove)
                 {
                     glColor4f(0.0f, 0.0f, 0.0f, hover ? 0.35f : 0.45f);
-                    FillZone(layout, *zone, GL_POLYGON);
+                    FillZone(layout, *zone, GL_TRIANGLE_FAN);
                 }
                 else if (hover)
                 {
                     glColor4f(1.0f, 0.85f, 0.4f, 0.25f);
-                    FillZone(layout, *zone, GL_POLYGON);
+                    FillZone(layout, *zone, GL_TRIANGLE_FAN);
                 }
 
                 if (hover)

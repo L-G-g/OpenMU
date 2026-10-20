@@ -168,7 +168,7 @@ La ventana del comando M (la lista de mapas para moverse) se reemplaza por un ma
 mundo con una zona por warp. Con el mouse encima, la zona se resalta y un cartel muestra el nombre, el
 nivel mínimo y el peligro; las zonas a las que el personaje no puede ir se ven oscuras. Un click en una
 zona hace el warp; un click afuera de la imagen (o Esc, o M) cierra el mapa. Los warps sin zona en la
-imagen (por ejemplo Noria, Elbeland o Devias) aparecen como botones al costado. Mientras el mapa está
+imagen (por ejemplo Elbeland, Swamp of Calmness o Vulcanus) aparecen como botones al costado. Mientras el mapa está
 abierto, los clicks no llegan al mundo.
 
 Va en otra DLL, `warpmap.dll`, que `camera3d.dll` carga si está en la misma carpeta, después de
@@ -189,8 +189,8 @@ La imagen y las zonas se configuran en `warpmap.ini`, junto a la DLL (el de ejem
 Image=mapa.png
 
 [Zones]
-; número del warp = rectángulo (x1,y1,x2,y2) o polígono convexo (x1,y1,x2,y2,x3,y3,...),
-; en píxeles de la imagen original
+; número del warp = rectángulo (x1,y1,x2,y2) o polígono (x1,y1,x2,y2,x3,y3,...) que se vea entero
+; desde su primer punto, en píxeles de la imagen original
 12=455,830,625,945
 
 [Names]
