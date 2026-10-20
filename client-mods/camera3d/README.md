@@ -162,6 +162,77 @@ El modelo se busca igual que al empezar `0x005DE260` (`0x004CDA10` y `0x00969AD0
 `0x005DDAF0` agranda el dibujo para el contorno de selección (escala `0x00E61638`); el brillo se dibuja
 con la escala en 1.
 
+## Mapa del comando M (warpmap.dll)
+
+La ventana del comando M (la lista de mapas para moverse) se reemplaza por un mapa: una imagen del
+mundo con una zona por warp. Con el mouse encima, la zona se resalta y un cartel muestra el nombre, el
+nivel mínimo y el peligro; las zonas a las que el personaje no puede ir se ven oscuras. Un click en una
+zona hace el warp; un click afuera de la imagen (o Esc, o M) cierra el mapa. Los warps sin zona en la
+imagen (por ejemplo Elbeland, Swamp of Calmness o Vulcanus) aparecen como botones al costado. Mientras el mapa está
+abierto, los clicks no llegan al mundo.
+
+Va en otra DLL, `warpmap.dll`, que `camera3d.dll` carga si está en la misma carpeta, después de
+`elites.dll` (`src/loadwarpmap.cpp`). Sin la DLL (o si no se puede leer la imagen) se ve la lista
+original. Se desactiva con `camera3d.ini`:
+
+```
+[WarpMap]
+Enabled=1       ; 0: no se carga warpmap.dll
+```
+
+La imagen y las zonas se configuran en `warpmap.ini`, junto a la DLL (el de ejemplo está en
+`src/warpmap/warpmap.ini`; la imagen no está en este repositorio):
+
+```
+[Map]
+; PNG o JPG junto a la DLL
+Image=mapa.png
+
+[Zones]
+; número del warp = rectángulo (x1,y1,x2,y2) o polígono (x1,y1,x2,y2,x3,y3,...) que se vea entero
+; desde su primer punto, en píxeles de la imagen original
+12=455,830,625,945
+
+[Names]
+; nombre a mostrar (si no está, el de Movereq.bmd)
+12=Atlans 2
+
+[Text]
+; textos del cartel (los comentarios van en su propia línea)
+Level=Nivel mínimo
+Danger=Peligro
+Locked=No disponible
+```
+
+El número del warp es el índice de `Movereq.bmd` (el que el cliente le manda al servidor, ver
+`client-mods/warpmenu`). El nivel, el peligro y si el personaje puede ir salen del juego, igual que en la
+lista. El servidor no cambia: recibe el mismo pedido de warp que con la lista.
+
+`src/warpmap/warpmap.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x00D46C1C` | vtable de `CNewUIMoveCommandWindow` | Se reemplazan el dibujo (`[0]`, `0x008327F0`) y los eventos del mouse (`[2]`, `0x00831F00`) |
+| `0x00831710` | Calcula "puede ir" (`+0x54`) de las filas visibles (`+0x90` a `+0x94`): nivel, zen, estado del personaje, mapas especiales | Se lo llama con todas las filas |
+| `0x00831E2D` | Click en una fila de la lista | Lo que hace el click en una zona: |
+| `0x00832F50`, `0x00630D20` | Si el mapa actual o el destino lo piden, guarda las opciones (`C1 F3 30`) | |
+| `0x008314B0` | Clave del pedido de warp de la ventana | |
+| `0x00787D00` | Manda el pedido de warp (`C1 8E 02`, clave e índice) | |
+| `0x00860FC0`, `0x0085F850` | Sistema de ventanas y `Hide(2)`: cierra la ventana | También para el click afuera |
+| `0x00790F00` | Tecla o botón recién soltado | Click izquierdo |
+| `0x00635FD0`, `0x00635F50` | Mezcla con alfa del juego (activar y desactivar) | Alrededor de los textos, como la lista |
+| `0x00E8203C`, `0x00420120`, `0x00420150` | Texto del juego: color en `[+4]+0x10`, fondo en `[+4]+0x14`, fuente y `RenderText` (640x480) | Botones y cartel; fuentes `0x00E8C588` y `0x00E8C58C` (negrita) |
+| `0x00E61E58` / `0x00E61E5C` | Ancho y alto de la ventana | Ubicación del mapa (debajo queda la barra del juego, 51 de 480) |
+
+Filas de la ventana: lista en `+0x1C` (`std::list`: cabeza en `+0x30`, cantidad en `+0x34`; nodo:
+siguiente en `+0`, dato en `+8`). Cada dato (`MOVEINFODATA`): índice `+0x00`, nombre `+0x04`, nivel
+mínimo `+0x44` (2/3 para Magic Gladiator, Dark Lord y Rage Fighter, salvo 400), peligro `+0x4C` (antes el
+costo en zen), puede ir `+0x54`.
+
+La imagen se lee con WIC, escalada al tamaño en que se dibuja, y el fondo casi blanco que toca el borde
+(afuera del pergamino) queda transparente. Se sube una vez como textura de OpenGL y se dibuja en el
+dibujo de la ventana, con el estado de OpenGL guardado y devuelto.
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -268,9 +339,12 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
-- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll` y `elites.dll`.
+- `src/loadwarpmap.cpp`: carga de `warpmap.dll` si está junto a la DLL.
+- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll` y
+  `warpmap.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
+- `src/warpmap/`: `warpmap.dll`, mapa del comando M, y el `warpmap.ini` de ejemplo.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -286,9 +360,10 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp src\loadelites.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadwarpmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\warpmap\warpmap.cpp user32.lib opengl32.lib ole32.lib windowscodecs.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -300,7 +375,8 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll` y `elites.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`,
+`warpmap.dll`, `warpmap.ini` y la imagen del mapa. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

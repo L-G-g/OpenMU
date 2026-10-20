@@ -93,3 +93,21 @@ struct ElitesHost
 // bool StartElites(const ElitesHost* host): se llama una vez, despues de StartHealthBars.
 using StartElitesFunction = bool (*)(const ElitesHost* host);
 constexpr const char* StartElitesName = "StartElites";
+
+// --- Mapa del comando M (warpmap.dll) ---
+// camera3d.dll carga warpmap.dll si el archivo esta junto a ella y camera3d.ini no la desactiva
+// ([WarpMap] Enabled=0), y llama a su funcion exportada StartWarpMap, despues de elites.dll. warpmap.dll
+// solo cambia funciones de la ventana del comando M (CNewUIMoveCommandWindow), que ningun otro mod toca.
+
+constexpr int WarpMapHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a warpmap.dll.
+struct WarpMapHost
+{
+    int version;
+    LogFunction log;
+};
+
+// bool StartWarpMap(const WarpMapHost* host): se llama una vez, despues de StartElites.
+using StartWarpMapFunction = bool (*)(const WarpMapHost* host);
+constexpr const char* StartWarpMapName = "StartWarpMap";

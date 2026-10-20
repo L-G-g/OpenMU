@@ -40,6 +40,9 @@ void LoadHealthBars(LogFunction log);
 // Monstruos elite: carga elites.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadElites(LogFunction log);
 
+// Mapa del comando M: carga warpmap.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadWarpMap(LogFunction log);
+
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
 // despues de dibujar vuelve a poner las reales.
