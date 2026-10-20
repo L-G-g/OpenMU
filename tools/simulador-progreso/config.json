@@ -1,0 +1,54 @@
+{
+  "servidor": {
+    "exp_rate": 500,
+    "stat_maximo": 32767,
+    "escalado_mobs_pct": {
+      "danio": 20,
+      "defensa": -20,
+      "vida": 0,
+      "attack_rate": 0,
+      "defense_rate": 0
+    },
+    "reset": {
+      "nivel_requerido": 400,
+      "nivel_despues": 10,
+      "puntos_por_reset": 200,
+      "multiplicar_por_resets": true,
+      "reemplazar_puntos": true,
+      "resetear_stats": true
+    }
+  },
+  "comportamiento": {
+    "repartir_cada_niveles": 100,
+    "muchos_resets": 100,
+    "repartir_siempre_hasta_nivel": 400,
+    "reparto": {
+      "fuerza": 0.45,
+      "agilidad": 0.25,
+      "vitalidad": 0.2,
+      "energia": 0.1
+    },
+    "politica_zona": "mayor_viable",
+    "zonas_excluidas": ["Swamp of Calmness"],
+    "segundos_maximos_por_spot": 60
+  },
+  "combate": {
+    "segundos_por_golpe": 0.8,
+    "mobs_por_spot": 5.5,
+    "fraccion_en_rango": 0.45,
+    "segundos_entre_spots": 2,
+    "segundos_respawn": 19,
+    "segundos_por_cambio_de_zona": 25,
+    "segundos_buff": 30,
+    "nivel_maximo_buff": 220,
+    "curacion_pct_vida_por_segundo": 0.08,
+    "margen_supervivencia": 3,
+    "segundos_por_reset": 60
+  },
+  "simulacion": {
+    "jugadores": 20,
+    "resets": 10,
+    "semilla": 1,
+    "horas_de_juego_por_dia": 4
+  }
+}
