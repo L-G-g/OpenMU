@@ -149,7 +149,7 @@ public class DefaultDropGenerator : IDropGenerator
     /// <inheritdoc/>
     public (Item? Item, uint? Money, ItemDropEffect DropEffect) GenerateItemDrop(IEnumerable<DropItemGroup> groups)
     {
-        var group = this.SelectRandomGroup(groups.OrderBy(group => group.Chance), 1.0);
+        var group = this.SelectRandomGroup(groups.Where(group => group.Chance > 0).OrderBy(group => group.Chance), 1.0);
         if (group is null)
         {
             return (null, null, ItemDropEffect.Undefined);

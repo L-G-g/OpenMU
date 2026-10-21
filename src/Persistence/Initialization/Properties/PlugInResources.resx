@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
 	<!-- 
 		Microsoft ResX Schema
@@ -384,4 +384,6 @@
   <data name="RestoreElfSoldierBuffEffectUpdatePlugIn_Description" xml:space="preserve"><value>Creates the effect of the buff of the Elf Soldier again if it's missing. The first version of the update "Reset Level Ramp And Fixed Experience" deleted it, so the characters below 10 resets didn't get their permanent buff.</value></data>
   <data name="ResetExperienceSchemeUpdatePlugIn_Name" xml:space="preserve"><value>Reset Level Ramp And Fixed Experience</value></data>
   <data name="ResetExperienceSchemeUpdatePlugIn_Description" xml:space="preserve"><value>The resets 1 to 10 require level 300, then the required level rises by 10 every 10 resets up to 400 from the 101st reset on (configured as required level tiers of the reset feature, the other reset settings stay as they are). Characters with less than 10 resets have the buff of the Elf Soldier permanently, and the Elf Soldier doesn't give it anymore. Characters of level 300 to 399 gain 5 times the experience. A monster always gives the same experience, because the random experience multipliers are set to 1.</value></data>
+  <data name="StrongGoldenMobsUpdatePlugIn_Name" xml:space="preserve"><value>Strong Golden Invasion Mobs</value></data>
+  <data name="StrongGoldenMobsUpdatePlugIn_Description" xml:space="preserve"><value>The monsters of the golden invasion get the health, damage and defense of the classic monster table (2 to 10 times stronger, the level, attack rate and defense rate stay as they are). Each of them always drops its Box of Kundun: +1 for the Golden Budge Dragon (instead of the Box of Luck), Golden Goblin and Golden Soldier, +2 for the Golden Titan and Golden Vepar, +3 for the Golden Wheel and Golden Dragon, +4 for the Golden Lizard King and +5 for the Golden Tantallos. The Box of Kundun+1 to +5 always gives an excellent item instead of money.</value></data>
 </root>
