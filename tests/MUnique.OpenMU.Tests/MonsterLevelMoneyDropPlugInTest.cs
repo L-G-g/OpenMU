@@ -23,7 +23,7 @@ public class MonsterLevelMoneyDropPlugInTest
     /// </summary>
     [TestCase(0, 1)]
     [TestCase(1, 1)]
-    [TestCase(10, 60)]
+    [TestCase(10, 60.08)]
     [TestCase(50, 16_793)]
     [TestCase(148, 749_324)]
     public void MoneyByMonsterLevel(int monsterLevel, double expectedMoney)

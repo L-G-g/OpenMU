@@ -120,6 +120,30 @@ internal static class ResetExperienceScheme
     }
 
     /// <summary>
+    /// Activates the plugin and gives it the configuration, if it has none yet.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    /// <param name="plugInType">The type of the plugin.</param>
+    /// <param name="configuration">The configuration of the plugin, if it has none yet.</param>
+    internal static void ActivatePlugIn(IContext context, GameConfiguration gameConfiguration, Type plugInType, object configuration)
+    {
+        if (gameConfiguration.PlugInConfigurations.FirstOrDefault(c => c.TypeId == plugInType.GUID) is not { } plugInConfiguration)
+        {
+            plugInConfiguration = context.CreateNew<PlugInConfiguration>();
+            plugInConfiguration.SetGuid(plugInType.GUID);
+            plugInConfiguration.TypeId = plugInType.GUID;
+            gameConfiguration.PlugInConfigurations.Add(plugInConfiguration);
+        }
+
+        plugInConfiguration.IsActive = true;
+        if (string.IsNullOrWhiteSpace(plugInConfiguration.CustomConfiguration))
+        {
+            plugInConfiguration.SetConfiguration(configuration, null);
+        }
+    }
+
+    /// <summary>
     /// Sets the required level tiers in the configuration of the reset feature and keeps the other values of it.
     /// </summary>
     private static void SetRequiredLevelTiers(IContext context, GameConfiguration gameConfiguration)
@@ -159,30 +183,6 @@ internal static class ResetExperienceScheme
             }
 
             gameConfiguration.GlobalBaseAttributeValues.Add(context.CreateNew<ConstValueAttribute>(1f, definition));
-        }
-    }
-
-    /// <summary>
-    /// Activates the plugin and gives it the configuration, if it has none yet.
-    /// </summary>
-    /// <param name="context">The context.</param>
-    /// <param name="gameConfiguration">The game configuration.</param>
-    /// <param name="plugInType">The type of the plugin.</param>
-    /// <param name="configuration">The configuration of the plugin, if it has none yet.</param>
-    internal static void ActivatePlugIn(IContext context, GameConfiguration gameConfiguration, Type plugInType, object configuration)
-    {
-        if (gameConfiguration.PlugInConfigurations.FirstOrDefault(c => c.TypeId == plugInType.GUID) is not { } plugInConfiguration)
-        {
-            plugInConfiguration = context.CreateNew<PlugInConfiguration>();
-            plugInConfiguration.SetGuid(plugInType.GUID);
-            plugInConfiguration.TypeId = plugInType.GUID;
-            gameConfiguration.PlugInConfigurations.Add(plugInConfiguration);
-        }
-
-        plugInConfiguration.IsActive = true;
-        if (string.IsNullOrWhiteSpace(plugInConfiguration.CustomConfiguration))
-        {
-            plugInConfiguration.SetConfiguration(configuration, null);
         }
     }
 }
