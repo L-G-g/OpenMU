@@ -162,7 +162,14 @@ internal static class ResetExperienceScheme
         }
     }
 
-    private static void ActivatePlugIn(IContext context, GameConfiguration gameConfiguration, Type plugInType, object configuration)
+    /// <summary>
+    /// Activates the plugin and gives it the configuration, if it has none yet.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    /// <param name="plugInType">The type of the plugin.</param>
+    /// <param name="configuration">The configuration of the plugin, if it has none yet.</param>
+    internal static void ActivatePlugIn(IContext context, GameConfiguration gameConfiguration, Type plugInType, object configuration)
     {
         if (gameConfiguration.PlugInConfigurations.FirstOrDefault(c => c.TypeId == plugInType.GUID) is not { } plugInConfiguration)
         {
