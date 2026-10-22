@@ -29,6 +29,9 @@ void SetSmoothMotion(bool smooth);
 // Mapa del TAB: los marcadores de hotspots (nombre terminado en "(Hotspot)") se dibujan en violeta.
 bool InstallMiniMapHotspots(LogFunction log);
 
+// MU Helper: con camera3d.ini [MuHelper] SeguirConInventario=1 (por defecto) el inventario no lo frena.
+bool InstallMuHelperInventory(LogFunction log);
+
 // Herramientas de prueba: carga muauto.dll si esta junto a camera3d.dll (los jugadores no la tienen).
 // TestToolsTick se llama en cada paso de logica, despues de que el juego actualiza sus teclas.
 void LoadTestTools(HMODULE module, LogFunction log);

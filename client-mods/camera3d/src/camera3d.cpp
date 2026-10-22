@@ -386,6 +386,7 @@ namespace
 
         InstallRightClick(&Log);
         InstallMiniMapHotspots(&Log);
+        InstallMuHelperInventory(&Log);
         LoadHealthBars(&Log);
         LoadElites(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))

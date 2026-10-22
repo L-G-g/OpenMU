@@ -98,6 +98,26 @@ bytes (tipo, x, y, giro, nombre en `+0x10`); el objeto está en `[EBP-0x3C]` del
 hotspot se dibuja con una copia violeta del punto verde, armada una vez leyendo esa textura de OpenGL;
 el enlace de texturas del juego (`0x00635CF0`) acepta un número negativo como textura de OpenGL directa.
 
+## MU Helper con el inventario abierto
+
+En el juego original el MU Helper se frena al abrir el inventario. Con `camera3d.dll` sigue atacando con
+el inventario abierto; se frena igual que siempre con su botón, la tecla Inicio o Esc.
+
+```
+[MuHelper]
+SeguirConInventario=1   ; 0: el inventario frena el helper, como el juego original
+```
+
+El que lo frena es el cliente, no el servidor: el paso del helper (`0x0095DC90`, cada 200 ms) le pide al
+servidor que lo frene (`C1 BF 51 01`) si está visible el inventario (ventana `0x0D`) o la configuración del
+helper (ventana `0x4F`, tecla Z), y el helper se apaga cuando el servidor contesta. `src/muhelper.cpp`
+reemplaza por dos NOP el salto del inventario (`0x0095DE51`, `JNZ 0x0095DE68`); la configuración del
+helper lo sigue frenando.
+
+Otros lugares del cliente que también lo frenan y no cambian: la zona segura (el mismo paso del helper),
+el cambio de mapa (`0x006408F0`), el menú de Esc (`0x007D3320`) y el botón del menú principal
+(`0x00868470`).
+
 ## Barras de vida de los monstruos (healthbars.dll)
 
 Sobre los monstruos dañados se dibuja una barra chica de tamaño fijo: fondo oscuro con borde y relleno
@@ -265,6 +285,7 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/mods.h`: piezas compartidas entre los mods.
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
 - `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
+- `src/muhelper.cpp`: el MU Helper sigue con el inventario abierto.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
@@ -286,7 +307,7 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp src\loadelites.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
