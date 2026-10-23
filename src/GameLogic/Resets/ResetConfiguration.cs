@@ -123,6 +123,13 @@ public class ResetConfiguration
     public bool IgnoreSkillLevelRequirements { get; set; }
 
     /// <summary>
+    /// Gets or sets the message which is shown to the player after a successful reset.
+    /// The placeholder {0} is replaced by the new reset count. An empty message isn't shown.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.ResetConfiguration_SuccessMessage_Name), Description = nameof(PlugInResources.ResetConfiguration_SuccessMessage_Description))]
+    public string? SuccessMessage { get; set; } = "Felicitaciones! Ahora tenes {0} resets.";
+
+    /// <summary>
     /// Tier definition for the points which are granted when resetting.
     /// </summary>
     public class ResetPointTier

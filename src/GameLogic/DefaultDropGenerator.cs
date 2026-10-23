@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.GameLogic;
 
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.PlugIns;
 using Nito.AsyncEx;
 
 /// <summary>
@@ -14,7 +15,8 @@ using Nito.AsyncEx;
 public class DefaultDropGenerator : IDropGenerator
 {
     /// <summary>
-    /// The amount of money which is dropped at least, and added to the gained experience.
+    /// The amount of money which is dropped at least, and added to the gained experience,
+    /// unless an <see cref="IMoneyDropCalculationPlugIn"/> calculates it differently.
     /// </summary>
     private const int BaseMoneyDrop = 7;
     private const int DropLevelMaxGap = 12;
@@ -110,6 +112,7 @@ public class DefaultDropGenerator : IDropGenerator
             return ([], null);
         }
 
+        var moneyAmount = await CalculateMoneyAmountAsync(monster, gainedExperience, player).ConfigureAwait(false);
         using var l = await this._lock.LockAsync().ConfigureAwait(false);
         this._guaranteedDropGroups.Clear();
         this._chanceDropGroups.Clear();
@@ -129,7 +132,7 @@ public class DefaultDropGenerator : IDropGenerator
         }
 
         uint money = 0;
-        var (droppedItems, moneyResult) = this.GenerateDrops(monster, gainedExperience);
+        var (droppedItems, moneyResult) = this.GenerateDrops(monster, moneyAmount);
         if (moneyResult > 0)
         {
             money = moneyResult;
@@ -486,7 +489,18 @@ public class DefaultDropGenerator : IDropGenerator
         return ((2 * dividend) + divisor) / (2 * divisor);
     }
 
-    private (IList<Item>? Items, uint Money) GenerateDrops(MonsterDefinition monster, int gainedExperience)
+    private static async ValueTask<uint> CalculateMoneyAmountAsync(MonsterDefinition monster, int gainedExperience, Player player)
+    {
+        var args = new MoneyDropCalculationArgs(monster, gainedExperience, (double)gainedExperience + BaseMoneyDrop);
+        if (player.GameContext.PlugInManager.GetPlugInPoint<IMoneyDropCalculationPlugIn>() is { } plugInPoint)
+        {
+            await plugInPoint.CalculateMoneyDropAsync(player, args).ConfigureAwait(false);
+        }
+
+        return (uint)Math.Clamp(Math.Round(args.Money), 0, uint.MaxValue);
+    }
+
+    private (IList<Item>? Items, uint Money) GenerateDrops(MonsterDefinition monster, uint moneyAmount)
     {
         uint money = 0;
         List<Item>? droppedItems = null;
@@ -500,7 +514,7 @@ public class DefaultDropGenerator : IDropGenerator
                 break;
             }
 
-            var item = this.GenerateItemDropOrMoney(monster, group, gainedExperience, out var droppedMoney);
+            var item = this.GenerateItemDropOrMoney(monster, group, moneyAmount, out var droppedMoney);
             if (item is not null)
             {
                 droppedItems ??= new List<Item>(monster.NumberOfMaximumItemDrops);
@@ -532,7 +546,7 @@ public class DefaultDropGenerator : IDropGenerator
                     continue;
                 }
 
-                var item = this.GenerateItemDropOrMoney(monster, group, gainedExperience, out var droppedMoney);
+                var item = this.GenerateItemDropOrMoney(monster, group, moneyAmount, out var droppedMoney);
                 if (item is not null)
                 {
                     droppedItems ??= new List<Item>(monster.NumberOfMaximumItemDrops);
@@ -724,7 +738,7 @@ public class DefaultDropGenerator : IDropGenerator
         }
     }
 
-    private Item? GenerateItemDropOrMoney(MonsterDefinition monster, DropItemGroup selectedGroup, int gainedExperience, out uint? droppedMoney)
+    private Item? GenerateItemDropOrMoney(MonsterDefinition monster, DropItemGroup selectedGroup, uint moneyAmount, out uint? droppedMoney)
     {
         droppedMoney = null;
 
@@ -741,7 +755,7 @@ public class DefaultDropGenerator : IDropGenerator
         var item = this.GenerateSpecialItem(monster, selectedGroup);
         if (item is null && selectedGroup.ItemType == SpecialItemType.Money)
         {
-            droppedMoney = (uint)(gainedExperience + BaseMoneyDrop);
+            droppedMoney = moneyAmount;
         }
 
         return item;

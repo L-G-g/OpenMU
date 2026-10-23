@@ -6625,6 +6625,85 @@ public readonly ref struct ObjectHealthStatusRef
 
 
 /// <summary>
+/// Is sent by the server when: The character information was sent to the client, e.g. when entering the game or after a reset. This packet is not part of the original protocol; it's understood by the client mod resets.dll of the PeroniaMU season 6 client. The original client ignores it.
+/// Causes reaction on client side: The reset count is shown next to the level in the character information window.
+/// </summary>
+public readonly ref struct CharacterResetCountRef
+{
+    private readonly Span<byte> _data;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CharacterResetCountRef"/> struct.
+    /// </summary>
+    /// <param name="data">The underlying data.</param>
+    public CharacterResetCountRef(Span<byte> data)
+        : this(data, true)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CharacterResetCountRef"/> struct.
+    /// </summary>
+    /// <param name="data">The underlying data.</param>
+    /// <param name="initialize">If set to <c>true</c>, the header data is automatically initialized and written to the underlying span.</param>
+    private CharacterResetCountRef(Span<byte> data, bool initialize)
+    {
+        this._data = data;
+        if (initialize)
+        {
+            var header = this.Header;
+            header.Type = HeaderType;
+            header.Code = Code;
+            header.Length = (byte)Math.Min(data.Length, Length);
+        }
+    }
+
+    /// <summary>
+    /// Gets the header type of this data packet.
+    /// </summary>
+    public static byte HeaderType => 0xC1;
+
+    /// <summary>
+    /// Gets the operation code of this data packet.
+    /// </summary>
+    public static byte Code => 0xFB;
+
+    /// <summary>
+    /// Gets the initial length of this data packet. When the size is dynamic, this value may be bigger than actually needed.
+    /// </summary>
+    public static int Length => 7;
+
+    /// <summary>
+    /// Gets the header of this packet.
+    /// </summary>
+    public C1HeaderRef Header => new (this._data);
+
+    /// <summary>
+    /// Gets or sets gets or sets the number of resets of the character.
+    /// </summary>
+    public uint Resets
+    {
+        get => ReadUInt32BigEndian(this._data[3..]);
+        set => WriteUInt32BigEndian(this._data[3..], value);
+    }
+
+    /// <summary>
+    /// Performs an implicit conversion from a Span of bytes to a <see cref="CharacterResetCount"/>.
+    /// </summary>
+    /// <param name="packet">The packet as span.</param>
+    /// <returns>The packet as struct.</returns>
+    public static implicit operator CharacterResetCountRef(Span<byte> packet) => new (packet, false);
+
+    /// <summary>
+    /// Performs an implicit conversion from <see cref="CharacterResetCount"/> to a Span of bytes.
+    /// </summary>
+    /// <param name="packet">The packet as struct.</param>
+    /// <returns>The packet as byte span.</returns>
+    public static implicit operator Span<byte>(CharacterResetCountRef packet) => packet._data; 
+}
+
+
+/// <summary>
 /// Is sent by the server when: An object in the observed scope (including the own player) moved instantly.
 /// Causes reaction on client side: The position of the object is updated on client side.
 /// </summary>

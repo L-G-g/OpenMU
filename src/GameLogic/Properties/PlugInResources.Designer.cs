@@ -2736,6 +2736,24 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Message in the center of the screen after a successful reset; {0} is the new reset count. When the reset logs out, it&apos;s shown when the character enters the game again. Leave it empty to show no message..
+        /// </summary>
+        public static string ResetConfiguration_SuccessMessage_Description {
+            get {
+                return ResourceManager.GetString("ResetConfiguration_SuccessMessage_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Success message.
+        /// </summary>
+        public static string ResetConfiguration_SuccessMessage_Name {
+            get {
+                return ResourceManager.GetString("ResetConfiguration_SuccessMessage_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Log out.
         /// </summary>
         public static string ResetConfiguration_LogOut_Name {
@@ -4566,5 +4584,29 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized LevelRange_Multiplier_Name text.</summary>
         public static string LevelRange_Multiplier_Name => ResourceManager.GetString("LevelRange_Multiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropPlugIn_Name text.</summary>
+        public static string MonsterLevelMoneyDropPlugIn_Name => ResourceManager.GetString("MonsterLevelMoneyDropPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropPlugIn_Description text.</summary>
+        public static string MonsterLevelMoneyDropPlugIn_Description => ResourceManager.GetString("MonsterLevelMoneyDropPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropConfiguration_Multiplier_Name text.</summary>
+        public static string MonsterLevelMoneyDropConfiguration_Multiplier_Name => ResourceManager.GetString("MonsterLevelMoneyDropConfiguration_Multiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropConfiguration_Multiplier_Description text.</summary>
+        public static string MonsterLevelMoneyDropConfiguration_Multiplier_Description => ResourceManager.GetString("MonsterLevelMoneyDropConfiguration_Multiplier_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropConfiguration_Exponent_Name text.</summary>
+        public static string MonsterLevelMoneyDropConfiguration_Exponent_Name => ResourceManager.GetString("MonsterLevelMoneyDropConfiguration_Exponent_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropConfiguration_Exponent_Description text.</summary>
+        public static string MonsterLevelMoneyDropConfiguration_Exponent_Description => ResourceManager.GetString("MonsterLevelMoneyDropConfiguration_Exponent_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropConfiguration_MinimumMoney_Name text.</summary>
+        public static string MonsterLevelMoneyDropConfiguration_MinimumMoney_Name => ResourceManager.GetString("MonsterLevelMoneyDropConfiguration_MinimumMoney_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MonsterLevelMoneyDropConfiguration_MinimumMoney_Description text.</summary>
+        public static string MonsterLevelMoneyDropConfiguration_MinimumMoney_Description => ResourceManager.GetString("MonsterLevelMoneyDropConfiguration_MinimumMoney_Description", resourceCulture)!;
     }
 }

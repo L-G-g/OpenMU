@@ -320,3 +320,4 @@
   * [C1 F8 0A - GensRewardResponse (by server)](C1-F8-0A-GensRewardResponse_by-server.md)
   * [C3 F9 01 - OpenNpcDialog (by server)](C3-F9-01-OpenNpcDialog_by-server.md)
   * [C1 FA - ObjectHealthStatus (by server)](C1-FA-ObjectHealthStatus_by-server.md)
+  * [C1 FB - CharacterResetCount (by server)](C1-FB-CharacterResetCount_by-server.md)

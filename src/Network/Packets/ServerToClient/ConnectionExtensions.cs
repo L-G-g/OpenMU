@@ -1162,6 +1162,34 @@ public static class ConnectionExtensions
     }
 
     /// <summary>
+    /// Sends a <see cref="CharacterResetCount" /> to this connection.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
+    /// <param name="resets">Gets or sets the number of resets of the character.</param>
+    /// <remarks>
+    /// Is sent by the server when: The character information was sent to the client, e.g. when entering the game or after a reset. This packet is not part of the original protocol; it's understood by the client mod resets.dll of the PeroniaMU season 6 client. The original client ignores it.
+    /// Causes reaction on client side: The reset count is shown next to the level in the character information window.
+    /// </remarks>
+    public static async ValueTask SendCharacterResetCountAsync(this IConnection? connection, uint @resets)
+    {
+        if (connection is null)
+        {
+            return;
+        }
+
+        int WritePacket()
+        {
+            var length = CharacterResetCountRef.Length;
+            var packet = new CharacterResetCountRef(connection.Output.GetSpan(length)[..length]);
+            packet.Resets = @resets;
+
+            return packet.Header.Length;
+        }
+
+        await connection.SendAsync(WritePacket).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Sends a <see cref="ObjectMoved" /> to this connection.
     /// </summary>
     /// <param name="connection">The connection.</param>

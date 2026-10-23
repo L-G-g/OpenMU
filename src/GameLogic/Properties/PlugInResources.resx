@@ -1224,6 +1224,12 @@
   <data name="ResetConfiguration_IgnoreSkillLevelRequirements_Description" xml:space="preserve">
     <value>Characters with at least one reset can use their skills regardless of the level requirement of the skill. The other requirements, like energy, still apply.</value>
   </data>
+  <data name="ResetConfiguration_SuccessMessage_Name" xml:space="preserve">
+    <value>Success message</value>
+  </data>
+  <data name="ResetConfiguration_SuccessMessage_Description" xml:space="preserve">
+    <value>Message in the center of the screen after a successful reset; {0} is the new reset count. When the reset logs out, it's shown when the character enters the game again. Leave it empty to show no message.</value>
+  </data>
   <data name="MiniGameStartConfiguration_EntranceOpenedMessage_Name" xml:space="preserve">
     <value>Entrance opened message</value>
   </data>
@@ -1696,5 +1702,29 @@
   </data>
   <data name="LevelRange_Multiplier_Name" xml:space="preserve">
     <value>Multiplier</value>
+  </data>
+  <data name="MonsterLevelMoneyDropPlugIn_Name" xml:space="preserve">
+    <value>Money drop by monster level</value>
+  </data>
+  <data name="MonsterLevelMoneyDropPlugIn_Description" xml:space="preserve">
+    <value>Calculates the money of a money drop by the level of the killed monster: multiplier × level ^ exponent, instead of the experience of the kill. The money rate of the players still applies, and a party still shares the money by the experience of each member.</value>
+  </data>
+  <data name="MonsterLevelMoneyDropConfiguration_Multiplier_Name" xml:space="preserve">
+    <value>Multiplier</value>
+  </data>
+  <data name="MonsterLevelMoneyDropConfiguration_Multiplier_Description" xml:space="preserve">
+    <value>The money of a money drop is multiplier × level ^ exponent. With 0.019 and 3.5, a monster of level 148 drops 749,000 zen.</value>
+  </data>
+  <data name="MonsterLevelMoneyDropConfiguration_Exponent_Name" xml:space="preserve">
+    <value>Exponent</value>
+  </data>
+  <data name="MonsterLevelMoneyDropConfiguration_Exponent_Description" xml:space="preserve">
+    <value>The higher the exponent, the less money the monsters below the highest levels drop compared to them.</value>
+  </data>
+  <data name="MonsterLevelMoneyDropConfiguration_MinimumMoney_Name" xml:space="preserve">
+    <value>Minimum money</value>
+  </data>
+  <data name="MonsterLevelMoneyDropConfiguration_MinimumMoney_Description" xml:space="preserve">
+    <value>The minimum money of a money drop, for monsters of a low level.</value>
   </data>
 </root>

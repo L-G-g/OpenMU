@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <PacketDefinitions xmlns="http://www.munique.net/OpenMU/PacketDefinitions">
   <Description>This file contains all packet definitions for packets which are sent from game server to client.</Description>
   <Structures>
@@ -2489,6 +2489,23 @@
           <Type>Byte</Type>
           <Name>HealthStatus</Name>
           <Description>Gets or sets the status of the remaining health in fractions of 1/250.</Description>
+        </Field>
+      </Fields>
+    </Packet>
+    <Packet>
+      <HeaderType>C1Header</HeaderType>
+      <Code>FB</Code>
+      <Name>CharacterResetCount</Name>
+      <Length>7</Length>
+      <Direction>ServerToClient</Direction>
+      <SentWhen>The character information was sent to the client, e.g. when entering the game or after a reset. This packet is not part of the original protocol; it's understood by the client mod resets.dll of the PeroniaMU season 6 client. The original client ignores it.</SentWhen>
+      <CausedReaction>The reset count is shown next to the level in the character information window.</CausedReaction>
+      <Fields>
+        <Field>
+          <Index>3</Index>
+          <Type>IntegerBigEndian</Type>
+          <Name>Resets</Name>
+          <Description>Gets or sets the number of resets of the character.</Description>
         </Field>
       </Fields>
     </Packet>

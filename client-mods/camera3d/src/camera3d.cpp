@@ -386,8 +386,11 @@ namespace
 
         InstallRightClick(&Log);
         InstallMiniMapHotspots(&Log);
+        InstallMuHelperInventory(&Log);
         LoadHealthBars(&Log);
         LoadElites(&Log);
+        LoadResets(&Log);
+        LoadStacks(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())

@@ -98,6 +98,26 @@ bytes (tipo, x, y, giro, nombre en `+0x10`); el objeto está en `[EBP-0x3C]` del
 hotspot se dibuja con una copia violeta del punto verde, armada una vez leyendo esa textura de OpenGL;
 el enlace de texturas del juego (`0x00635CF0`) acepta un número negativo como textura de OpenGL directa.
 
+## MU Helper con el inventario abierto
+
+En el juego original el MU Helper se frena al abrir el inventario. Con `camera3d.dll` sigue atacando con
+el inventario abierto; se frena igual que siempre con su botón, la tecla Inicio o Esc.
+
+```
+[MuHelper]
+SeguirConInventario=1   ; 0: el inventario frena el helper, como el juego original
+```
+
+El que lo frena es el cliente, no el servidor: el paso del helper (`0x0095DC90`, cada 200 ms) le pide al
+servidor que lo frene (`C1 BF 51 01`) si está visible el inventario (ventana `0x0D`) o la configuración del
+helper (ventana `0x4F`, tecla Z), y el helper se apaga cuando el servidor contesta. `src/muhelper.cpp`
+reemplaza por dos NOP el salto del inventario (`0x0095DE51`, `JNZ 0x0095DE68`); la configuración del
+helper lo sigue frenando.
+
+Otros lugares del cliente que también lo frenan y no cambian: la zona segura (el mismo paso del helper),
+el cambio de mapa (`0x006408F0`), el menú de Esc (`0x007D3320`) y el botón del menú principal
+(`0x00868470`).
+
 ## Barras de vida de los monstruos (healthbars.dll)
 
 Sobre los monstruos dañados se dibuja una barra chica de tamaño fijo: fondo oscuro con borde y relleno
@@ -161,6 +181,38 @@ El modelo se busca igual que al empezar `0x005DE260` (`0x004CDA10` y `0x00969AD0
 `0x44` (cromo y brillo sin textura) no dibuja nada en este cliente. Con el mouse sobre el monstruo,
 `0x005DDAF0` agranda el dibujo para el contorno de selección (escala `0x00E61638`); el brillo se dibuja
 con la escala en 1.
+
+## Stacks de pociones de 255 (stacks.dll)
+
+Con la actualización "Potion Stacks Of 255" de OpenMU las pociones se apilan hasta 255 (la cantidad es
+la durabilidad del item, un byte). Al comprar o levantar del piso el servidor ya las junta, pero el
+cliente original decide por su cuenta si deja soltar una poción sobre otra igual: pide que cada una
+tenga menos de 3 y si no, no manda el pedido de mover. Con `stacks.dll` se pueden juntar arrastrando
+hasta 255. `camera3d.dll` la carga si está en la misma carpeta, después de `elites.dll`
+(`src/loadstacks.cpp`):
+
+```
+[Stacks]
+Enabled=1       ; 0: no se carga stacks.dll
+```
+
+`src/stacks/stacks.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x007DD490` | Chequeo de apilar: `bool __thiscall` (inventario, ITEM en el cursor, ITEM de abajo), `RET 8`. Lo usan el color de la casilla bajo el cursor (`0x007DB0E0`) y el inventario al soltar (`0x008380F0`, que con verdadero manda el pedido de mover con `0x005BD850`) | Se salta al principio de la función (los primeros 6 bytes van a un trampolín). Para dos pociones iguales del grupo 14 (números 0-8, 35-40, 46-50 y 85-87) del mismo nivel dice que sí si las dos tienen menos de 255; el resto va al chequeo original |
+
+Campos del item (`ITEM`): `+0x00` tipo (grupo × 512 + número), `+0x02` opciones (nivel en los bits
+3-6), `+0x16` durabilidad. El servidor junta lo que entra y deja el resto aparte (4 sobre 253 queda en
+255 y 2). El chequeo original no deja apilar las pociones de escudo (35-37) y para las otras pide menos
+de 3 (10, 30 o 50 en algunos items de eventos). Sin `stacks.dll` el cliente sigue igual; con un
+servidor sin la actualización el pedido de mover se manda y el servidor lo rechaza (el item vuelve a su
+lugar).
+
+El servidor solo junta stacks dentro del inventario. Soltar una poción del baúl sobre otra del inventario
+pasa por el mismo chequeo (como antes con menos de 3): el pedido se manda, el servidor lo rechaza y el
+cliente deja de mostrar el item del inventario hasta volver a entrar. Sobre una poción del baúl el cliente
+no deja soltar.
 
 ## Herramientas de prueba (muauto.dll)
 
@@ -258,6 +310,31 @@ Variables del juego usadas: ángulos de cámara `0x087933D0`, posición `0x08793
 
 Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidra-scripts/`).
 
+## Nivel y resets en la ventana del personaje (resets.dll)
+
+En la ventana del personaje (tecla C) el nivel se ve siempre como número, también después de la última
+quest (el cliente original pone "Master" y una línea de guiones en la experiencia), y al lado van los
+resets: `Level: 400 | Resets: 12`. Van en otra DLL, `resets.dll`, que `camera3d.dll` carga si está en la
+misma carpeta, después de `elites.dll` (`src/loadresets.cpp`):
+
+```
+[Resets]
+Enabled=1                 ; 0: no se carga resets.dll
+Format=" | Resets: %d"    ; lo que va después del nivel (un solo %d; el texto entero entra en 31 letras)
+```
+
+El servidor (OpenMU con el reset activado) manda `C1 07 FB [resets, 4 bytes big endian]` justo después
+de la información del personaje (`C3 F3 03`), al entrar al juego y después de un reset. El `main.exe`
+original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin resets) se ve solo el nivel.
+
+`src/resets/resets.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por `healthbars.dll` y `elites.dll` si están) | Se encadena. `0xFB` se queda en la DLL; con `C3 F3 03` se olvidan los resets hasta el `0xFB` siguiente |
+| `0x0077F9B7` | `JNZ` en los textos de la ventana (`0x0077F990`): si la clase es de tercera clase (`0x005878E0`) escribe "Master" (texto 1745) | Pasa a `JMP`: siempre "Level: %d" (texto 200) y la experiencia (texto 201) |
+| `0x0077FA10` | CALL a `sprintf` (`0x0050D100`) del texto del nivel, de 32 bytes en `[EBP-0x128]` | Escribe el nivel y le agrega `Format` con los resets |
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -265,12 +342,18 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/mods.h`: piezas compartidas entre los mods.
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
 - `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
+- `src/muhelper.cpp`: el MU Helper sigue con el inventario abierto.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
-- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll` y `elites.dll`.
+- `src/loadresets.cpp`: carga de `resets.dll` si está junto a la DLL.
+- `src/loadstacks.cpp`: carga de `stacks.dll` si está junto a la DLL.
+- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
+  `resets.dll` y `stacks.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
+- `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
+- `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -286,9 +369,11 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp src\loadelites.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -300,7 +385,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll` y `elites.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll` y `stacks.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
