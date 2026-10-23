@@ -99,6 +99,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         ResetExperienceScheme.Apply(this.Context, this.GameConfiguration);
         StrongGoldenMobs.Apply(this.Context, this.GameConfiguration);
         ZenByMonsterLevel.Apply(this.Context, this.GameConfiguration);
+        PotionStacks.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 
         // After all items exist.

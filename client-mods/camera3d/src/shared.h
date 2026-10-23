@@ -112,3 +112,21 @@ struct ResetsHost
 // bool StartResets(const ResetsHost* host): se llama una vez, despues de StartElites.
 using StartResetsFunction = bool (*)(const ResetsHost* host);
 constexpr const char* StartResetsName = "StartResets";
+
+// --- Stacks de pociones (stacks.dll) ---
+// camera3d.dll carga stacks.dll si el archivo esta junto a ella y camera3d.ini no la desactiva
+// ([Stacks] Enabled=0), y llama a su funcion exportada StartStacks, despues de elites.dll. stacks.dll
+// parchea un lugar del juego que no parchea ninguna otra DLL (el chequeo de apilar del inventario).
+
+constexpr int StacksHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a stacks.dll.
+struct StacksHost
+{
+    int version;
+    LogFunction log;
+};
+
+// bool StartStacks(const StacksHost* host): se llama una vez, despues de StartElites.
+using StartStacksFunction = bool (*)(const StacksHost* host);
+constexpr const char* StartStacksName = "StartStacks";

@@ -389,6 +389,7 @@ namespace
         LoadHealthBars(&Log);
         LoadElites(&Log);
         LoadResets(&Log);
+        LoadStacks(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())
