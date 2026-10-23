@@ -258,6 +258,31 @@ Variables del juego usadas: ángulos de cámara `0x087933D0`, posición `0x08793
 
 Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidra-scripts/`).
 
+## Nivel y resets en la ventana del personaje (resets.dll)
+
+En la ventana del personaje (tecla C) el nivel se ve siempre como número, también después de la última
+quest (el cliente original pone "Master" y una línea de guiones en la experiencia), y al lado van los
+resets: `Level: 400 | Resets: 12`. Van en otra DLL, `resets.dll`, que `camera3d.dll` carga si está en la
+misma carpeta, después de `elites.dll` (`src/loadresets.cpp`):
+
+```
+[Resets]
+Enabled=1                 ; 0: no se carga resets.dll
+Format=" | Resets: %d"    ; lo que va después del nivel (un solo %d; el texto entero entra en 31 letras)
+```
+
+El servidor (OpenMU con el reset activado) manda `C1 07 FB [resets, 4 bytes big endian]` justo después
+de la información del personaje (`C3 F3 03`), al entrar al juego y después de un reset. El `main.exe`
+original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin resets) se ve solo el nivel.
+
+`src/resets/resets.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por `healthbars.dll` y `elites.dll` si están) | Se encadena. `0xFB` se queda en la DLL; con `C3 F3 03` se olvidan los resets hasta el `0xFB` siguiente |
+| `0x0077F9B7` | `JNZ` en los textos de la ventana (`0x0077F990`): si la clase es de tercera clase (`0x005878E0`) escribe "Master" (texto 1745) | Pasa a `JMP`: siempre "Level: %d" (texto 200) y la experiencia (texto 201) |
+| `0x0077FA10` | CALL a `sprintf` (`0x0050D100`) del texto del nivel, de 32 bytes en `[EBP-0x128]` | Escribe el nivel y le agrega `Format` con los resets |
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -268,9 +293,11 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
-- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll` y `elites.dll`.
+- `src/loadresets.cpp`: carga de `resets.dll` si está junto a la DLL.
+- `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll` y `resets.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
+- `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -286,9 +313,10 @@ Las direcciones salen del análisis del `main.exe` con Ghidra (scripts en `ghidr
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp src\loadelites.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -300,7 +328,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll` y `elites.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll` y `resets.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

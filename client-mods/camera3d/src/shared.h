@@ -93,3 +93,22 @@ struct ElitesHost
 // bool StartElites(const ElitesHost* host): se llama una vez, despues de StartHealthBars.
 using StartElitesFunction = bool (*)(const ElitesHost* host);
 constexpr const char* StartElitesName = "StartElites";
+
+// --- Nivel y resets en la ventana del personaje (resets.dll) ---
+// camera3d.dll carga resets.dll si el archivo esta junto a ella y camera3d.ini no la desactiva
+// ([Resets] Enabled=0), y llama a su funcion exportada StartResets, despues de elites.dll. resets.dll
+// encadena la llamada del reparto de paquetes igual que elites.dll.
+
+constexpr int ResetsHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a resets.dll.
+struct ResetsHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Resets]
+};
+
+// bool StartResets(const ResetsHost* host): se llama una vez, despues de StartElites.
+using StartResetsFunction = bool (*)(const ResetsHost* host);
+constexpr const char* StartResetsName = "StartResets";

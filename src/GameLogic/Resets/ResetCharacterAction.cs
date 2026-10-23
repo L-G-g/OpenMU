@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic.Resets;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.PlayerActions;
+using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.GameLogic.Views.Character;
 using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.GameLogic.Views.Login;
@@ -97,12 +98,45 @@ public class ResetCharacterAction
                 this._player.Rotation = homeGate.Direction;
             }
 
+            this.ShowSuccessMessageOnNextEnteredWorld(configuration, resetProgression.NextResetCount);
             await this._logoutAction.LogoutAsync(this._player, LogoutType.BackToCharacterSelection).ConfigureAwait(false);
         }
         else
         {
             await this.UpdateClientAndWarpAsync(configuration).ConfigureAwait(false);
+            await ShowSuccessMessageAsync(this._player, configuration, resetProgression.NextResetCount).ConfigureAwait(false);
         }
+    }
+
+    private static async ValueTask ShowSuccessMessageAsync(Player player, ResetConfiguration configuration, int resetCount)
+    {
+        if (string.IsNullOrWhiteSpace(configuration.SuccessMessage))
+        {
+            return;
+        }
+
+        var message = string.Format(configuration.SuccessMessage, resetCount);
+        await player.InvokeViewPlugInAsync<IShowMessagePlugIn>(p => p.ShowMessageAsync(message, MessageType.GoldenCenter)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Shows the success message when the player enters the game again, because a message which
+    /// is sent before logging out gets lost at the character selection.
+    /// </summary>
+    private void ShowSuccessMessageOnNextEnteredWorld(ResetConfiguration configuration, int resetCount)
+    {
+        if (string.IsNullOrWhiteSpace(configuration.SuccessMessage))
+        {
+            return;
+        }
+
+        async ValueTask OnEnteredWorldAsync(Player player)
+        {
+            player.PlayerEnteredWorld -= OnEnteredWorldAsync;
+            await ShowSuccessMessageAsync(player, configuration, resetCount).ConfigureAwait(false);
+        }
+
+        this._player.PlayerEnteredWorld += OnEnteredWorldAsync;
     }
 
     private async ValueTask ShowMessageAsync(string messageKey, params object?[] args)
