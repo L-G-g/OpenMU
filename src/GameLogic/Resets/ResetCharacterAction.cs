@@ -13,6 +13,7 @@ using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.GameLogic.Views.Login;
 using MUnique.OpenMU.GameLogic.Views.NPC;
 using MUnique.OpenMU.GameLogic.Views.World;
+using MUnique.OpenMU.Interfaces;
 
 /// <summary>
 /// Action to reset a character.
