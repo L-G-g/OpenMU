@@ -164,11 +164,16 @@ Color=0.6,0.2,1.0,1.5   ; rojo, verde, azul (de 0 a 1) e intensidad del cromo
 Tint=0.35               ; intensidad del tinte parejo (0: solo el cromo)
 BossEffect=2            ; número del efecto que el servidor le pone a los jefes
 BossColor=0.6,0.2,1.0,2.5 ; color de los jefes (violeta, con el cromo más fuerte)
+BossTint=0.6            ; opacidad del teñido de los jefes (0: sin teñido, solo el brillo)
 ```
 
 Los jefes (por ejemplo la Ice Queen de la primera dungeon, que usa el modelo de las Ice Queen normales)
 se marcan igual con otro efecto: el plugin "Dungeon" le pone al jefe el efecto `BossEffectNumber` (2 por
 defecto). Con `elites.dll` se llama "<nombre> Boss" ("Ice Queen Boss") y brilla con `BossColor`.
+El brillo se suma a lo que hay detrás, y sobre un modelo claro como el de la Ice Queen queda casi
+blanco. Por eso a los jefes antes del brillo se les dibuja la textura teñida del color de `BossColor`,
+mezclada con alfa `BossTint` (`RenderBody` con `0x02` y alfa menor a 1: el juego activa la mezcla con
+alfa, `0x00635FD0`, sin sumar luz). Los elites normales no cambian.
 
 El servidor (plugin "Elite Monster Effect", `EffectNumber` 1 por defecto) le pone a cada elite un efecto
 y lo manda con `C1 07 MagicEffectStatus [activo] [número del objeto, 2 bytes big endian] [efecto]` al

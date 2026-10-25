@@ -23,7 +23,9 @@
 //     suma a lo que hay detras (se ve transparente) y el cromo se mueve con el tiempo.
 //   - Los jefes (por ejemplo la Ice Queen de la primera dungeon, que tiene el mismo modelo que las normales)
 //     se marcan igual con otro efecto ([Elites] BossEffect, el BossEffectNumber del plugin "Dungeon"): se
-//     llaman "<nombre> Boss" y brillan con [Elites] BossColor.
+//     llaman "<nombre> Boss" y brillan con [Elites] BossColor. Como el brillo se suma y sobre un modelo claro
+//     queda blanco, a los jefes antes se les dibuja la textura tenida del color (0x02 con alfa [Elites]
+//     BossTint, menor a 1: el juego la mezcla con alfa, 0x00635FD0); en 0 no se tinen.
 
 #include "../shared.h"
 
@@ -56,6 +58,8 @@ namespace
     constexpr DWORD ModelBodyLight = 0x48; // BMD: color del dibujo (float r, g, b)
     constexpr int RenderColorBright = 0x41;          // color parejo y brillo
     constexpr int RenderTextureChromeBright = 0x46; // textura, cromo y brillo (0x44 sin textura no dibuja nada)
+    constexpr int RenderTexture = 0x02;             // textura con el color del modelo; con alfa menor a 1 se mezcla
+                                                    // con alfa (0x00635FD0), sin sumar luz
 
     // --- Paquetes ---
     constexpr int CodeEffect = 0x07, CodeAddNpcs = 0x13, CodeOutOfScope = 0x14, CodeKilled = 0x17;
@@ -82,6 +86,7 @@ namespace
     float g_color[KindCount][4] = { {}, { 0.6f, 0.2f, 1.0f, 1.5f }, { 0.6f, 0.2f, 1.0f, 2.5f } };
     BYTE g_kind[IdMask + 1] = {};
     float g_tint = 0.35f;     // [Elites] Tint: intensidad del tinte parejo (0: sin tinte)
+    float g_bossTint = 0.6f;  // [Elites] BossTint: opacidad del tenido violeta de los jefes (0: sin tenido)
 
     WORD ReadId(const BYTE* data)
     {
@@ -271,7 +276,7 @@ namespace
     using ModelType = BYTE*(__cdecl*)(int);
     ModelType volatile g_model = &Model;
 
-    void DrawEliteGlow(BYTE* object, const float* color)
+    void DrawEliteGlow(BYTE* object, const float* color, Kind kind)
     {
         BYTE* model = g_model(*reinterpret_cast<const int*>(object + ObjType));
         if (model == nullptr)
@@ -283,6 +288,20 @@ namespace
         const float saved[3] = { light[0], light[1], light[2] };
         const float savedScale = *RenderScale;
         *RenderScale = 1.0f;
+
+        // Jefes: primero la textura tenida de violeta, mezclada con alfa ([Elites] BossTint) sobre el cuerpo.
+        // El brillo de abajo se suma, y sobre un modelo claro (la Ice Queen) queda blanco; el tenido no.
+        if (kind == KindBoss && g_bossTint > 0.0f)
+        {
+            light[0] = color[0];
+            light[1] = color[1];
+            light[2] = color[2];
+            reinterpret_cast<RenderBodyType>(RenderBodyFunction)(model, RenderTexture, g_bossTint,
+                *reinterpret_cast<const int*>(object + ObjBlendMesh), *reinterpret_cast<const float*>(object + ObjBlendMeshLight),
+                *reinterpret_cast<const float*>(object + ObjTextureU), *reinterpret_cast<const float*>(object + ObjTextureV),
+                *reinterpret_cast<const int*>(object + ObjHiddenMesh), -1);
+        }
+
         // Primero un tinte violeta parejo en todo el cuerpo (color y brillo: se suma, se ve transparente) y
         // despues el cromo, que se mueve con el tiempo.
         const int passes[2] = { RenderColorBright, RenderTextureChromeBright };
@@ -337,7 +356,7 @@ namespace
             const Kind kind = GetBodyKind(object);
             if (kind != KindNone)
             {
-                DrawEliteGlow(object, g_color[kind]);
+                DrawEliteGlow(object, g_color[kind], kind);
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
@@ -394,6 +413,8 @@ extern "C" __declspec(dllexport) bool StartElites(const ElitesHost* host)
     char tint[32];
     GetPrivateProfileStringA("Elites", "Tint", "0.35", tint, sizeof(tint), host->iniPath);
     g_tint = static_cast<float>(atof(tint));
+    GetPrivateProfileStringA("Elites", "BossTint", "0.6", tint, sizeof(tint), host->iniPath);
+    g_bossTint = static_cast<float>(atof(tint));
 
     // healthbars.dll puede haber redirigido la llamada antes: se encadena a lo que haya.
     const DWORD dispatch = CallTarget(DispatchCallSite);
