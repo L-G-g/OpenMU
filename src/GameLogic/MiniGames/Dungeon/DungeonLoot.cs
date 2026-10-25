@@ -78,49 +78,6 @@ public sealed class DungeonLoot
     }
 
     /// <summary>
-    /// Starts a roll for a dropped item, if it's an item which is rolled and more than one player is in the dungeon.
-    /// </summary>
-    /// <param name="item">The dropped item.</param>
-    /// <param name="killer">The player who killed the monster.</param>
-    /// <returns><c>true</c> if the item is rolled, so it must not fall to the ground.</returns>
-    internal async ValueTask<bool> TryStartRollAsync(Item item, Player killer)
-    {
-        if (item.Definition is not { } definition || !this.IsRolled(item))
-        {
-            return false;
-        }
-
-        var players = await this._context.GetPlayersAsync().ConfigureAwait(false);
-        if (players.Count < 2 || killer.CurrentMap is not { } map)
-        {
-            return false;
-        }
-
-        LootRoll roll;
-        lock (this._sync)
-        {
-            roll = new LootRoll(++this._lastRollId, item, map, killer.Position, players.ToDictionary(p => p, p => CanNeed(p.SelectedCharacter?.CharacterClass, definition)));
-            this._openRolls.Add(roll);
-        }
-
-        var seconds = (int)Math.Ceiling(this._configuration.RollDuration.TotalSeconds);
-        foreach (var (player, canNeed) in roll.CanNeed)
-        {
-            var format = canNeed ? DungeonMessages.RollStartedFormat : DungeonMessages.RollStartedWithoutNeedFormat;
-            await player.ShowBlueMessageAsync(string.Format(format, roll.Id, Describe(item), seconds)).ConfigureAwait(false);
-            await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.ShowLootRollAsync(roll.Id, item, this._configuration.RollDuration, canNeed)).ConfigureAwait(false);
-        }
-
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(this._configuration.RollDuration).ConfigureAwait(false);
-            await this.ResolveAsync(roll).ConfigureAwait(false);
-        });
-
-        return true;
-    }
-
-    /// <summary>
     /// Takes the choice of a player for a roll.
     /// </summary>
     /// <param name="player">The player.</param>
@@ -166,6 +123,49 @@ public sealed class DungeonLoot
         {
             await this.ResolveAsync(roll).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Starts a roll for a dropped item, if it's an item which is rolled and more than one player is in the dungeon.
+    /// </summary>
+    /// <param name="item">The dropped item.</param>
+    /// <param name="killer">The player who killed the monster.</param>
+    /// <returns><c>true</c> if the item is rolled, so it must not fall to the ground.</returns>
+    internal async ValueTask<bool> TryStartRollAsync(Item item, Player killer)
+    {
+        if (item.Definition is not { } definition || !this.IsRolled(item))
+        {
+            return false;
+        }
+
+        var players = await this._context.GetPlayersAsync().ConfigureAwait(false);
+        if (players.Count < 2 || killer.CurrentMap is not { } map)
+        {
+            return false;
+        }
+
+        LootRoll roll;
+        lock (this._sync)
+        {
+            roll = new LootRoll(++this._lastRollId, item, map, killer.Position, players.ToDictionary(p => p, p => CanNeed(p.SelectedCharacter?.CharacterClass, definition)));
+            this._openRolls.Add(roll);
+        }
+
+        var seconds = (int)Math.Ceiling(this._configuration.RollDuration.TotalSeconds);
+        foreach (var (player, canNeed) in roll.CanNeed)
+        {
+            var format = canNeed ? DungeonMessages.RollStartedFormat : DungeonMessages.RollStartedWithoutNeedFormat;
+            await player.ShowBlueMessageAsync(string.Format(format, roll.Id, Describe(item), seconds)).ConfigureAwait(false);
+            await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.ShowLootRollAsync(roll.Id, item, this._configuration.RollDuration, canNeed)).ConfigureAwait(false);
+        }
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(this._configuration.RollDuration).ConfigureAwait(false);
+            await this.ResolveAsync(roll).ConfigureAwait(false);
+        });
+
+        return true;
     }
 
     /// <summary>

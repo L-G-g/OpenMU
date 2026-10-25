@@ -22,9 +22,10 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
     private const byte MaximumDropDistance = 2;
 
     private readonly IEventStateProvider? _eventStateProvider;
-    private IDropGenerator _dropGenerator;
     private readonly PlugInManager _plugInManager;
     private readonly List<IDisposable> _registrations = new();
+
+    private IDropGenerator _dropGenerator;
 
     private int _health;
 
@@ -54,16 +55,6 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
 
     /// <inheritdoc />
     public IAttributeSystem Attributes { get; }
-
-    /// <summary>
-    /// Gets or sets the drop generator which generates the drops of this instance when it dies,
-    /// e.g. to let a mini game which reuses the spawns of a map change its drops.
-    /// </summary>
-    internal IDropGenerator DropGenerator
-    {
-        get => this._dropGenerator;
-        set => this._dropGenerator = value;
-    }
 
     /// <inheritdoc />
     public MagicEffectsList MagicEffectList { get; }
@@ -117,6 +108,16 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
             var maximumHealth = this.SpawnArea.MaximumHealthOverride ?? this.Attributes[Stats.MaximumHealth];
             return maximumHealth > 0 ? Math.Clamp(this.Health / maximumHealth, 0, 1) : 0;
         }
+    }
+
+    /// <summary>
+    /// Gets or sets the drop generator which generates the drops of this instance when it dies,
+    /// e.g. to let a mini game which reuses the spawns of a map change its drops.
+    /// </summary>
+    internal IDropGenerator DropGenerator
+    {
+        get => this._dropGenerator;
+        set => this._dropGenerator = value;
     }
 
     private bool ShouldRespawn => this.SpawnArea.SpawnTrigger == SpawnTrigger.Automatic
