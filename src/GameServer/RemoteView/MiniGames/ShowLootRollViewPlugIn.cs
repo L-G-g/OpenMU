@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameServer.RemoteView.MiniGames;
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Text;
+using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
 using MUnique.OpenMU.Network;
 using MUnique.OpenMU.PlugIns;
