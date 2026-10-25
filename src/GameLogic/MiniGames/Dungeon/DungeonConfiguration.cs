@@ -82,6 +82,13 @@ public class DungeonConfiguration
     public int MinimumExcellentOptions { get; set; } = 3;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the usual monsters of the map appear in the dungeon. Without them,
+    /// only the spawn areas of the map with the trigger 'Automatic during event' appear, e.g. along the ways between the bosses.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_SpawnMonstersOfMap_Name), Description = nameof(PlugInResources.DungeonConfiguration_SpawnMonstersOfMap_Description))]
+    public bool SpawnMonstersOfMap { get; set; }
+
+    /// <summary>
     /// Gets or sets the stages of the dungeon. Each stage ends with a boss, which appears when the boss of the stage before
     /// is dead, the players killed enough monsters of the stage and enough time passed.
     /// </summary>

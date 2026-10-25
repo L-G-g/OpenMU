@@ -48,6 +48,12 @@ public class DungeonStage
     public TimeSpan MinimumTime { get; set; }
 
     /// <summary>
+    /// Gets or sets the chance of the boss to drop an excellent item, from 0 to 1.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonStage_ExcellentDropChance_Name))]
+    public double ExcellentDropChance { get; set; } = 1;
+
+    /// <summary>
     /// Gets or sets the golden message which tells the players what to do in this stage.
     /// It's in Spanish without accents, because the game client doesn't show them.
     /// </summary>

@@ -4758,5 +4758,14 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized DungeonStage_Hint_Name text.</summary>
         public static string DungeonStage_Hint_Name => ResourceManager.GetString("DungeonStage_Hint_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_ExcellentDropChance_Name text.</summary>
+        public static string DungeonStage_ExcellentDropChance_Name => ResourceManager.GetString("DungeonStage_ExcellentDropChance_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_SpawnMonstersOfMap_Name text.</summary>
+        public static string DungeonConfiguration_SpawnMonstersOfMap_Name => ResourceManager.GetString("DungeonConfiguration_SpawnMonstersOfMap_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_SpawnMonstersOfMap_Description text.</summary>
+        public static string DungeonConfiguration_SpawnMonstersOfMap_Description => ResourceManager.GetString("DungeonConfiguration_SpawnMonstersOfMap_Description", resourceCulture)!;
     }
 }

@@ -106,7 +106,10 @@ public sealed class MiniGameManager : IMiniGameManager
         var createdMap = miniGameContext.Map;
 
         // ReSharper disable once InconsistentlySynchronizedField it's desired behavior to initialize the map outside the lock to keep locked timespan short.
-        await this._mapInitializer.InitializeStateAsync(createdMap).ConfigureAwait(false);
+        if (miniGameContext.SpawnsMonstersOfMap)
+        {
+            await this._mapInitializer.InitializeStateAsync(createdMap).ConfigureAwait(false);
+        }
         this.GameMapCreated?.Invoke(this, createdMap);
         MiniGameCounter.Add(1);
 

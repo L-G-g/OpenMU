@@ -159,6 +159,12 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
     internal virtual bool IsInstanceOfNormalMap => false;
 
     /// <summary>
+    /// Gets a value indicating whether the map of the mini game gets the automatic spawns of its map definition when it's created.
+    /// Without them, only the spawns of the event appear (e.g. <see cref="SpawnTrigger.AutomaticDuringEvent"/>).
+    /// </summary>
+    internal virtual bool SpawnsMonstersOfMap => true;
+
+    /// <summary>
     /// Gets a value indicating whether entering is allowed while the game is already
     /// running. Specific games override this to let players (re-)join mid-event.
     /// </summary>

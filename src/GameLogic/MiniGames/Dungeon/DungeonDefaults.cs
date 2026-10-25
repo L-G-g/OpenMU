@@ -66,6 +66,7 @@ public static class DungeonDefaults
             MonsterNumber = WormNumber,
             KillCount = 150,
             MinimumTime = TimeSpan.FromMinutes(1),
+            ExcellentDropChance = 0.5,
             Hint = "Sigan el camino de los Worms hasta el fuerte (37, 27) y maten 150 Worms.",
         },
         new()
@@ -76,6 +77,7 @@ public static class DungeonDefaults
             MonsterNumber = IceMonsterNumber,
             KillCount = 200,
             MinimumTime = TimeSpan.FromMinutes(5),
+            ExcellentDropChance = 0.5,
             Hint = "Vayan por uno de los caminos de Ice Monsters hasta (226, 215) y maten 200.",
         },
         new()

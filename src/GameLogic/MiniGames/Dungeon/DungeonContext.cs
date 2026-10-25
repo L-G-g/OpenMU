@@ -76,7 +76,15 @@ public sealed class DungeonContext : MiniGameContext
             .Select(stage => (stage, gameContext.Configuration.Monsters.FirstOrDefault(m => m.Designation.ValueInNeutralLanguage == stage.BossDesignation)))
             .ToList();
         this.Loot = new DungeonLoot(this, this._configuration, this.Logger);
-        var bossDefinitions = this._stages.Select(s => s.Boss).OfType<MonsterDefinition>().ToHashSet();
+        var bossDefinitions = new Dictionary<MonsterDefinition, double>();
+        foreach (var (stage, boss) in this._stages)
+        {
+            if (boss is not null)
+            {
+                bossDefinitions[boss] = stage.ExcellentDropChance;
+            }
+        }
+
         this.DropGenerator = new DungeonDropGenerator(gameContext.DropGenerator, this._configuration, this.Loot, bossDefinitions);
     }
 
@@ -87,6 +95,9 @@ public sealed class DungeonContext : MiniGameContext
 
     /// <inheritdoc />
     internal override bool IsInstanceOfNormalMap => true;
+
+    /// <inheritdoc />
+    internal override bool SpawnsMonstersOfMap => this._configuration.SpawnMonstersOfMap;
 
     /// <inheritdoc />
     protected override TimeSpan MinimumEnterDuration => TimeSpan.Zero;
