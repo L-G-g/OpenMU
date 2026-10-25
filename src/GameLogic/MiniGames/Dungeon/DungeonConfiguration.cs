@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
 
+using MUnique.OpenMU.DataModel.Composition;
+
 /// <summary>
 /// The configuration of the dungeon, see <see cref="DungeonFeaturePlugIn"/>.
 /// </summary>
@@ -93,8 +95,12 @@ public class DungeonConfiguration
     /// is dead, the players killed enough monsters of the stage and enough time passed.
     /// </summary>
     /// <remarks>
-    /// It's an <see cref="ICollection{T}"/>, so that the admin panel shows it as an editable table of objects.
+    /// It's an <see cref="ICollection{T}"/>, so that the admin panel shows it as a table of objects, and its stages
+    /// are edited in place in that table (<see cref="MemberOfAggregateAttribute"/> and <see cref="ScaffoldColumnAttribute"/>),
+    /// because they aren't entities of the database which could be edited on their own page.
     /// </remarks>
+    [MemberOfAggregate]
+    [ScaffoldColumn(true)]
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_Stages_Name), Description = nameof(PlugInResources.DungeonConfiguration_Stages_Description))]
     public ICollection<DungeonStage> Stages { get; set; } = DungeonDefaults.CreateStages();
 

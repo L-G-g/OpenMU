@@ -110,6 +110,7 @@ public sealed class MiniGameManager : IMiniGameManager
         {
             await this._mapInitializer.InitializeStateAsync(createdMap).ConfigureAwait(false);
         }
+
         this.GameMapCreated?.Invoke(this, createdMap);
         MiniGameCounter.Add(1);
 
