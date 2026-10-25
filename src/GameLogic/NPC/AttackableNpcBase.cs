@@ -22,7 +22,7 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
     private const byte MaximumDropDistance = 2;
 
     private readonly IEventStateProvider? _eventStateProvider;
-    private readonly IDropGenerator _dropGenerator;
+    private IDropGenerator _dropGenerator;
     private readonly PlugInManager _plugInManager;
     private readonly List<IDisposable> _registrations = new();
 
@@ -54,6 +54,16 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
 
     /// <inheritdoc />
     public IAttributeSystem Attributes { get; }
+
+    /// <summary>
+    /// Gets or sets the drop generator which generates the drops of this instance when it dies,
+    /// e.g. to let a mini game which reuses the spawns of a map change its drops.
+    /// </summary>
+    internal IDropGenerator DropGenerator
+    {
+        get => this._dropGenerator;
+        set => this._dropGenerator = value;
+    }
 
     /// <inheritdoc />
     public MagicEffectsList MagicEffectList { get; }

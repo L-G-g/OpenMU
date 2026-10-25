@@ -1727,4 +1727,118 @@
   <data name="MonsterLevelMoneyDropConfiguration_MinimumMoney_Description" xml:space="preserve">
     <value>The minimum money of a money drop, for monsters of a low level.</value>
   </data>
+  <data name="DungeonFeaturePlugIn_Name" xml:space="preserve">
+    <value>Dungeon</value>
+  </data>
+  <data name="DungeonFeaturePlugIn_Description" xml:space="preserve">
+    <value>A dungeon for a party: an instance of a hunting map with stronger monsters, more excellent drops and a boss. The drops are shared with need, greed or pass (chat commands /need, /greed and /pass).</value>
+  </data>
+  <data name="DungeonNpcTalkPlugIn_Name" xml:space="preserve">
+    <value>Dungeon NPC</value>
+  </data>
+  <data name="DungeonNpcTalkPlugIn_Description" xml:space="preserve">
+    <value>When the party leader talks to the NPC of the dungeon (the NPC designation of the Dungeon feature), the whole party enters the dungeon, if every member can enter.</value>
+  </data>
+  <data name="NeedLootChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /need</value>
+  </data>
+  <data name="NeedLootChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Chooses need for a rolled item of a dungeon, optionally followed by the number of the roll. Only allowed if the character class can use the item.</value>
+  </data>
+  <data name="GreedLootChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /greed</value>
+  </data>
+  <data name="GreedLootChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Chooses greed for a rolled item of a dungeon, optionally followed by the number of the roll.</value>
+  </data>
+  <data name="PassLootChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /pass</value>
+  </data>
+  <data name="PassLootChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Chooses pass for a rolled item of a dungeon, optionally followed by the number of the roll.</value>
+  </data>
+  <data name="DungeonConfiguration_NpcDesignation_Name" xml:space="preserve">
+    <value>NPC designation</value>
+  </data>
+  <data name="DungeonConfiguration_NpcDesignation_Description" xml:space="preserve">
+    <value>The designation of the monster definition of the NPC at which the party leader enters the dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_GameLevel_Name" xml:space="preserve">
+    <value>Game level</value>
+  </data>
+  <data name="DungeonConfiguration_GameLevel_Description" xml:space="preserve">
+    <value>The game level of the mini game definition of the type Dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_EntryCooldown_Name" xml:space="preserve">
+    <value>Entry cooldown</value>
+  </data>
+  <data name="DungeonConfiguration_EntryCooldown_Description" xml:space="preserve">
+    <value>The time after an entry until a character can enter again.</value>
+  </data>
+  <data name="DungeonConfiguration_GameMastersIgnoreCooldown_Name" xml:space="preserve">
+    <value>Game masters ignore the cooldown</value>
+  </data>
+  <data name="DungeonConfiguration_GameMastersIgnoreCooldown_Description" xml:space="preserve">
+    <value>If checked, game masters can enter again before the cooldown passed, e.g. for tests.</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterHealthMultiplier_Name" xml:space="preserve">
+    <value>Monster health multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterDamageMultiplier_Name" xml:space="preserve">
+    <value>Monster damage multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterDefenseMultiplier_Name" xml:space="preserve">
+    <value>Monster defense multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExcellentDropChanceMultiplier_Name" xml:space="preserve">
+    <value>Excellent drop chance multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExcellentDropChanceMultiplier_Description" xml:space="preserve">
+    <value>The multiplier for the chance of the monsters to drop an excellent item, compared to the same monster outside of the dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_MinimumExcellentOptions_Name" xml:space="preserve">
+    <value>Minimum excellent options</value>
+  </data>
+  <data name="DungeonConfiguration_BossDesignation_Name" xml:space="preserve">
+    <value>Boss designation</value>
+  </data>
+  <data name="DungeonConfiguration_BossDesignation_Description" xml:space="preserve">
+    <value>The designation of the monster definition of the boss.</value>
+  </data>
+  <data name="DungeonConfiguration_BossSpawnDelay_Name" xml:space="preserve">
+    <value>Boss spawn delay</value>
+  </data>
+  <data name="DungeonConfiguration_BossX_Name" xml:space="preserve">
+    <value>Boss X</value>
+  </data>
+  <data name="DungeonConfiguration_BossY_Name" xml:space="preserve">
+    <value>Boss Y</value>
+  </data>
+  <data name="DungeonConfiguration_BossHealthMultiplier_Name" xml:space="preserve">
+    <value>Boss health multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_BossDamageMultiplier_Name" xml:space="preserve">
+    <value>Boss damage multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_BossDefenseMultiplier_Name" xml:space="preserve">
+    <value>Boss defense multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_RollDuration_Name" xml:space="preserve">
+    <value>Roll duration</value>
+  </data>
+  <data name="DungeonConfiguration_NeedRollMaximum_Name" xml:space="preserve">
+    <value>Need roll maximum</value>
+  </data>
+  <data name="DungeonConfiguration_NeedRollMaximum_Description" xml:space="preserve">
+    <value>The highest number of the dice for need. Need and greed roll together; a higher maximum than for greed gives need a better chance.</value>
+  </data>
+  <data name="DungeonConfiguration_GreedRollMaximum_Name" xml:space="preserve">
+    <value>Greed roll maximum</value>
+  </data>
+  <data name="DungeonConfiguration_RollAllItems_Name" xml:space="preserve">
+    <value>Roll all items</value>
+  </data>
+  <data name="DungeonConfiguration_RollAllItems_Description" xml:space="preserve">
+    <value>If checked, all dropped items are rolled. Otherwise only the excellent and ancient items and the jewels; the others fall to the ground as usual.</value>
+  </data>
 </root>

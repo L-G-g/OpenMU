@@ -173,6 +173,85 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
+    /// Generates an excellent item of the zone of a monster level or of a zone before it, e.g. for the bosses of a dungeon.
+    /// </summary>
+    /// <remarks>
+    /// The weapons, shields and armor pieces come from <see cref="GetZoneEquipment"/> of the zone which contains the monster level
+    /// and of all zones before it, and the other items (e.g. rings and pendants) are chosen by the monster level as usual.
+    /// Without zones, it's a random excellent item of the monster level.
+    /// </remarks>
+    /// <param name="monsterLevel">The monster level.</param>
+    /// <param name="minimumExcellentOptions">The minimum number of excellent options of the item.</param>
+    /// <returns>The excellent item, or <c>null</c> if there is none for the monster level.</returns>
+    public async ValueTask<Item?> GenerateExcellentItemUpToZoneAsync(int monsterLevel, int minimumExcellentOptions)
+    {
+        using var l = await this._lock.LockAsync().ConfigureAwait(false);
+        var zoneMaximumLevels = this.GetZoneMaximumLevels(byte.MaxValue).Where(level => level != byte.MaxValue || this._zoneMaximumLevels!.Contains(level)).ToList();
+        Item? item;
+        if (zoneMaximumLevels.Count == 0)
+        {
+            item = this.GenerateRandomExcellentItem(monsterLevel);
+        }
+        else
+        {
+            var zoneOfMonster = zoneMaximumLevels.Where(level => level >= monsterLevel).DefaultIfEmpty(zoneMaximumLevels[^1]).Min();
+            var equipment = zoneMaximumLevels
+                .Where(level => level <= zoneOfMonster)
+                .SelectMany(level => this.GetZoneEquipment(level, true))
+                .Distinct()
+                .ToList();
+            var others = this.GetOtherItems(monsterLevel, true);
+            var count = equipment.Count + others.Count;
+            if (count == 0)
+            {
+                return null;
+            }
+
+            var index = this._randomizer.NextInt(0, count);
+            item = this.CreateRandomItem(index < equipment.Count ? equipment[index] : others[index - equipment.Count]);
+            item.HasSkill = item.CanHaveSkill(); // every excellent item got skill
+            this.AddRandomExcOptions(item);
+            item.Durability = item.GetMaximumDurabilityOfOnePiece();
+        }
+
+        if (item is not null)
+        {
+            this.AddExcellentOptions(item, minimumExcellentOptions);
+        }
+
+        return item;
+    }
+
+    /// <summary>
+    /// Adds random excellent options to an excellent item until it has the minimum number of them.
+    /// </summary>
+    /// <param name="item">The item.</param>
+    /// <param name="minimumExcellentOptions">The minimum number of excellent options.</param>
+    public void AddExcellentOptions(Item item, int minimumExcellentOptions)
+    {
+        var excellentOptions = item.Definition?.PossibleItemOptions.FirstOrDefault(
+            o => o.PossibleOptions.Any(p => object.Equals(p.OptionType, ItemOptionTypes.Excellent)));
+        if (excellentOptions is null)
+        {
+            return;
+        }
+
+        var target = Math.Min(minimumExcellentOptions, excellentOptions.PossibleOptions.Count);
+        while (item.ItemOptions.Count(o => object.Equals(o.ItemOption?.OptionType, ItemOptionTypes.Excellent)) < target)
+        {
+            var newOption = excellentOptions.PossibleOptions
+                .Where(option => item.ItemOptions.All(link => !object.Equals(link.ItemOption, option)))
+                .SelectRandom(this._randomizer);
+            if (newOption is null)
+            {
+                return;
+            }
+
+            item.ItemOptions.Add(new ItemOptionLink { ItemOption = newOption });
+        }
+    }
+
+    /// <summary>
     /// Gets a random item.
     /// </summary>
     /// <param name="monsterLevel">The monster level.</param>
