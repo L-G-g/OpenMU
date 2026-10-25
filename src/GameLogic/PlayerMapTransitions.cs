@@ -145,7 +145,8 @@ internal sealed class PlayerMapTransitions
     public async ValueTask WarpToAsync(ExitGate gate)
     {
         var player = this._player;
-        var isRespawnOnSameMap = object.Equals(player.CurrentMap?.Definition, gate.Map);
+        var isRespawnOnSameMap = object.Equals(player.CurrentMap?.Definition, gate.Map)
+            && player.CurrentMiniGame?.IsInstanceOfNormalMap is not true;
         if (!await this.TryRemoveFromCurrentMapAsync(isRespawnOnSameMap).ConfigureAwait(false))
         {
             return;

@@ -152,6 +152,13 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
     internal virtual bool SkipMapEntryRequirements => false;
 
     /// <summary>
+    /// Gets a value indicating whether the map of the mini game is an instance of a normal map, e.g. a dungeon of Devias.
+    /// A warp to that map definition (e.g. to the safezone when the game ends, or after death) then leaves the mini game,
+    /// instead of respawning on the map of the mini game.
+    /// </summary>
+    internal virtual bool IsInstanceOfNormalMap => false;
+
+    /// <summary>
     /// Gets a value indicating whether entering is allowed while the game is already
     /// running. Specific games override this to let players (re-)join mid-event.
     /// </summary>

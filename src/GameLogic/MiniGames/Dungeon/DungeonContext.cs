@@ -70,6 +70,9 @@ public sealed class DungeonContext : MiniGameContext
     public DungeonLoot Loot { get; }
 
     /// <inheritdoc />
+    internal override bool IsInstanceOfNormalMap => true;
+
+    /// <inheritdoc />
     protected override TimeSpan MinimumEnterDuration => TimeSpan.Zero;
 
     /// <inheritdoc />
@@ -95,7 +98,12 @@ public sealed class DungeonContext : MiniGameContext
     }
 
     /// <inheritdoc />
-    internal override Point? GetEntrySpawnPosition(Player player) => new Point(this._configuration.EntryX, this._configuration.EntryY);
+    internal override Point? GetEntrySpawnPosition(Player player)
+    {
+        return ReferenceEquals(player.CurrentMap, this.Map)
+            ? new Point(this._configuration.EntryX, this._configuration.EntryY)
+            : null;
+    }
 
     /// <inheritdoc />
     protected override async ValueTask OnGameStartAsync(ICollection<Player> players)
@@ -130,6 +138,7 @@ public sealed class DungeonContext : MiniGameContext
             ApplyMultipliers(monster, this._configuration.MonsterHealthMultiplier, this._configuration.MonsterDamageMultiplier, this._configuration.MonsterDefenseMultiplier);
             monster.Health = (int)monster.Attributes[Stats.MaximumHealth];
             monster.DropGenerator = this.DropGenerator;
+            this.Logger.LogDebug("{context}: Prepared {monster} with {health} health.", this, monster, monster.Health);
         }
     }
 
@@ -247,19 +256,22 @@ public sealed class DungeonContext : MiniGameContext
         try
         {
             var start = DateTime.UtcNow;
+            var skipped = TimeSpan.Zero;
             var events = RemainingTimeMessages
                 .Where(remaining => remaining < this.Definition.GameDuration)
                 .Select(remaining => (At: this.Definition.GameDuration - remaining, Boss: false, Remaining: remaining))
                 .Append((At: this._configuration.BossSpawnDelay, Boss: true, Remaining: TimeSpan.Zero))
                 .Where(e => e.At < this.Definition.GameDuration)
                 .OrderBy(e => e.At)
+                .ThenBy(e => e.Boss ? 0 : 1)
                 .ToList();
             foreach (var timedEvent in events)
             {
-                var wait = timedEvent.At - (DateTime.UtcNow - start);
-                if (wait > TimeSpan.Zero)
+                // A skipped wait (/skipwait) brings the following events forward, too.
+                var wait = timedEvent.At - (DateTime.UtcNow - start + skipped);
+                if (wait > TimeSpan.Zero && await this.DelayWithSkipAsync(wait, cancellationToken).ConfigureAwait(false))
                 {
-                    await this.DelayWithSkipAsync(wait, cancellationToken).ConfigureAwait(false);
+                    skipped += wait;
                 }
 
                 if (timedEvent.Boss)
