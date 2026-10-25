@@ -7558,5 +7558,11 @@ namespace MUnique.OpenMU.GameServer.Properties {
 
         /// <summary>Gets the localized PingHandlerPlugIn_Description text.</summary>
         public static string PingHandlerPlugIn_Description => ResourceManager.GetString("PingHandlerPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowLootRollViewPlugIn_Name text.</summary>
+        public static string ShowLootRollViewPlugIn_Name => ResourceManager.GetString("ShowLootRollViewPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowLootRollViewPlugIn_Description text.</summary>
+        public static string ShowLootRollViewPlugIn_Description => ResourceManager.GetString("ShowLootRollViewPlugIn_Description", resourceCulture)!;
     }
 }

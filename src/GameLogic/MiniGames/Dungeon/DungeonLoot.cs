@@ -152,11 +152,12 @@ public sealed class DungeonLoot
         }
 
         var seconds = (int)Math.Ceiling(this._configuration.RollDuration.TotalSeconds);
+        var description = Describe(item);
         foreach (var (player, canNeed) in roll.CanNeed)
         {
             var format = canNeed ? DungeonMessages.RollStartedFormat : DungeonMessages.RollStartedWithoutNeedFormat;
-            await player.ShowBlueMessageAsync(string.Format(format, roll.Id, Describe(item), seconds)).ConfigureAwait(false);
-            await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.ShowLootRollAsync(roll.Id, item, this._configuration.RollDuration, canNeed)).ConfigureAwait(false);
+            await player.ShowBlueMessageAsync(string.Format(format, roll.Id, description, seconds)).ConfigureAwait(false);
+            await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.ShowLootRollAsync(roll.Id, item, description, this._configuration.RollDuration, canNeed)).ConfigureAwait(false);
         }
 
         _ = Task.Run(async () =>

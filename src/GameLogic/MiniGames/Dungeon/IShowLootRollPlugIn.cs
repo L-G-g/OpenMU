@@ -17,9 +17,10 @@ public interface IShowLootRollPlugIn : IViewPlugIn
     /// </summary>
     /// <param name="rollId">The id of the roll, as it's used by the chat commands.</param>
     /// <param name="item">The rolled item.</param>
+    /// <param name="description">The description of the item, e.g. "Silk Helm +7 (exc 3 opc)".</param>
     /// <param name="duration">The time the player has to choose.</param>
     /// <param name="canNeed">If set to <c>true</c>, the player can choose need.</param>
-    ValueTask ShowLootRollAsync(int rollId, Item item, TimeSpan duration, bool canNeed);
+    ValueTask ShowLootRollAsync(int rollId, Item item, string description, TimeSpan duration, bool canNeed);
 
     /// <summary>
     /// Closes a roll, because the player chose or it ended.
