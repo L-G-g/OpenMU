@@ -27,8 +27,6 @@ using MUnique.OpenMU.Pathfinding;
 /// </remarks>
 public sealed class DungeonContext : MiniGameContext
 {
-    private static readonly TimeSpan[] RemainingTimeMessages = [TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1)];
-
     /// <summary>
     /// The terrain attribute which blocks the safezone, like the gates of the Imperial Guardian.
     /// </summary>
@@ -40,6 +38,8 @@ public sealed class DungeonContext : MiniGameContext
     private const int MaximumAreasPerMessage = 50;
 
     private const int MapSize = 256;
+
+    private static readonly TimeSpan[] RemainingTimeMessages = [TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1)];
 
     private readonly DungeonConfiguration _configuration;
     private readonly MonsterDefinition? _bossDefinition;
