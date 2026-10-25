@@ -1,7 +1,7 @@
 // Carga de la ventana de botin de las dungeons (loot.dll).
 //
 // Si loot.dll esta junto a camera3d.dll y camera3d.ini no la desactiva ([Loot] Enabled=0), se carga
-// despues de stacks.dll y se le pasa el log. loot.dll muestra las tiradas de need, greed y pass que manda
+// despues de stacks.dll y se le pasa el log y la ruta de camera3d.ini. loot.dll muestra las tiradas de need, greed y pass que manda
 // el servidor y contesta con los comandos de chat /need, /greed y /pass.
 //
 // Sin loot.dll el cliente funciona igual que antes (las tiradas se eligen escribiendo los comandos).
@@ -11,6 +11,7 @@
 void LoadLoot(LogFunction log)
 {
     HMODULE module = nullptr;
+    static char iniPath[MAX_PATH];
     char path[MAX_PATH];
     if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
             reinterpret_cast<LPCSTR>(&LoadLoot), &module)
@@ -27,7 +28,8 @@ void LoadLoot(LogFunction log)
 
     const size_t room = MAX_PATH - (slash + 1 - path);
     strcpy_s(slash + 1, room, "camera3d.ini");
-    if (GetPrivateProfileIntA("Loot", "Enabled", 1, path) == 0)
+    strcpy_s(iniPath, path);
+    if (GetPrivateProfileIntA("Loot", "Enabled", 1, iniPath) == 0)
     {
         log("Botin: desactivado en camera3d.ini.");
         return;
@@ -52,5 +54,6 @@ void LoadLoot(LogFunction log)
     static LootHost host{};
     host.version = LootHostVersion;
     host.log = log;
+    host.iniPath = iniPath;
     start(&host);
 }

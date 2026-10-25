@@ -5,9 +5,12 @@
 // main.exe original ignora (su reparto de paquetes devuelve 1 para los codigos mayores a 0xF9):
 //   - C1 30 FC 00 [tirada, 2 bytes big endian] [segundos] [puede need: 0 o 1] [item, texto de 40 bytes]:
 //     empezo una tirada para este jugador.
-//   - C1 06 FC 01 [tirada, 2 bytes big endian]: el jugador eligio o la tirada termino.
-// Esta DLL muestra las tiradas abiertas en una ventana chica arriba en el centro de la pantalla, con el
-// item, el tiempo que queda y los botones Need (apagado si el item no es para la clase), Greed y Pass.
+//   - C1 07 FC 01 [tirada, 2 bytes big endian] [gano: 0 o 1]: el jugador eligio o la tirada termino. Si
+//     gano, el servidor le agrega el item al inventario enseguida (C1 22).
+// Esta DLL muestra las tiradas abiertas en una ventana chica abajo en el centro de la pantalla (arriba de
+// los avisos dorados, del chat y de la barra de abajo; [Loot] Bottom de camera3d.ini), apiladas hacia
+// arriba, con el item, el tiempo que queda y los botones Need (apagado si el item no es para la clase),
+// Greed y Pass.
 // El boton manda el chat "/need N", "/greed N" o "/pass N" (N: la tirada), que el servidor ya entiende.
 //
 // Como funciona:
@@ -27,11 +30,20 @@
 //     Esa funcion descarta el mensaje si se mando otro hace poco (0x08793728 mayor a 0x32; baja con cada
 //     paso de logica): los pedidos esperan en una cola y salen cuando se puede.
 //   - Los textos se dibujan con el texto del juego (0x00E8203C: fuente, colores y RenderText 0x00420150).
+//   - Item ganado: el juego, al recibir un item en el inventario (0x22, 0x0064B440), muestra "<item>
+//     Obtained" con el nombre del item del piso que el jugador quiso levantar por ultima vez (el indice
+//     0x081C0420 en la tabla de items del piso 0x081F6C00, 0x350 bytes cada uno: tipo +0x02, nivel en
+//     +0x04). Un item ganado no se levanto, asi que el nombre era otro (o el Kris, el item 0,0). Para los
+//     0x22 que siguen a las tiradas ganadas (uno por tirada, hasta 10 s despues de la ultima; dos tiradas
+//     pueden terminar juntas) se pone el indice en 0 y en ese lugar de la tabla el tipo
+//     (0x0058AA80 con los datos del item del paquete) y el nivel del item recibido; despues de llamar al
+//     reparto se deja todo como estaba. Asi el mensaje dice el nombre correcto.
 
 #include "../shared.h"
 
 #include <GL/gl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <deque>
@@ -66,15 +78,24 @@ namespace
     int* const WindowWidth = reinterpret_cast<int*>(0x00E61E58);
     int* const WindowHeight = reinterpret_cast<int*>(0x00E61E5C);
     int* const ChatWait = reinterpret_cast<int*>(0x08793728);
+    constexpr DWORD ItemTypeFunction = 0x0058AA80;    // int __cdecl (const BYTE* datos del item): tipo
+    int* const PickedItem = reinterpret_cast<int*>(0x081C0420); // item del piso que se quiso levantar
+    BYTE* const GroundItems = reinterpret_cast<BYTE*>(0x081F6C00); // items del piso, 0x350 bytes cada uno
+    constexpr DWORD GroundItemType = 0x02, GroundItemLevel = 0x04; // short tipo; int con el nivel en los bits 3 a 6
 
     // --- Paquetes ---
-    constexpr int CodeLoot = 0xFC;
+    constexpr int CodeLoot = 0xFC, CodeItemAdded = 0x22;
     constexpr BYTE SubCodeStarted = 0x00, SubCodeClosed = 0x01;
     constexpr int StartedSize = 48;
+    constexpr int ClosedWonSize = 7;
     constexpr int ItemTextSize = 40;
+    constexpr int ItemAddedSize = 4 + 11;               // C1 22 [lugar] [item: 11 bytes en OpenMU para S6]
+    constexpr BYTE ItemAddedFailed = 0xFF, ItemAddedMoney = 0xFE;
+    constexpr DWORD WonItemWait = 10000;                // el item ganado llega enseguida
 
     using DispatchType = int(__cdecl*)(int, BYTE*, int, int);
     using DrawType = void(__cdecl*)();
+    using ItemTypeType = int(__cdecl*)(const BYTE* item);
     using MouseType = int(__fastcall*)(BYTE* manager, void* unused);
     using SendChatType = void(__cdecl*)(const char* text);
     using IsReleaseType = bool(__cdecl*)(int key);
@@ -85,7 +106,7 @@ namespace
     // --- Ventana (en coordenadas de 640x480) ---
     constexpr int MaximumRows = 4;
     constexpr float PanelWidth = 230.0f;
-    constexpr float PanelTop = 58.0f;
+    constexpr float DefaultBottom = 300.0f; // arriba de los avisos dorados, del chat y de la barra de abajo
     constexpr float RowHeight = 40.0f;
     constexpr float RowGap = 3.0f;
     constexpr float ButtonTop = 25.0f;   // dentro de la fila
@@ -121,6 +142,9 @@ namespace
     std::vector<Roll> g_rolls;
     std::deque<std::string> g_pendingChat;
     bool g_mouseOver = false;
+    int g_wonItemsPending = 0; // tiradas ganadas: los proximos 0x22 son esos items (pueden terminar dos juntas)
+    DWORD g_wonTick = 0;
+    float g_bottom = DefaultBottom; // [Loot] Bottom: borde de abajo de la fila mas vieja, en 640x480
 
     float PanelLeft()
     {
@@ -132,9 +156,10 @@ namespace
         return static_cast<int>(g_rolls.size() < MaximumRows ? g_rolls.size() : MaximumRows);
     }
 
+    // Las filas se apilan hacia arriba desde g_bottom: la 0 (la mas vieja) queda abajo.
     float RowTop(int row)
     {
-        return PanelTop + row * (RowHeight + RowGap);
+        return g_bottom - RowHeight - row * (RowHeight + RowGap);
     }
 
     float ButtonLeft(int choice)
@@ -151,7 +176,7 @@ namespace
     bool MouseOverPanel()
     {
         const int rows = VisibleRows();
-        return rows > 0 && Inside(PanelLeft(), PanelTop, PanelWidth, rows * (RowHeight + RowGap) - RowGap,
+        return rows > 0 && Inside(PanelLeft(), RowTop(rows - 1), PanelWidth, g_bottom - RowTop(rows - 1),
             static_cast<float>(*MouseX), static_cast<float>(*MouseY));
     }
 
@@ -214,6 +239,13 @@ namespace
         if (packet[3] == SubCodeClosed)
         {
             RemoveRoll(id);
+            if (size >= ClosedWonSize && packet[6] != 0)
+            {
+                g_log("Botin: tirada %u ganada.", static_cast<unsigned>(id));
+                g_wonItemsPending = GetTickCount() - g_wonTick < WonItemWait ? g_wonItemsPending + 1 : 1;
+                g_wonTick = GetTickCount();
+            }
+
             return;
         }
 
@@ -233,12 +265,43 @@ namespace
         g_rolls.push_back(roll);
     }
 
+    // El item ganado llega como cualquier item agregado al inventario: el mensaje "<item> Obtained" del juego
+    // toma el nombre del item del piso que se quiso levantar. Mientras el juego procesa el paquete, ese item
+    // es el recibido (lugar 0 de la tabla); despues todo vuelve a estar como antes.
+    int DispatchWonItem(int code, BYTE* packet, int size, int encrypted)
+    {
+        BYTE* const slot = GroundItems;
+        const int savedPicked = *PickedItem;
+        const short savedType = *reinterpret_cast<short*>(slot + GroundItemType);
+        const int savedLevel = *reinterpret_cast<int*>(slot + GroundItemLevel);
+        *PickedItem = 0;
+        const int type = reinterpret_cast<ItemTypeType>(ItemTypeFunction)(packet + 4);
+        g_log("Botin: item ganado (tipo %d, nivel %d) en el lugar %d.", type, (packet[5] >> 3) & 0xF, packet[3]);
+        *reinterpret_cast<short*>(slot + GroundItemType) = static_cast<short>(type);
+        *reinterpret_cast<int*>(slot + GroundItemLevel) = packet[5]; // nivel en los bits 3 a 6, como en el piso
+        const int result = g_nextDispatch(code, packet, size, encrypted);
+        *PickedItem = savedPicked;
+        *reinterpret_cast<short*>(slot + GroundItemType) = savedType;
+        *reinterpret_cast<int*>(slot + GroundItemLevel) = savedLevel;
+        return result;
+    }
+
     int __cdecl PacketHook(int code, BYTE* packet, int size, int encrypted)
     {
         if (code == CodeLoot && packet != nullptr)
         {
             OnLootPacket(packet, size);
             return 1; // como el juego con los codigos que no conoce
+        }
+
+        if (code == CodeItemAdded && g_wonItemsPending > 0 && packet != nullptr)
+        {
+            g_wonItemsPending--;
+            if (GetTickCount() - g_wonTick < WonItemWait && size >= ItemAddedSize
+                && packet[3] != ItemAddedFailed && packet[3] != ItemAddedMoney)
+            {
+                return DispatchWonItem(code, packet, size, encrypted);
+            }
         }
 
         return g_nextDispatch(code, packet, size, encrypted);
@@ -501,6 +564,12 @@ extern "C" __declspec(dllexport) bool StartLoot(const LootHost* host)
     }
 
     g_log = host->log;
+    char bottom[32];
+    GetPrivateProfileStringA("Loot", "Bottom", "", bottom, sizeof(bottom), host->iniPath);
+    if (bottom[0] != '\0')
+    {
+        g_bottom = static_cast<float>(atof(bottom));
+    }
 
     // El reparto de paquetes puede estar redirigido por otras DLL: se encadena a lo que haya. El dibujo y el
     // mouse no los toca ninguna otra: tienen que ser las llamadas originales.

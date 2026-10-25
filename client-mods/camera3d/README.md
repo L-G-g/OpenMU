@@ -347,7 +347,8 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 En una dungeon de OpenMU (plugin "Dungeon") los drops se reparten con una tirada: cada jugador de la
 party elige need, greed o pass. Sin esta DLL se elige escribiendo `/need N`, `/greed N` o `/pass N`
 (N es el número de la tirada que avisa el servidor). Con `loot.dll` las tiradas abiertas aparecen en
-una ventana chica arriba en el centro de la pantalla (hasta 4 apiladas), con el item, el tiempo que
+una ventana chica abajo en el centro de la pantalla, arriba de los avisos dorados, del chat y de la
+barra de abajo, así no tapan al personaje (hasta 4, apiladas hacia arriba), con el item, el tiempo que
 queda y los botones Need, Greed y Pass. Need está apagado si el item no es para la clase del personaje.
 El botón manda el mismo comando de chat. `camera3d.dll` la carga si está en la misma carpeta, después
 de `stacks.dll` (`src/loadloot.cpp`):
@@ -355,6 +356,7 @@ de `stacks.dll` (`src/loadloot.cpp`):
 ```
 [Loot]
 Enabled=1               ; 0: no se carga loot.dll
+Bottom=300              ; borde de abajo de la ventana, en coordenadas de 640x480 (la barra empieza en 429)
 ```
 
 El servidor (vista "Show Loot Roll View (loot.dll)", `ShowLootRollViewPlugIn`) manda paquetes que el
@@ -362,7 +364,8 @@ El servidor (vista "Show Loot Roll View (loot.dll)", `ShowLootRollViewPlugIn`) m
 
 - `C1 30 FC 00 [tirada, 2 bytes big endian] [segundos] [puede need: 0 o 1] [item, 40 bytes de texto]`:
   empezó una tirada para este jugador.
-- `C1 06 FC 01 [tirada, 2 bytes big endian]`: el jugador eligió o la tirada terminó.
+- `C1 07 FC 01 [tirada, 2 bytes big endian] [ganó: 0 o 1]`: el jugador eligió o la tirada terminó. Si
+  ganó, el servidor le agrega el item al inventario enseguida (`C1 22 [lugar] [item]`).
 
 `src/loot/loot.cpp`:
 
@@ -377,6 +380,15 @@ El servidor (vista "Show Loot Roll View (loot.dll)", `ShowLootRollViewPlugIn`) m
 
 Los textos se dibujan con el texto del juego (`0x00E8203C`: `SetFont` `0x00420120`, `RenderText`
 `0x00420150`; orden 1 izquierda, 2 derecha, 3 centro), como el mapa del comando M.
+
+Item ganado: al recibir un item en el inventario (`0x22`, `0x0064B440`) el juego muestra "<item>
+Obtained" con el nombre del item del piso que el jugador quiso levantar por última vez: el índice
+`0x081C0420` en la tabla de items del piso (`0x081F6C00`, `0x350` bytes cada uno: tipo `short` en
+`+0x02`, nivel en los bits 3 a 6 de `+0x04`). Un item ganado no se levantó del piso, así que el mensaje
+nombraba otro (o el Kris, el item 0,0). Para los `0x22` que siguen a los `FC 01` ganados (uno por
+tirada, hasta 10 s después del último; dos tiradas pueden terminar juntas), la DLL pone el índice en 0 y en ese lugar de la tabla el tipo del item recibido (`0x0058AA80`, la misma
+función que usa el juego con los datos del item del paquete) y su nivel; llama al reparto y deja todo
+como estaba. Así el mensaje dice el nombre correcto.
 
 ## Archivos
 

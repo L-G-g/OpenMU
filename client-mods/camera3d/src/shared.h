@@ -144,6 +144,7 @@ struct LootHost
 {
     int version;
     LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Loot]
 };
 
 // bool StartLoot(const LootHost* host): se llama una vez, despues de StartStacks.
