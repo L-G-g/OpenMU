@@ -20,7 +20,7 @@ internal static class DungeonMessages
     public const string EntryCancelled = "Entrada a la dungeon cancelada: todos los miembros de la party tienen que poder entrar.";
 
     /// <summary>The entry of a member failed after the checks.</summary>
-    public const string EntryFailed = "No pudiste entrar a la dungeon.";
+    public const string EntryFailed = "No pudiste entrar a la dungeon. Si tu party acaba de salir, espera un minuto a que se cierre.";
 
     /// <summary>The member isn't in the game.</summary>
     public const string ProblemNotInGame = "no esta en el juego";
