@@ -40,8 +40,8 @@ internal static class DungeonMessages
     /// <summary>The member entered less than the cooldown ago, {0} hours and {1} minutes remaining.</summary>
     public const string ProblemCooldownFormat = "ya entro hoy, puede volver en {0} h {1} min";
 
-    /// <summary>The dungeon started, {0} is the duration in minutes and {1} the minutes until the boss.</summary>
-    public const string StartedFormat = "La dungeon empezo! Tienen {0} minutos. El boss aparece en {1} minutos.";
+    /// <summary>The dungeon started, {0} is the duration in minutes.</summary>
+    public const string StartedFormat = "La dungeon empezo! Tienen {0} minutos.";
 
     /// <summary>The remaining minutes, {0}.</summary>
     public const string RemainingMinutesFormat = "Quedan {0} minutos de dungeon.";
@@ -49,11 +49,20 @@ internal static class DungeonMessages
     /// <summary>One minute remains.</summary>
     public const string RemainingOneMinute = "Queda 1 minuto de dungeon.";
 
+    /// <summary>The players killed a part of the monsters of the stage: {0} kills of {1} monsters named {2}.</summary>
+    public const string KillProgressFormat = "{0}/{1} {2}";
+
+    /// <summary>The players killed the monsters of the stage ({0} of them), but the boss {1} appears only in {2} seconds.</summary>
+    public const string StageReadyFormat = "Ya mataron {0}! {1} aparece en {2} segundos.";
+
+    /// <summary>The boss of the last stage is dead.</summary>
+    public const string Completed = "Completaron la dungeon! Aprovechen el tiempo que queda.";
+
     /// <summary>The boss appeared, {0} is its name, {1} and {2} its coordinates.</summary>
     public const string BossAppearedFormat = "Aparecio {0} en {1}, {2}!";
 
     /// <summary>The boss died, {0} is its name.</summary>
-    public const string BossKilledFormat = "{0} fue derrotada!";
+    public const string BossKilledFormat = "Derrotaron a {0}!";
 
     /// <summary>The time is over.</summary>
     public const string TimeOver = "Se termino el tiempo de la dungeon.";

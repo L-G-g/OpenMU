@@ -82,43 +82,26 @@ public class DungeonConfiguration
     public int MinimumExcellentOptions { get; set; } = 3;
 
     /// <summary>
-    /// Gets or sets the designation of the monster definition of the boss.
+    /// Gets or sets the stages of the dungeon. Each stage ends with a boss, which appears when the boss of the stage before
+    /// is dead, the players killed enough monsters of the stage and enough time passed.
     /// </summary>
-    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossDesignation_Name), Description = nameof(PlugInResources.DungeonConfiguration_BossDesignation_Description))]
-    public string BossDesignation { get; set; } = DungeonDefaults.BossDesignation;
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_Stages_Name), Description = nameof(PlugInResources.DungeonConfiguration_Stages_Description))]
+    public IList<DungeonStage> Stages { get; set; } = DungeonDefaults.CreateStages();
 
     /// <summary>
-    /// Gets or sets the time after the start of the dungeon when the boss appears.
-    /// </summary>
-    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossSpawnDelay_Name))]
-    public TimeSpan BossSpawnDelay { get; set; } = TimeSpan.FromMinutes(10);
-
-    /// <summary>
-    /// Gets or sets the x coordinate where the boss appears.
-    /// </summary>
-    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossX_Name))]
-    public byte BossX { get; set; } = 128;
-
-    /// <summary>
-    /// Gets or sets the y coordinate where the boss appears.
-    /// </summary>
-    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossY_Name))]
-    public byte BossY { get; set; } = 129;
-
-    /// <summary>
-    /// Gets or sets the multiplier for the health of the boss, applied to its monster definition.
+    /// Gets or sets the multiplier for the health of the bosses of the stages.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossHealthMultiplier_Name))]
     public float BossHealthMultiplier { get; set; } = 10;
 
     /// <summary>
-    /// Gets or sets the multiplier for the damage of the boss, applied to its monster definition.
+    /// Gets or sets the multiplier for the damage of the bosses of the stages.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossDamageMultiplier_Name))]
     public float BossDamageMultiplier { get; set; } = 5;
 
     /// <summary>
-    /// Gets or sets the multiplier for the defense of the boss, applied to its monster definition.
+    /// Gets or sets the multiplier for the defense of the bosses of the stages.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossDefenseMultiplier_Name))]
     public float BossDefenseMultiplier { get; set; } = 5;

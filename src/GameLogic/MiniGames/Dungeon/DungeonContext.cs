@@ -19,8 +19,10 @@ using MUnique.OpenMU.Pathfinding;
 /// </summary>
 /// <remarks>
 /// The map has the usual monsters of the map, which are stronger (<see cref="DungeonConfiguration.MonsterHealthMultiplier"/> etc.)
-/// and drop through the <see cref="DungeonDropGenerator"/>. After <see cref="DungeonConfiguration.BossSpawnDelay"/>, the boss appears
-/// once at a fixed place, with a magic effect which the client shows (<see cref="DungeonConfiguration.BossEffectNumber"/>).
+/// and drop through the <see cref="DungeonDropGenerator"/>, plus the monsters of the spawn areas of the map which spawn only in events,
+/// e.g. along the ways between the bosses. The dungeon has <see cref="DungeonConfiguration.Stages"/>, each with a boss: it appears once
+/// at a fixed place when the boss of the stage before is dead, the players killed enough monsters of the stage and enough time passed.
+/// Golden messages tell the players what to do. A boss has a magic effect which the client shows (<see cref="DungeonConfiguration.BossEffectNumber"/>).
 /// The players appear at <see cref="DungeonConfiguration.EntryX"/>, <see cref="DungeonConfiguration.EntryY"/>, and
 /// the safezone of the map is blocked (<see cref="DungeonConfiguration.BlockSafezone"/>). The game ends after the game duration of the definition; dying or leaving the map
 /// leaves the dungeon for good, because the entry is used up.
@@ -39,12 +41,23 @@ public sealed class DungeonContext : MiniGameContext
 
     private const int MapSize = 256;
 
+    /// <summary>
+    /// Every how many kills of the monsters of the stage the players see the progress.
+    /// </summary>
+    private const int KillProgressStep = 50;
+
     private static readonly TimeSpan[] RemainingTimeMessages = [TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1)];
 
     private readonly DungeonConfiguration _configuration;
-    private readonly MonsterDefinition? _bossDefinition;
+    private readonly List<(DungeonStage Stage, MonsterDefinition? Boss)> _stages;
     private readonly ConcurrentDictionary<Monster, byte> _preparedMonsters = new();
-    private Monster? _boss;
+    private readonly ConcurrentDictionary<Monster, int> _bosses = new();
+    private readonly ConcurrentDictionary<short, int> _kills = new();
+    private readonly object _stageLock = new();
+    private int _stageIndex;
+    private bool _isStageBossSpawned;
+    private bool _isStageReadyAnnounced;
+    private DateTime _startTime = DateTime.UtcNow;
     private List<(byte StartX, byte StartY, byte EndX, byte EndY)>? _blockedAreas;
     private int _safezoneBlocked;
 
@@ -59,9 +72,12 @@ public sealed class DungeonContext : MiniGameContext
         : base(key, definition, gameContext, mapInitializer)
     {
         this._configuration = DungeonFeaturePlugIn.GetConfiguration(gameContext) ?? new DungeonConfiguration();
-        this._bossDefinition = gameContext.Configuration.Monsters.FirstOrDefault(m => m.Designation.ValueInNeutralLanguage == this._configuration.BossDesignation);
+        this._stages = this._configuration.Stages
+            .Select(stage => (stage, gameContext.Configuration.Monsters.FirstOrDefault(m => m.Designation.ValueInNeutralLanguage == stage.BossDesignation)))
+            .ToList();
         this.Loot = new DungeonLoot(this, this._configuration, this.Logger);
-        this.DropGenerator = new DungeonDropGenerator(gameContext.DropGenerator, this._configuration, this.Loot, this._bossDefinition);
+        var bossDefinitions = this._stages.Select(s => s.Boss).OfType<MonsterDefinition>().ToHashSet();
+        this.DropGenerator = new DungeonDropGenerator(gameContext.DropGenerator, this._configuration, this.Loot, bossDefinitions);
     }
 
     /// <summary>
@@ -108,11 +124,14 @@ public sealed class DungeonContext : MiniGameContext
     /// <inheritdoc />
     protected override async ValueTask OnGameStartAsync(ICollection<Player> players)
     {
+        this._startTime = DateTime.UtcNow;
         await base.OnGameStartAsync(players).ConfigureAwait(false);
-        await this.ShowGoldenTextAsync(string.Format(
-            DungeonMessages.StartedFormat,
-            (int)Math.Round(this.Definition.GameDuration.TotalMinutes),
-            (int)Math.Round(this._configuration.BossSpawnDelay.TotalMinutes))).ConfigureAwait(false);
+        await this.ShowGoldenTextAsync(string.Format(DungeonMessages.StartedFormat, (int)Math.Round(this.Definition.GameDuration.TotalMinutes))).ConfigureAwait(false);
+        if (this._stages.Count > 0)
+        {
+            await this.ShowGoldenTextAsync(this._stages[0].Stage.Hint).ConfigureAwait(false);
+        }
+
         _ = Task.Run(() => this.RunTimersAsync(this.GameEndedToken), this.GameEndedToken);
     }
 
@@ -131,7 +150,7 @@ public sealed class DungeonContext : MiniGameContext
         }
 
         if (args.Object is Monster { Definition.ObjectKind: NpcObjectKind.Monster } monster
-            && !ReferenceEquals(monster, this._boss)
+            && !this._bosses.ContainsKey(monster)
             && this._preparedMonsters.TryAdd(monster, 0))
         {
             // The spawns of the map are created with the drop generator of the game, and a respawned monster is added again.
@@ -157,9 +176,35 @@ public sealed class DungeonContext : MiniGameContext
     protected override void OnMonsterDied(object? sender, DeathInformation e)
     {
         base.OnMonsterDied(sender, e);
-        if (sender is Monster monster && ReferenceEquals(monster, this._boss))
+        if (sender is not Monster monster)
         {
-            _ = this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossKilledFormat, monster.Definition.Designation.ValueInNeutralLanguage));
+            return;
+        }
+
+        if (this._bosses.TryGetValue(monster, out var bossStage))
+        {
+            _ = this.OnBossDiedAsync(monster, bossStage);
+            return;
+        }
+
+        var kills = this._kills.AddOrUpdate(monster.Definition.Number, 1, (_, count) => count + 1);
+        string? message = null;
+        lock (this._stageLock)
+        {
+            if (this._stageIndex < this._stages.Count
+                && !this._isStageBossSpawned
+                && this._stages[this._stageIndex].Stage is { } stage
+                && stage.MonsterNumber == monster.Definition.Number
+                && kills < stage.KillCount
+                && kills % KillProgressStep == 0)
+            {
+                message = string.Format(DungeonMessages.KillProgressFormat, kills, stage.KillCount, monster.Definition.Designation.ValueInNeutralLanguage);
+            }
+        }
+
+        if (message is not null)
+        {
+            _ = this.ShowGoldenTextAsync(message);
         }
     }
 
@@ -255,8 +300,7 @@ public sealed class DungeonContext : MiniGameContext
     {
         try
         {
-            // Only the wait for the boss can be skipped (/skipwait); the remaining time follows the real game duration.
-            await Task.WhenAll(this.ShowRemainingTimeAsync(cancellationToken), this.SpawnBossDelayedAsync(cancellationToken)).ConfigureAwait(false);
+            await Task.WhenAll(this.ShowRemainingTimeAsync(cancellationToken), this.RunStagesAsync(cancellationToken)).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -268,16 +312,88 @@ public sealed class DungeonContext : MiniGameContext
         }
     }
 
-    private async Task SpawnBossDelayedAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Checks every second whether the boss of the current stage can appear. A skipped wait (/skipwait of a game master)
+    /// lets it appear right away, without the kills and the time.
+    /// </summary>
+    private async Task RunStagesAsync(CancellationToken cancellationToken)
     {
-        if (this._configuration.BossSpawnDelay >= this.Definition.GameDuration)
+        while (!cancellationToken.IsCancellationRequested)
         {
-            return;
-        }
+            var skipped = await this.DelayWithSkipAsync(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
 
-        await this.DelayWithSkipAsync(this._configuration.BossSpawnDelay, cancellationToken).ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
-        await this.SpawnBossAsync().ConfigureAwait(false);
+            int stageIndex;
+            string? message = null;
+            var spawn = false;
+            lock (this._stageLock)
+            {
+                stageIndex = this._stageIndex;
+                if (stageIndex >= this._stages.Count)
+                {
+                    return;
+                }
+
+                if (this._isStageBossSpawned)
+                {
+                    continue;
+                }
+
+                var stage = this._stages[stageIndex].Stage;
+                var killsReached = this._kills.GetValueOrDefault(stage.MonsterNumber) >= stage.KillCount;
+                var remainingTime = stage.MinimumTime - (DateTime.UtcNow - this._startTime);
+                if (skipped || (killsReached && remainingTime <= TimeSpan.Zero))
+                {
+                    this._isStageBossSpawned = true;
+                    spawn = true;
+                }
+                else if (killsReached && !this._isStageReadyAnnounced)
+                {
+                    this._isStageReadyAnnounced = true;
+                    message = string.Format(DungeonMessages.StageReadyFormat, stage.KillCount, stage.BossDesignation, (int)Math.Ceiling(remainingTime.TotalSeconds));
+                }
+            }
+
+            if (message is not null)
+            {
+                await this.ShowGoldenTextAsync(message).ConfigureAwait(false);
+            }
+
+            if (spawn)
+            {
+                await this.SpawnBossAsync(stageIndex).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task OnBossDiedAsync(Monster boss, int stageIndex)
+    {
+        try
+        {
+            string? nextHint = null;
+            lock (this._stageLock)
+            {
+                if (stageIndex != this._stageIndex)
+                {
+                    return;
+                }
+
+                this._stageIndex++;
+                this._isStageBossSpawned = false;
+                this._isStageReadyAnnounced = false;
+                if (this._stageIndex < this._stages.Count)
+                {
+                    nextHint = this._stages[this._stageIndex].Stage.Hint;
+                }
+            }
+
+            await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossKilledFormat, boss.Definition.Designation.ValueInNeutralLanguage)).ConfigureAwait(false);
+            await this.ShowGoldenTextAsync(nextHint ?? DungeonMessages.Completed).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Unexpected error after the boss {boss} died.", this, boss);
+        }
     }
 
     private async Task ShowRemainingTimeAsync(CancellationToken cancellationToken)
@@ -296,11 +412,12 @@ public sealed class DungeonContext : MiniGameContext
         }
     }
 
-    private async ValueTask SpawnBossAsync()
+    private async ValueTask SpawnBossAsync(int stageIndex)
     {
-        if (this._bossDefinition is not { } definition)
+        var (stage, definition) = this._stages[stageIndex];
+        if (definition is null)
         {
-            this.Logger.LogWarning("{context}: The boss '{boss}' isn't defined.", this, this._configuration.BossDesignation);
+            this.Logger.LogWarning("{context}: The boss '{boss}' isn't defined.", this, stage.BossDesignation);
             return;
         }
 
@@ -310,10 +427,10 @@ public sealed class DungeonContext : MiniGameContext
             MonsterDefinition = definition,
             SpawnTrigger = SpawnTrigger.OnceAtEventStart,
             Quantity = 1,
-            X1 = this._configuration.BossX,
-            X2 = this._configuration.BossX,
-            Y1 = this._configuration.BossY,
-            Y2 = this._configuration.BossY,
+            X1 = stage.BossX,
+            X2 = stage.BossX,
+            Y1 = stage.BossY,
+            Y2 = stage.BossY,
         };
         var boss = new Monster(spawnArea, definition, this.Map, this.DropGenerator, new BasicMonsterIntelligence(), this.GameContext.PlugInManager, this.GameContext.PathFinderPool, this);
         ApplyMultipliers(boss, this._configuration.BossHealthMultiplier, this._configuration.BossDamageMultiplier, this._configuration.BossDefenseMultiplier);
@@ -328,7 +445,7 @@ public sealed class DungeonContext : MiniGameContext
             return;
         }
 
-        this._boss = boss;
+        this._bosses[boss] = stageIndex;
         await this.Map.AddAsync(boss).ConfigureAwait(false);
         boss.OnSpawn();
         if (this._configuration.BossEffectNumber > 0)

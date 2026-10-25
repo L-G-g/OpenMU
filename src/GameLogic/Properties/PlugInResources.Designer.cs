@@ -4681,21 +4681,6 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         /// <summary>Gets the localized DungeonConfiguration_MinimumExcellentOptions_Name text.</summary>
         public static string DungeonConfiguration_MinimumExcellentOptions_Name => ResourceManager.GetString("DungeonConfiguration_MinimumExcellentOptions_Name", resourceCulture)!;
 
-        /// <summary>Gets the localized DungeonConfiguration_BossDesignation_Name text.</summary>
-        public static string DungeonConfiguration_BossDesignation_Name => ResourceManager.GetString("DungeonConfiguration_BossDesignation_Name", resourceCulture)!;
-
-        /// <summary>Gets the localized DungeonConfiguration_BossDesignation_Description text.</summary>
-        public static string DungeonConfiguration_BossDesignation_Description => ResourceManager.GetString("DungeonConfiguration_BossDesignation_Description", resourceCulture)!;
-
-        /// <summary>Gets the localized DungeonConfiguration_BossSpawnDelay_Name text.</summary>
-        public static string DungeonConfiguration_BossSpawnDelay_Name => ResourceManager.GetString("DungeonConfiguration_BossSpawnDelay_Name", resourceCulture)!;
-
-        /// <summary>Gets the localized DungeonConfiguration_BossX_Name text.</summary>
-        public static string DungeonConfiguration_BossX_Name => ResourceManager.GetString("DungeonConfiguration_BossX_Name", resourceCulture)!;
-
-        /// <summary>Gets the localized DungeonConfiguration_BossY_Name text.</summary>
-        public static string DungeonConfiguration_BossY_Name => ResourceManager.GetString("DungeonConfiguration_BossY_Name", resourceCulture)!;
-
         /// <summary>Gets the localized DungeonConfiguration_BossHealthMultiplier_Name text.</summary>
         public static string DungeonConfiguration_BossHealthMultiplier_Name => ResourceManager.GetString("DungeonConfiguration_BossHealthMultiplier_Name", resourceCulture)!;
 
@@ -4743,5 +4728,35 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized DungeonConfiguration_BossEffectNumber_Description text.</summary>
         public static string DungeonConfiguration_BossEffectNumber_Description => ResourceManager.GetString("DungeonConfiguration_BossEffectNumber_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_Stages_Name text.</summary>
+        public static string DungeonConfiguration_Stages_Name => ResourceManager.GetString("DungeonConfiguration_Stages_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_Stages_Description text.</summary>
+        public static string DungeonConfiguration_Stages_Description => ResourceManager.GetString("DungeonConfiguration_Stages_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_BossDesignation_Name text.</summary>
+        public static string DungeonStage_BossDesignation_Name => ResourceManager.GetString("DungeonStage_BossDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_BossX_Name text.</summary>
+        public static string DungeonStage_BossX_Name => ResourceManager.GetString("DungeonStage_BossX_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_BossY_Name text.</summary>
+        public static string DungeonStage_BossY_Name => ResourceManager.GetString("DungeonStage_BossY_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_MonsterNumber_Name text.</summary>
+        public static string DungeonStage_MonsterNumber_Name => ResourceManager.GetString("DungeonStage_MonsterNumber_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_MonsterNumber_Description text.</summary>
+        public static string DungeonStage_MonsterNumber_Description => ResourceManager.GetString("DungeonStage_MonsterNumber_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_KillCount_Name text.</summary>
+        public static string DungeonStage_KillCount_Name => ResourceManager.GetString("DungeonStage_KillCount_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_MinimumTime_Name text.</summary>
+        public static string DungeonStage_MinimumTime_Name => ResourceManager.GetString("DungeonStage_MinimumTime_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_Hint_Name text.</summary>
+        public static string DungeonStage_Hint_Name => ResourceManager.GetString("DungeonStage_Hint_Name", resourceCulture)!;
     }
 }

@@ -12,7 +12,7 @@ using MUnique.OpenMU.GameLogic.Attributes;
 ///   <item>The monsters drop excellent items more often (<see cref="DungeonConfiguration.ExcellentDropChanceMultiplier"/>).</item>
 ///   <item>The excellent items are of the zone of the monster or of a zone before it, with at least
 ///         <see cref="DungeonConfiguration.MinimumExcellentOptions"/> excellent options.</item>
-///   <item>The boss drops exactly one such excellent item.</item>
+///   <item>The bosses (the boss of each stage) drop exactly one such excellent item.</item>
 ///   <item>The items which are rolled with need, greed or pass (see <see cref="DungeonLoot"/>) don't fall to the ground.</item>
 /// </list>
 /// </summary>
@@ -21,7 +21,7 @@ public sealed class DungeonDropGenerator : IDropGenerator
     private readonly IDropGenerator _gameDropGenerator;
     private readonly DungeonConfiguration _configuration;
     private readonly DungeonLoot _loot;
-    private readonly MonsterDefinition? _boss;
+    private readonly IReadOnlySet<MonsterDefinition> _bosses;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DungeonDropGenerator"/> class.
@@ -29,13 +29,13 @@ public sealed class DungeonDropGenerator : IDropGenerator
     /// <param name="gameDropGenerator">The drop generator of the game.</param>
     /// <param name="configuration">The configuration.</param>
     /// <param name="loot">The loot of the dungeon.</param>
-    /// <param name="boss">The definition of the boss.</param>
-    internal DungeonDropGenerator(IDropGenerator gameDropGenerator, DungeonConfiguration configuration, DungeonLoot loot, MonsterDefinition? boss)
+    /// <param name="bosses">The definitions of the bosses.</param>
+    internal DungeonDropGenerator(IDropGenerator gameDropGenerator, DungeonConfiguration configuration, DungeonLoot loot, IReadOnlySet<MonsterDefinition> bosses)
     {
         this._gameDropGenerator = gameDropGenerator;
         this._configuration = configuration;
         this._loot = loot;
-        this._boss = boss;
+        this._bosses = bosses;
     }
 
     /// <summary>
@@ -63,7 +63,7 @@ public sealed class DungeonDropGenerator : IDropGenerator
         var (gameItems, money) = await this._gameDropGenerator.GenerateItemDropsAsync(monster, gainedExperience, player).ConfigureAwait(false);
         var monsterLevel = (int)monster[Stats.Level];
         var items = new List<Item>();
-        if (ReferenceEquals(monster, this._boss))
+        if (this._bosses.Contains(monster))
         {
             if (await this.GenerateExcellentItemAsync(monsterLevel).ConfigureAwait(false) is { } bossItem)
             {

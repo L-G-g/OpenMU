@@ -1799,21 +1799,6 @@
   <data name="DungeonConfiguration_MinimumExcellentOptions_Name" xml:space="preserve">
     <value>Minimum excellent options</value>
   </data>
-  <data name="DungeonConfiguration_BossDesignation_Name" xml:space="preserve">
-    <value>Boss designation</value>
-  </data>
-  <data name="DungeonConfiguration_BossDesignation_Description" xml:space="preserve">
-    <value>The designation of the monster definition of the boss.</value>
-  </data>
-  <data name="DungeonConfiguration_BossSpawnDelay_Name" xml:space="preserve">
-    <value>Boss spawn delay</value>
-  </data>
-  <data name="DungeonConfiguration_BossX_Name" xml:space="preserve">
-    <value>Boss X</value>
-  </data>
-  <data name="DungeonConfiguration_BossY_Name" xml:space="preserve">
-    <value>Boss Y</value>
-  </data>
   <data name="DungeonConfiguration_BossHealthMultiplier_Name" xml:space="preserve">
     <value>Boss health multiplier</value>
   </data>
@@ -1861,5 +1846,35 @@
   </data>
   <data name="DungeonConfiguration_BossEffectNumber_Description" xml:space="preserve">
     <value>The number of the magic effect which the client shows on the boss. The elites.dll of the client draws it with a glow ([Elites] BossEffect). 0 shows no effect.</value>
+  </data>
+  <data name="DungeonConfiguration_Stages_Name" xml:space="preserve">
+    <value>Stages</value>
+  </data>
+  <data name="DungeonConfiguration_Stages_Description" xml:space="preserve">
+    <value>Each stage ends with a boss, which appears when the boss of the stage before is dead, the players killed enough monsters of the stage and enough time passed since the start. The monsters of the ways are spawn areas of the map with the trigger 'Automatic during event'.</value>
+  </data>
+  <data name="DungeonStage_BossDesignation_Name" xml:space="preserve">
+    <value>Boss designation</value>
+  </data>
+  <data name="DungeonStage_BossX_Name" xml:space="preserve">
+    <value>Boss X</value>
+  </data>
+  <data name="DungeonStage_BossY_Name" xml:space="preserve">
+    <value>Boss Y</value>
+  </data>
+  <data name="DungeonStage_MonsterNumber_Name" xml:space="preserve">
+    <value>Monster number</value>
+  </data>
+  <data name="DungeonStage_MonsterNumber_Description" xml:space="preserve">
+    <value>The number of the monsters which the players have to kill, e.g. 24 Worm, 22 Ice Monster, 21 Assassin.</value>
+  </data>
+  <data name="DungeonStage_KillCount_Name" xml:space="preserve">
+    <value>Kill count</value>
+  </data>
+  <data name="DungeonStage_MinimumTime_Name" xml:space="preserve">
+    <value>Minimum time</value>
+  </data>
+  <data name="DungeonStage_Hint_Name" xml:space="preserve">
+    <value>Hint (golden message)</value>
   </data>
 </root>
