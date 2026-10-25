@@ -21,6 +21,9 @@
 //     (0x005494C0) en el color de [Elites] Color: con color parejo y brillo (0x41, intensidad [Elites] Tint)
 //     y con textura, cromo y brillo (0x46, como los reflejos de varios monstruos del juego). El brillo se
 //     suma a lo que hay detras (se ve transparente) y el cromo se mueve con el tiempo.
+//   - Los jefes (por ejemplo la Ice Queen de la primera dungeon, que tiene el mismo modelo que las normales)
+//     se marcan igual con otro efecto ([Elites] BossEffect, el BossEffectNumber del plugin "Dungeon"): se
+//     llaman "<nombre> Boss" y brillan con [Elites] BossColor.
 
 #include "../shared.h"
 
@@ -61,13 +64,23 @@ namespace
     using DispatchType = int(__cdecl*)(int, BYTE*, int, int);
     using RenderBodyType = void(__thiscall*)(BYTE*, int, float, int, float, float, float, int, int);
 
-    constexpr const char* NameSuffix = " Elite";
+    // Que marca tiene un monstruo: ninguna, elite o jefe.
+    enum Kind : BYTE
+    {
+        KindNone = 0,
+        KindElite = 1,
+        KindBoss = 2,
+        KindCount = 3,
+    };
+
+    const char* const NameSuffix[KindCount] = { "", " Elite", " Boss" };
 
     LogFunction g_log = nullptr;
     DispatchType g_nextDispatch = nullptr;
-    int g_effect = 1;
-    float g_color[4] = { 0.6f, 0.2f, 1.0f, 1.5f }; // violeta; el cuarto es la intensidad del brillo
-    bool g_elite[IdMask + 1] = {};
+    int g_effect[KindCount] = { 0, 1, 2 }; // [Elites] Effect y BossEffect
+    // Violeta; el cuarto es la intensidad del brillo. El jefe brilla mas fuerte.
+    float g_color[KindCount][4] = { {}, { 0.6f, 0.2f, 1.0f, 1.5f }, { 0.6f, 0.2f, 1.0f, 2.5f } };
+    BYTE g_kind[IdMask + 1] = {};
     float g_tint = 0.35f;     // [Elites] Tint: intensidad del tinte parejo (0: sin tinte)
 
     WORD ReadId(const BYTE* data)
@@ -81,8 +94,16 @@ namespace
         return manager != 0 ? *reinterpret_cast<BYTE**>(manager + 8) : nullptr;
     }
 
-    // Agrega " Elite" al nombre del monstruo con ese numero de objeto (si no lo tiene ya).
-    void RenameElite(WORD id)
+    // true si el nombre termina con el sufijo.
+    bool HasSuffix(const char* name, const char* suffix)
+    {
+        const size_t length = strnlen(name, NameSize);
+        const size_t suffixLength = strlen(suffix);
+        return length > suffixLength && length < NameSize && strcmp(name + length - suffixLength, suffix) == 0;
+    }
+
+    // Agrega " Elite" o " Boss" al nombre del monstruo con ese numero de objeto (si no lo tiene ya).
+    void RenameElite(WORD id, Kind kind)
     {
         BYTE* characters = Characters();
         if (characters == nullptr)
@@ -90,7 +111,7 @@ namespace
             return;
         }
 
-        const size_t suffix = strlen(NameSuffix);
+        const size_t suffix = strlen(NameSuffix[kind]);
         for (int i = 0; i < CharacterCount; i++)
         {
             BYTE* character = characters + i * CharacterSize;
@@ -102,16 +123,16 @@ namespace
 
             char* name = reinterpret_cast<char*>(character + CharName);
             const size_t length = strnlen(name, NameSize);
-            if (length + suffix < NameSize && (length < suffix || strcmp(name + length - suffix, NameSuffix) != 0))
+            if (length + suffix < NameSize && !HasSuffix(name, NameSuffix[kind]))
             {
-                memcpy(name + length, NameSuffix, suffix + 1);
+                memcpy(name + length, NameSuffix[kind], suffix + 1);
             }
         }
     }
 
     void Unmark(WORD id)
     {
-        g_elite[id] = false;
+        g_kind[id] = KindNone;
     }
 
     // Desmarca los objetos de un paquete (despues de descifrarlo, el paquete es C1 o C2).
@@ -168,15 +189,17 @@ namespace
             {
                 ForgetObjects(code, packet, size);
             }
-            else if (code == CodeEffect && packet[0] == 0xC1 && size >= 7 && packet[6] == g_effect)
+            else if (code == CodeEffect && packet[0] == 0xC1 && size >= 7
+                && (packet[6] == g_effect[KindElite] || packet[6] == g_effect[KindBoss]))
             {
                 const WORD id = ReadId(packet + 4);
-                g_elite[id] = packet[3] != 0;
-                if (g_elite[id])
+                const Kind kind = packet[6] == g_effect[KindBoss] ? KindBoss : KindElite;
+                g_kind[id] = packet[3] != 0 ? kind : KindNone;
+                if (g_kind[id] != KindNone)
                 {
                     __try
                     {
-                        RenameElite(id);
+                        RenameElite(id, kind);
                     }
                     __except (EXCEPTION_EXECUTE_HANDLER)
                     {
@@ -188,38 +211,40 @@ namespace
         return g_nextDispatch(code, packet, size, encrypted);
     }
 
-    // true si el objeto dibujado es el cuerpo de un monstruo elite vivo.
-    bool IsEliteBody(const BYTE* object)
+    // La marca del monstruo vivo cuyo cuerpo se dibuja, o KindNone si no es el cuerpo de un elite o jefe.
+    Kind GetBodyKind(const BYTE* object)
     {
         const BYTE* characters = Characters();
         if (characters == nullptr || object < characters + CharObject
             || object >= characters + CharacterCount * CharacterSize)
         {
-            return false;
+            return KindNone;
         }
 
         if (static_cast<DWORD>(object - characters - CharObject) % CharacterSize != 0)
         {
-            return false; // otro objeto dentro del personaje
+            return KindNone; // otro objeto dentro del personaje
         }
 
         const BYTE* character = object - CharObject;
         if (!character[CharLive] || character[CharDead] || character[CharKind] != KindMonster)
         {
-            return false;
+            return KindNone;
         }
 
-        if (g_elite[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask])
+        const Kind kind = static_cast<Kind>(g_kind[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask]);
+        if (kind != KindNone)
         {
-            return true;
+            return kind;
         }
 
-        // El nombre con " Elite" lo puso esta DLL al llegar el efecto, y el juego lo vuelve a escribir cuando
-        // crea otra vez al monstruo: alcanza aunque la marca se haya borrado con un paquete de la vista.
+        // El nombre con " Elite" o " Boss" lo puso esta DLL al llegar el efecto, y el juego lo vuelve a
+        // escribir cuando crea otra vez al monstruo: alcanza aunque la marca se haya borrado con un paquete
+        // de la vista.
         const char* name = reinterpret_cast<const char*>(character + CharName);
-        const size_t length = strnlen(name, NameSize);
-        const size_t suffix = strlen(NameSuffix);
-        return length > suffix && length < NameSize && strcmp(name + length - suffix, NameSuffix) == 0;
+        return HasSuffix(name, NameSuffix[KindBoss]) ? KindBoss
+            : HasSuffix(name, NameSuffix[KindElite]) ? KindElite
+            : KindNone;
     }
 
     // El modelo (BMD) de un tipo, igual que al empezar 0x005DE260: PUSH tipo, CALL 0x004CDA10, MOV ECX,EAX,
@@ -246,7 +271,7 @@ namespace
     using ModelType = BYTE*(__cdecl*)(int);
     ModelType volatile g_model = &Model;
 
-    void DrawEliteGlow(BYTE* object)
+    void DrawEliteGlow(BYTE* object, const float* color)
     {
         BYTE* model = g_model(*reinterpret_cast<const int*>(object + ObjType));
         if (model == nullptr)
@@ -261,12 +286,12 @@ namespace
         // Primero un tinte violeta parejo en todo el cuerpo (color y brillo: se suma, se ve transparente) y
         // despues el cromo, que se mueve con el tiempo.
         const int passes[2] = { RenderColorBright, RenderTextureChromeBright };
-        const float strength[2] = { g_tint, g_color[3] };
+        const float strength[2] = { g_tint, color[3] };
         for (int i = 0; i < 2; i++)
         {
-            light[0] = g_color[0] * strength[i];
-            light[1] = g_color[1] * strength[i];
-            light[2] = g_color[2] * strength[i];
+            light[0] = color[0] * strength[i];
+            light[1] = color[1] * strength[i];
+            light[2] = color[2] * strength[i];
             reinterpret_cast<RenderBodyType>(RenderBodyFunction)(model, passes[i],
                 *reinterpret_cast<const float*>(object + ObjAlpha), *reinterpret_cast<const int*>(object + ObjBlendMesh),
                 *reinterpret_cast<const float*>(object + ObjBlendMeshLight),
@@ -309,9 +334,10 @@ namespace
 
         __try
         {
-            if (IsEliteBody(object))
+            const Kind kind = GetBodyKind(object);
+            if (kind != KindNone)
             {
-                DrawEliteGlow(object);
+                DrawEliteGlow(object, g_color[kind]);
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
@@ -333,11 +359,11 @@ namespace
         return WriteCode(callSite, call, sizeof(call));
     }
 
-    // [Elites] Color=R,G,B,A (de 0 a 1; A es la intensidad del brillo).
-    void ReadColor(const char* iniPath)
+    // [Elites] Color o BossColor=R,G,B,A (de 0 a 1; A es la intensidad del brillo).
+    void ReadColor(const char* iniPath, const char* key, float* color)
     {
         char text[64];
-        GetPrivateProfileStringA("Elites", "Color", "", text, sizeof(text), iniPath);
+        GetPrivateProfileStringA("Elites", key, "", text, sizeof(text), iniPath);
         float values[4];
         int count = 0;
         char* context = nullptr;
@@ -348,7 +374,7 @@ namespace
 
         if (count == 4)
         {
-            memcpy(g_color, values, sizeof(values));
+            memcpy(color, values, sizeof(values));
         }
     }
 }
@@ -361,8 +387,10 @@ extern "C" __declspec(dllexport) bool StartElites(const ElitesHost* host)
     }
 
     g_log = host->log;
-    g_effect = GetPrivateProfileIntA("Elites", "Effect", 1, host->iniPath);
-    ReadColor(host->iniPath);
+    g_effect[KindElite] = GetPrivateProfileIntA("Elites", "Effect", 1, host->iniPath);
+    g_effect[KindBoss] = GetPrivateProfileIntA("Elites", "BossEffect", 2, host->iniPath);
+    ReadColor(host->iniPath, "Color", g_color[KindElite]);
+    ReadColor(host->iniPath, "BossColor", g_color[KindBoss]);
     char tint[32];
     GetPrivateProfileStringA("Elites", "Tint", "0.35", tint, sizeof(tint), host->iniPath);
     g_tint = static_cast<float>(atof(tint));
@@ -391,8 +419,9 @@ extern "C" __declspec(dllexport) bool StartElites(const ElitesHost* host)
         g_log("Elites: el dibujo de los cuerpos no coincide; sin brillo (solo el nombre).");
     }
 
-    g_log("Elites listos (efecto %d, color %.2f %.2f %.2f %.2f).", g_effect, g_color[0], g_color[1], g_color[2],
-        g_color[3]);
+    g_log("Elites listos (efecto %d, color %.2f %.2f %.2f %.2f; jefes: efecto %d, color %.2f %.2f %.2f %.2f).",
+        g_effect[KindElite], g_color[KindElite][0], g_color[KindElite][1], g_color[KindElite][2], g_color[KindElite][3],
+        g_effect[KindBoss], g_color[KindBoss][0], g_color[KindBoss][1], g_color[KindBoss][2], g_color[KindBoss][3]);
     return true;
 }
 

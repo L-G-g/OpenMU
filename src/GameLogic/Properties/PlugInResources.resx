@@ -1841,4 +1841,25 @@
   <data name="DungeonConfiguration_RollAllItems_Description" xml:space="preserve">
     <value>If checked, all dropped items are rolled. Otherwise only the excellent and ancient items and the jewels; the others fall to the ground as usual.</value>
   </data>
+  <data name="DungeonConfiguration_EntryX_Name" xml:space="preserve">
+    <value>Entry X</value>
+  </data>
+  <data name="DungeonConfiguration_EntryX_Description" xml:space="preserve">
+    <value>Where the players appear when they enter the dungeon, outside of the safezone (the start of the hunting area).</value>
+  </data>
+  <data name="DungeonConfiguration_EntryY_Name" xml:space="preserve">
+    <value>Entry Y</value>
+  </data>
+  <data name="DungeonConfiguration_BlockSafezone_Name" xml:space="preserve">
+    <value>Block safezone</value>
+  </data>
+  <data name="DungeonConfiguration_BlockSafezone_Description" xml:space="preserve">
+    <value>If set, the safezone (the town) of the map can't be entered in the dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_BossEffectNumber_Name" xml:space="preserve">
+    <value>Boss effect number</value>
+  </data>
+  <data name="DungeonConfiguration_BossEffectNumber_Description" xml:space="preserve">
+    <value>The number of the magic effect which the client shows on the boss. The elites.dll of the client draws it with a glow ([Elites] BossEffect). 0 shows no effect.</value>
+  </data>
 </root>

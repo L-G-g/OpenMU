@@ -11,6 +11,7 @@ using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.Interfaces;
+using MUnique.OpenMU.Pathfinding;
 
 /// <summary>
 /// The context of a dungeon: an instance of a hunting map (the entrance map of the definition, e.g. Devias) for one party,
@@ -19,17 +20,33 @@ using MUnique.OpenMU.Interfaces;
 /// <remarks>
 /// The map has the usual monsters of the map, which are stronger (<see cref="DungeonConfiguration.MonsterHealthMultiplier"/> etc.)
 /// and drop through the <see cref="DungeonDropGenerator"/>. After <see cref="DungeonConfiguration.BossSpawnDelay"/>, the boss appears
-/// once at a fixed place. The game ends after the game duration of the definition; dying or leaving the map
+/// once at a fixed place, with a magic effect which the client shows (<see cref="DungeonConfiguration.BossEffectNumber"/>).
+/// The players appear at <see cref="DungeonConfiguration.EntryX"/>, <see cref="DungeonConfiguration.EntryY"/>, and
+/// the safezone of the map is blocked (<see cref="DungeonConfiguration.BlockSafezone"/>). The game ends after the game duration of the definition; dying or leaving the map
 /// leaves the dungeon for good, because the entry is used up.
 /// </remarks>
 public sealed class DungeonContext : MiniGameContext
 {
     private static readonly TimeSpan[] RemainingTimeMessages = [TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1)];
 
+    /// <summary>
+    /// The terrain attribute which blocks the safezone, like the gates of the Imperial Guardian.
+    /// </summary>
+    private const TerrainAttributeType SafezoneBlockAttribute = TerrainAttributeType.Water;
+
+    /// <summary>
+    /// The maximum number of areas in one message to the client, which has one byte for its size.
+    /// </summary>
+    private const int MaximumAreasPerMessage = 50;
+
+    private const int MapSize = 256;
+
     private readonly DungeonConfiguration _configuration;
     private readonly MonsterDefinition? _bossDefinition;
     private readonly ConcurrentDictionary<Monster, byte> _preparedMonsters = new();
     private Monster? _boss;
+    private List<(byte StartX, byte StartY, byte EndX, byte EndY)>? _blockedAreas;
+    private int _safezoneBlocked;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DungeonContext"/> class.
@@ -78,6 +95,9 @@ public sealed class DungeonContext : MiniGameContext
     }
 
     /// <inheritdoc />
+    internal override Point? GetEntrySpawnPosition(Player player) => new Point(this._configuration.EntryX, this._configuration.EntryY);
+
+    /// <inheritdoc />
     protected override async ValueTask OnGameStartAsync(ICollection<Player> players)
     {
         await base.OnGameStartAsync(players).ConfigureAwait(false);
@@ -92,6 +112,16 @@ public sealed class DungeonContext : MiniGameContext
     protected override async ValueTask OnObjectAddedToMapAsync((GameMap Map, ILocateable Object) args)
     {
         await base.OnObjectAddedToMapAsync(args).ConfigureAwait(false);
+        if (this._configuration.BlockSafezone && Interlocked.Exchange(ref this._safezoneBlocked, 1) == 0)
+        {
+            this._blockedAreas = BlockSafezone(args.Map.Terrain);
+        }
+
+        if (args.Object is Player player && this._blockedAreas is { Count: > 0 } areas)
+        {
+            await SendBlockedAreasAsync(player, areas, true).ConfigureAwait(false);
+        }
+
         if (args.Object is Monster { Definition.ObjectKind: NpcObjectKind.Monster } monster
             && !ReferenceEquals(monster, this._boss)
             && this._preparedMonsters.TryAdd(monster, 0))
@@ -100,6 +130,17 @@ public sealed class DungeonContext : MiniGameContext
             ApplyMultipliers(monster, this._configuration.MonsterHealthMultiplier, this._configuration.MonsterDamageMultiplier, this._configuration.MonsterDefenseMultiplier);
             monster.Health = (int)monster.Attributes[Stats.MaximumHealth];
             monster.DropGenerator = this.DropGenerator;
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async ValueTask OnObjectRemovedFromMapAsync((GameMap Map, ILocateable Object) args)
+    {
+        await base.OnObjectRemovedFromMapAsync(args).ConfigureAwait(false);
+        if (args.Object is Player player && this._blockedAreas is { Count: > 0 } areas)
+        {
+            // The player goes back to the same map number (e.g. Devias), whose terrain the client might not load again.
+            await SendBlockedAreasAsync(player, areas, false).ConfigureAwait(false);
         }
     }
 
@@ -119,6 +160,70 @@ public sealed class DungeonContext : MiniGameContext
         await this.ShowGoldenTextAsync(DungeonMessages.TimeOver).ConfigureAwait(false);
         await this.Loot.ResolveAllAsync().ConfigureAwait(false);
         await base.GameEndedAsync(finishers).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Blocks the safezone of the terrain of the dungeon, so that the players can't go into the town.
+    /// </summary>
+    /// <param name="terrain">The terrain of the dungeon map, which belongs only to this dungeon.</param>
+    /// <returns>The blocked areas, as rectangles, to tell the clients.</returns>
+    private static List<(byte StartX, byte StartY, byte EndX, byte EndY)> BlockSafezone(GameMapTerrain terrain)
+    {
+        // Runs of safezone coordinates per row; a run continues the rectangle above if it has the same columns.
+        var areas = new List<(byte StartX, byte StartY, byte EndX, byte EndY)>();
+        var open = new Dictionary<(int StartX, int EndX), int>();
+        for (var y = 0; y <= MapSize; y++)
+        {
+            // The row after the last one has no runs, so that all open rectangles are closed.
+            var runs = new HashSet<(int StartX, int EndX)>();
+            for (var x = 0; y < MapSize && x < MapSize; x++)
+            {
+                if (!terrain.SafezoneMap[x, y])
+                {
+                    continue;
+                }
+
+                var start = x;
+                while (x + 1 < MapSize && terrain.SafezoneMap[x + 1, y])
+                {
+                    x++;
+                }
+
+                runs.Add((start, x));
+            }
+
+            foreach (var (run, startY) in open.Where(entry => !runs.Contains(entry.Key)).ToList())
+            {
+                areas.Add(((byte)run.StartX, (byte)startY, (byte)run.EndX, (byte)(y - 1)));
+                open.Remove(run);
+            }
+
+            foreach (var run in runs)
+            {
+                open.TryAdd(run, y);
+            }
+        }
+
+        foreach (var (startX, startY, endX, endY) in areas)
+        {
+            for (int x = startX; x <= endX; x++)
+            {
+                for (int y = startY; y <= endY; y++)
+                {
+                    terrain.ApplyTerrainAttribute((byte)x, (byte)y, SafezoneBlockAttribute, true);
+                }
+            }
+        }
+
+        return areas;
+    }
+
+    private static async ValueTask SendBlockedAreasAsync(Player player, List<(byte StartX, byte StartY, byte EndX, byte EndY)> areas, bool block)
+    {
+        foreach (var chunk in areas.Chunk(MaximumAreasPerMessage))
+        {
+            await player.InvokeViewPlugInAsync<IChangeTerrainAttributesViewPlugin>(p => p.ChangeAttributesAsync(SafezoneBlockAttribute, block, chunk)).ConfigureAwait(false);
+        }
     }
 
     private static void ApplyMultipliers(Monster monster, float health, float damage, float defense)
@@ -212,6 +317,18 @@ public sealed class DungeonContext : MiniGameContext
         this._boss = boss;
         await this.Map.AddAsync(boss).ConfigureAwait(false);
         boss.OnSpawn();
+        if (this._configuration.BossEffectNumber > 0)
+        {
+            var effect = new MagicEffectDefinition
+            {
+                Number = this._configuration.BossEffectNumber,
+                Name = "Dungeon Boss",
+                InformObservers = true,
+                StopByDeath = false,
+            };
+            await boss.MagicEffectList.AddEffectAsync(new MagicEffect(Timeout.InfiniteTimeSpan, effect)).ConfigureAwait(false);
+        }
+
         await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossAppearedFormat, definition.Designation.ValueInNeutralLanguage, boss.Position.X, boss.Position.Y)).ConfigureAwait(false);
     }
 

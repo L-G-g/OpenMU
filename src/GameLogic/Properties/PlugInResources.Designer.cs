@@ -4722,5 +4722,26 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized DungeonConfiguration_RollAllItems_Description text.</summary>
         public static string DungeonConfiguration_RollAllItems_Description => ResourceManager.GetString("DungeonConfiguration_RollAllItems_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_EntryX_Name text.</summary>
+        public static string DungeonConfiguration_EntryX_Name => ResourceManager.GetString("DungeonConfiguration_EntryX_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_EntryX_Description text.</summary>
+        public static string DungeonConfiguration_EntryX_Description => ResourceManager.GetString("DungeonConfiguration_EntryX_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_EntryY_Name text.</summary>
+        public static string DungeonConfiguration_EntryY_Name => ResourceManager.GetString("DungeonConfiguration_EntryY_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_BlockSafezone_Name text.</summary>
+        public static string DungeonConfiguration_BlockSafezone_Name => ResourceManager.GetString("DungeonConfiguration_BlockSafezone_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_BlockSafezone_Description text.</summary>
+        public static string DungeonConfiguration_BlockSafezone_Description => ResourceManager.GetString("DungeonConfiguration_BlockSafezone_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_BossEffectNumber_Name text.</summary>
+        public static string DungeonConfiguration_BossEffectNumber_Name => ResourceManager.GetString("DungeonConfiguration_BossEffectNumber_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_BossEffectNumber_Description text.</summary>
+        public static string DungeonConfiguration_BossEffectNumber_Description => ResourceManager.GetString("DungeonConfiguration_BossEffectNumber_Description", resourceCulture)!;
     }
 }

@@ -19,7 +19,7 @@ using MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
 ///   <item>The boss is a copy of the Ice Queen (25) with the designation <see cref="DungeonDefaults.BossDesignation"/>.
 ///         The dungeon multiplies its health, damage and defense when it appears.</item>
 ///   <item>The mini game definition has the type <see cref="MiniGameType.Dungeon"/>: 15 minutes, one instance per party,
-///         up to 5 players, entered at the spawn gate (the town) of Devias.</item>
+///         up to 5 players. The entrance is the spawn gate of Devias, but the dungeon places the players outside of the town.</item>
 ///   <item>The attribute <see cref="Stats.DungeonLastEntry"/> keeps the time of the last entry of a character.</item>
 /// </list>
 /// </remarks>

@@ -34,6 +34,24 @@ public class DungeonConfiguration
     public bool GameMastersIgnoreCooldown { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets the x coordinate where the players appear when they enter the dungeon.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_EntryX_Name), Description = nameof(PlugInResources.DungeonConfiguration_EntryX_Description))]
+    public byte EntryX { get; set; } = 165;
+
+    /// <summary>
+    /// Gets or sets the y coordinate where the players appear when they enter the dungeon.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_EntryY_Name))]
+    public byte EntryY { get; set; } = 41;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the safezone of the map can't be entered in the dungeon.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BlockSafezone_Name), Description = nameof(PlugInResources.DungeonConfiguration_BlockSafezone_Description))]
+    public bool BlockSafezone { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the multiplier for the health of the monsters of the dungeon.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_MonsterHealthMultiplier_Name))]
@@ -104,6 +122,13 @@ public class DungeonConfiguration
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossDefenseMultiplier_Name))]
     public float BossDefenseMultiplier { get; set; } = 5;
+
+    /// <summary>
+    /// Gets or sets the number of the magic effect which the client shows on the boss, so that it looks different
+    /// from the normal monsters of its kind. The elites.dll of the client draws it with a glow. 0 shows no effect.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossEffectNumber_Name), Description = nameof(PlugInResources.DungeonConfiguration_BossEffectNumber_Description))]
+    public short BossEffectNumber { get; set; } = 2;
 
     /// <summary>
     /// Gets or sets the time the players have to choose need, greed or pass for a dropped item.
