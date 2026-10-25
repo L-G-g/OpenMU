@@ -255,6 +255,7 @@ Todo se activa además con `camera3d.ini`:
   | `target N` | Estado del objeto `N` | como una línea de `objects` |
   | `peek DIRECCIÓN [BYTES]` | Bytes de la memoria del juego, para investigar | hexadecimal |
   | `enter N` | En la selección de personaje, entrar con el personaje `N` (lo mismo que el botón Connect, `0x004D6A60` con `0x00E60B4C`) | `slot name` |
+  | `party N` | Invitar al jugador `N` a la party, como el botón Party de la ventana de comandos (`0x0078F100`, C1 40) | `key name` |
 
   El cliente no recibe la vida de los monstruos, así que `hp=na`.
 
@@ -341,6 +342,42 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 | `0x0077F9B7` | `JNZ` en los textos de la ventana (`0x0077F990`): si la clase es de tercera clase (`0x005878E0`) escribe "Master" (texto 1745) | Pasa a `JMP`: siempre "Level: %d" (texto 200) y la experiencia (texto 201) |
 | `0x0077FA10` | CALL a `sprintf` (`0x0050D100`) del texto del nivel, de 32 bytes en `[EBP-0x128]` | Escribe el nivel y le agrega `Format` con los resets |
 
+## Ventana de botín de las dungeons (loot.dll)
+
+En una dungeon de OpenMU (plugin "Dungeon") los drops se reparten con una tirada: cada jugador de la
+party elige need, greed o pass. Sin esta DLL se elige escribiendo `/need N`, `/greed N` o `/pass N`
+(N es el número de la tirada que avisa el servidor). Con `loot.dll` las tiradas abiertas aparecen en
+una ventana chica arriba en el centro de la pantalla (hasta 4 apiladas), con el item, el tiempo que
+queda y los botones Need, Greed y Pass. Need está apagado si el item no es para la clase del personaje.
+El botón manda el mismo comando de chat. `camera3d.dll` la carga si está en la misma carpeta, después
+de `stacks.dll` (`src/loadloot.cpp`):
+
+```
+[Loot]
+Enabled=1               ; 0: no se carga loot.dll
+```
+
+El servidor (vista "Show Loot Roll View (loot.dll)", `ShowLootRollViewPlugIn`) manda paquetes que el
+`main.exe` original ignora (el reparto devuelve 1 para los códigos mayores a `0xF9`):
+
+- `C1 30 FC 00 [tirada, 2 bytes big endian] [segundos] [puede need: 0 o 1] [item, 40 bytes de texto]`:
+  empezó una tirada para este jugador.
+- `C1 06 FC 01 [tirada, 2 bytes big endian]`: el jugador eligió o la tirada terminó.
+
+`src/loot/loot.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por `healthbars.dll`, `elites.dll` y `resets.dll` si están) | Se encadena. `0xFC` se queda en la DLL: abre o cierra la fila de la tirada |
+| `0x004D9CCC` | CALL `0x004D5EC0` en la escena principal, después de dibujar la interfaz (`0x008609C0`), entre `BeginBitmap` (`0x00637770`) y `EndBitmap` (`0x00637870`) | Pasa por la DLL: dibuja la ventana (proyección 2D del juego, píxeles con el origen abajo) y después llama a la original |
+| `0x00860998` | CALL `0x00815880` (eventos del mouse de las ventanas, `__thiscall` sobre el administrador `[0x09867090]`) en la actualización de la interfaz (`0x00860970`) | Con el mouse sobre la ventana no llama a la original (ninguna otra ventana lo recibe; pone en 0 la ventana con el mouse, `+0x38`) y procesa el click al soltar el botón (`0x00790F00`) |
+| `0x00860910` | "Mouse sobre la interfaz" (`__thiscall` sobre el sistema de ventanas: el administrador tiene una ventana con el mouse en `+0x38`). Lo consultan la lógica del personaje (`0x005B5FC0`: caminar, atacar), la elección del objeto bajo el mouse (`0x005B81E0`) y el chat (`0x004D8FD0`) | Se reemplaza con un salto: devuelve 1 con el mouse sobre la ventana; si no, lo mismo que la original |
+| `0x005BDE40` | Envío del chat (`void __cdecl(const char*)`, C1 00), el del Enter de la ventana de chat | Manda `/need N`, `/greed N` o `/pass N` |
+| `0x08793728` | Espera del chat: `0x005BDE40` descarta el mensaje si es mayor a `0x32` (y uno igual al anterior si es mayor a 0); baja en cada paso | Los pedidos esperan en una cola hasta que el chat se puede mandar |
+
+Los textos se dibujan con el texto del juego (`0x00E8203C`: `SetFont` `0x00420120`, `RenderText`
+`0x00420150`; orden 1 izquierda, 2 derecha, 3 centro), como el mapa del comando M.
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -354,12 +391,14 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
 - `src/loadresets.cpp`: carga de `resets.dll` si está junto a la DLL.
 - `src/loadstacks.cpp`: carga de `stacks.dll` si está junto a la DLL.
+- `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
-  `resets.dll` y `stacks.dll`.
+  `resets.dll`, `stacks.dll` y `loot.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
 - `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
 - `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
+- `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -375,11 +414,12 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -391,7 +431,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll` y `stacks.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll` y `loot.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

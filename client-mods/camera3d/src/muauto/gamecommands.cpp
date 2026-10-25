@@ -41,6 +41,7 @@ namespace
     constexpr DWORD PickCallWalk = 0x005B741A;          // en la logica del personaje: click en el terreno
     constexpr DWORD PickCallSkillTarget = 0x005AAFDF;   // en el destino de una habilidad sin objeto elegido
     constexpr DWORD EnterGameFunction = 0x004D6A60;     // void EnterGame(char check): el boton Connect de la seleccion
+    constexpr DWORD PartyRequestFunction = 0x0078F100;  // __thiscall (short numero del jugador): C1 40, pedido de party
     int* const Scene = reinterpret_cast<int*>(0x00E609E8);              // 2 login, 4 seleccion de personaje, 5 juego
     int* const SelectedHero = reinterpret_cast<int*>(0x00E60B4C);       // personaje elegido en la seleccion
 
@@ -897,6 +898,22 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
         g_command.y = c;
         g_command.packetsAtStart = SkillPacketCount();
         pending = true;
+    }
+    else if (_stricmp(name, "party") == 0)
+    {
+        // Invita al jugador N a la party, como el boton Party de la ventana de comandos (C1 40).
+        const DWORD character = count >= 1 ? Character(a) : 0;
+        if (character == 0 || character == *Hero || Read<BYTE>(character + CharLive) == 0
+            || Read<BYTE>(character + CharKind) != 1)
+        {
+            result = "error: party N: N tiene que ser un jugador";
+            return true;
+        }
+
+        const WORD key = Read<WORD>(character + CharKey);
+        reinterpret_cast<void(__fastcall*)(void*, void*, short)>(PartyRequestFunction)(nullptr, nullptr,
+            static_cast<short>(key));
+        result = Format("party: key=%d name=%s", key, Word(character + CharName, 11).c_str());
     }
     else
     {

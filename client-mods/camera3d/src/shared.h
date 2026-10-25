@@ -130,3 +130,22 @@ struct StacksHost
 // bool StartStacks(const StacksHost* host): se llama una vez, despues de StartElites.
 using StartStacksFunction = bool (*)(const StacksHost* host);
 constexpr const char* StartStacksName = "StartStacks";
+
+// --- Ventana de botin de las dungeons (loot.dll) ---
+// camera3d.dll carga loot.dll si el archivo esta junto a ella y camera3d.ini no la desactiva
+// ([Loot] Enabled=0), y llama a su funcion exportada StartLoot, despues de stacks.dll. loot.dll encadena
+// la llamada del reparto de paquetes igual que elites.dll, y parchea el dibujo despues de la interfaz y el
+// mouse de las ventanas, que no parchea ninguna otra DLL.
+
+constexpr int LootHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a loot.dll.
+struct LootHost
+{
+    int version;
+    LogFunction log;
+};
+
+// bool StartLoot(const LootHost* host): se llama una vez, despues de StartStacks.
+using StartLootFunction = bool (*)(const LootHost* host);
+constexpr const char* StartLootName = "StartLoot";
