@@ -118,7 +118,7 @@ public sealed class DungeonLoot
         }
 
         await player.ShowBlueMessageAsync(string.Format(DungeonMessages.ChoiceTakenFormat, GetName(choice), roll.Id)).ConfigureAwait(false);
-        await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.CloseLootRollAsync(roll.Id)).ConfigureAwait(false);
+        await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.CloseLootRollAsync(roll.Id, false)).ConfigureAwait(false);
         if (isComplete)
         {
             await this.ResolveAsync(roll).ConfigureAwait(false);
@@ -246,24 +246,39 @@ public sealed class DungeonLoot
 
         var description = Describe(roll.Item);
         var rollers = results.Where(r => r.Choice != LootChoice.Pass).ToList();
+        Player? winner = null;
         string message;
         if (rollers.Count == 0)
         {
             message = string.Format(DungeonMessages.RollAllPassedFormat, roll.Id, description);
-            await this.DropToGroundAsync(roll).ConfigureAwait(false);
         }
         else
         {
             var highest = rollers.Max(r => r.Number);
-            var winner = rollers.Where(r => r.Number == highest).ToList().SelectRandom()!.Player;
+            winner = rollers.Where(r => r.Number == highest).ToList().SelectRandom()!.Player;
             var details = string.Join(", ", results.Select(r => r.Choice == LootChoice.Pass ? $"{r.Player.Name} pass" : $"{r.Player.Name} {GetName(r.Choice)} {r.Number}"));
             message = string.Format(DungeonMessages.RollWonFormat, roll.Id, description, winner.Name, details);
+        }
+
+        // The window is closed before the item is added: loot.dll then knows that the item which appears in the
+        // inventory of the winner wasn't picked up, and the client doesn't show a wrong "obtained" message.
+        foreach (var player in roll.CanNeed.Keys)
+        {
+            var won = ReferenceEquals(player, winner);
+            await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.CloseLootRollAsync(roll.Id, won)).ConfigureAwait(false);
+        }
+
+        if (winner is null)
+        {
+            await this.DropToGroundAsync(roll).ConfigureAwait(false);
+        }
+        else
+        {
             await this.GiveToWinnerAsync(roll.Item, winner).ConfigureAwait(false);
         }
 
         foreach (var player in roll.CanNeed.Keys)
         {
-            await player.InvokeViewPlugInAsync<IShowLootRollPlugIn>(p => p.CloseLootRollAsync(roll.Id)).ConfigureAwait(false);
             await player.ShowBlueMessageAsync(message).ConfigureAwait(false);
         }
     }

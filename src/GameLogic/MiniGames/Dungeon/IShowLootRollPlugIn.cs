@@ -26,5 +26,6 @@ public interface IShowLootRollPlugIn : IViewPlugIn
     /// Closes a roll, because the player chose or it ended.
     /// </summary>
     /// <param name="rollId">The id of the roll.</param>
-    ValueTask CloseLootRollAsync(int rollId);
+    /// <param name="won">If set to <c>true</c>, the player won the item, which is added to its inventory right after.</param>
+    ValueTask CloseLootRollAsync(int rollId, bool won);
 }

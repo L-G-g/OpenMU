@@ -19,7 +19,9 @@ using MUnique.OpenMU.PlugIns;
 /// The packets aren't part of the original protocol, and the original client ignores them:
 /// <list type="bullet">
 ///   <item><c>C1 30 FC 00 [roll id, 2 bytes big endian] [seconds] [can need: 0 or 1] [item, 40 bytes text]</c>: a roll started.</item>
-///   <item><c>C1 06 FC 01 [roll id, 2 bytes big endian]</c>: the player chose or the roll ended.</item>
+///   <item><c>C1 07 FC 01 [roll id, 2 bytes big endian] [won: 0 or 1]</c>: the player chose or the roll ended. When the player
+///         won, the item is added to its inventory right after; loot.dll then avoids the "obtained" message of the client,
+///         which would name the item which the player picked up last (or the Kris).</item>
 /// </list>
 /// The window answers with the chat commands /need, /greed and /pass and the roll id.
 /// </remarks>
@@ -33,7 +35,7 @@ public class ShowLootRollViewPlugIn : IShowLootRollPlugIn
     private const byte ClosedSubCode = 0x01;
     private const int DescriptionLength = 40;
     private const int StartedLength = 8 + DescriptionLength;
-    private const int ClosedLength = 6;
+    private const int ClosedLength = 7;
 
     private readonly RemotePlayer _player;
 
@@ -68,7 +70,7 @@ public class ShowLootRollViewPlugIn : IShowLootRollPlugIn
     }
 
     /// <inheritdoc />
-    public async ValueTask CloseLootRollAsync(int rollId)
+    public async ValueTask CloseLootRollAsync(int rollId, bool won)
     {
         if (this._player.Connection is not { } connection)
         {
@@ -79,6 +81,7 @@ public class ShowLootRollViewPlugIn : IShowLootRollPlugIn
         {
             var span = connection.Output.GetSpan(ClosedLength)[..ClosedLength];
             WriteHeader(span, ClosedLength, ClosedSubCode, rollId);
+            span[6] = won ? (byte)1 : (byte)0;
             return ClosedLength;
         }
 
