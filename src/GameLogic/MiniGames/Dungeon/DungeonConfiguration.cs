@@ -85,8 +85,11 @@ public class DungeonConfiguration
     /// Gets or sets the stages of the dungeon. Each stage ends with a boss, which appears when the boss of the stage before
     /// is dead, the players killed enough monsters of the stage and enough time passed.
     /// </summary>
+    /// <remarks>
+    /// It's an <see cref="ICollection{T}"/>, so that the admin panel shows it as an editable table of objects.
+    /// </remarks>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_Stages_Name), Description = nameof(PlugInResources.DungeonConfiguration_Stages_Description))]
-    public IList<DungeonStage> Stages { get; set; } = DungeonDefaults.CreateStages();
+    public ICollection<DungeonStage> Stages { get; set; } = DungeonDefaults.CreateStages();
 
     /// <summary>
     /// Gets or sets the multiplier for the health of the bosses of the stages.
