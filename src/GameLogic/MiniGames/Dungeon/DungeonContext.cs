@@ -255,34 +255,8 @@ public sealed class DungeonContext : MiniGameContext
     {
         try
         {
-            var start = DateTime.UtcNow;
-            var skipped = TimeSpan.Zero;
-            var events = RemainingTimeMessages
-                .Where(remaining => remaining < this.Definition.GameDuration)
-                .Select(remaining => (At: this.Definition.GameDuration - remaining, Boss: false, Remaining: remaining))
-                .Append((At: this._configuration.BossSpawnDelay, Boss: true, Remaining: TimeSpan.Zero))
-                .Where(e => e.At < this.Definition.GameDuration)
-                .OrderBy(e => e.At)
-                .ThenBy(e => e.Boss ? 0 : 1)
-                .ToList();
-            foreach (var timedEvent in events)
-            {
-                // A skipped wait (/skipwait) brings the following events forward, too.
-                var wait = timedEvent.At - (DateTime.UtcNow - start + skipped);
-                if (wait > TimeSpan.Zero && await this.DelayWithSkipAsync(wait, cancellationToken).ConfigureAwait(false))
-                {
-                    skipped += wait;
-                }
-
-                if (timedEvent.Boss)
-                {
-                    await this.SpawnBossAsync().ConfigureAwait(false);
-                }
-                else
-                {
-                    await this.ShowGoldenTextAsync(string.Format(DungeonMessages.RemainingMinutesFormat, (int)timedEvent.Remaining.TotalMinutes)).ConfigureAwait(false);
-                }
-            }
+            // Only the wait for the boss can be skipped (/skipwait); the remaining time follows the real game duration.
+            await Task.WhenAll(this.ShowRemainingTimeAsync(cancellationToken), this.SpawnBossDelayedAsync(cancellationToken)).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -291,6 +265,34 @@ public sealed class DungeonContext : MiniGameContext
         catch (Exception ex)
         {
             this.Logger.LogError(ex, "{context}: Unexpected error in the timers of the dungeon.", this);
+        }
+    }
+
+    private async Task SpawnBossDelayedAsync(CancellationToken cancellationToken)
+    {
+        if (this._configuration.BossSpawnDelay >= this.Definition.GameDuration)
+        {
+            return;
+        }
+
+        await this.DelayWithSkipAsync(this._configuration.BossSpawnDelay, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await this.SpawnBossAsync().ConfigureAwait(false);
+    }
+
+    private async Task ShowRemainingTimeAsync(CancellationToken cancellationToken)
+    {
+        var start = DateTime.UtcNow;
+        foreach (var remaining in RemainingTimeMessages.Where(remaining => remaining < this.Definition.GameDuration).OrderByDescending(remaining => remaining))
+        {
+            var wait = this.Definition.GameDuration - remaining - (DateTime.UtcNow - start);
+            if (wait > TimeSpan.Zero)
+            {
+                await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+            }
+
+            var minutes = (int)remaining.TotalMinutes;
+            await this.ShowGoldenTextAsync(minutes == 1 ? DungeonMessages.RemainingOneMinute : string.Format(DungeonMessages.RemainingMinutesFormat, minutes)).ConfigureAwait(false);
         }
     }
 

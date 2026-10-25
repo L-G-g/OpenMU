@@ -145,8 +145,7 @@ internal sealed class PlayerMapTransitions
     public async ValueTask WarpToAsync(ExitGate gate)
     {
         var player = this._player;
-        var isRespawnOnSameMap = object.Equals(player.CurrentMap?.Definition, gate.Map)
-            && player.CurrentMiniGame?.IsInstanceOfNormalMap is not true;
+        var isRespawnOnSameMap = IsRespawnOnSameMap(player, gate);
         if (!await this.TryRemoveFromCurrentMapAsync(isRespawnOnSameMap).ConfigureAwait(false))
         {
             return;
@@ -181,7 +180,7 @@ internal sealed class PlayerMapTransitions
     public async ValueTask RespawnAtAsync(ExitGate gate)
     {
         var player = this._player;
-        var isRespawnOnSameMap = object.Equals(player.CurrentMap?.Definition, gate.Map);
+        var isRespawnOnSameMap = IsRespawnOnSameMap(player, gate);
 
         if (!await this.TryRemoveFromCurrentMapAsync(isRespawnOnSameMap).ConfigureAwait(false))
         {
@@ -339,6 +338,19 @@ internal sealed class PlayerMapTransitions
         await this._movement.ResetMovementStateAsync().ConfigureAwait(false);
 
         this._summon.PlaceAtGate(gate);
+    }
+
+    /// <summary>
+    /// Determines whether the player stays on its current map when it goes to the gate. That's not the case when it
+    /// leaves a mini game whose map is an instance of the map of the gate, e.g. a dungeon of Devias.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="gate">The gate.</param>
+    /// <returns><c>true</c> if the player stays on its current map.</returns>
+    private static bool IsRespawnOnSameMap(Player player, ExitGate gate)
+    {
+        return object.Equals(player.CurrentMap?.Definition, gate.Map)
+               && player.CurrentMiniGame?.IsInstanceOfNormalMap is not true;
     }
 
     /// <summary>

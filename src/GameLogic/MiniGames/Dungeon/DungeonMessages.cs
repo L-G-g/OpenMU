@@ -46,6 +46,9 @@ internal static class DungeonMessages
     /// <summary>The remaining minutes, {0}.</summary>
     public const string RemainingMinutesFormat = "Quedan {0} minutos de dungeon.";
 
+    /// <summary>One minute remains.</summary>
+    public const string RemainingOneMinute = "Queda 1 minuto de dungeon.";
+
     /// <summary>The boss appeared, {0} is its name, {1} and {2} its coordinates.</summary>
     public const string BossAppearedFormat = "Aparecio {0} en {1}, {2}!";
 
