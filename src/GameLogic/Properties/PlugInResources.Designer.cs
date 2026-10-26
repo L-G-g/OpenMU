@@ -4608,5 +4608,41 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized MonsterLevelMoneyDropConfiguration_MinimumMoney_Description text.</summary>
         public static string MonsterLevelMoneyDropConfiguration_MinimumMoney_Description => ResourceManager.GetString("MonsterLevelMoneyDropConfiguration_MinimumMoney_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDifficultyScaler_Name text.</summary>
+        public static string MapDifficultyScaler_Name => ResourceManager.GetString("MapDifficultyScaler_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDifficultyScaler_Description text.</summary>
+        public static string MapDifficultyScaler_Description => ResourceManager.GetString("MapDifficultyScaler_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDifficultyScalerConfiguration_Maps_Name text.</summary>
+        public static string MapDifficultyScalerConfiguration_Maps_Name => ResourceManager.GetString("MapDifficultyScalerConfiguration_Maps_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDifficultyScalerConfiguration_Maps_Description text.</summary>
+        public static string MapDifficultyScalerConfiguration_Maps_Description => ResourceManager.GetString("MapDifficultyScalerConfiguration_Maps_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDifficultyScalerConfiguration_Monsters_Name text.</summary>
+        public static string MapDifficultyScalerConfiguration_Monsters_Name => ResourceManager.GetString("MapDifficultyScalerConfiguration_Monsters_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDifficultyScalerConfiguration_Monsters_Description text.</summary>
+        public static string MapDifficultyScalerConfiguration_Monsters_Description => ResourceManager.GetString("MapDifficultyScalerConfiguration_Monsters_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DifficultyMultipliers_Number_Name text.</summary>
+        public static string DifficultyMultipliers_Number_Name => ResourceManager.GetString("DifficultyMultipliers_Number_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DifficultyMultipliers_Health_Name text.</summary>
+        public static string DifficultyMultipliers_Health_Name => ResourceManager.GetString("DifficultyMultipliers_Health_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DifficultyMultipliers_Damage_Name text.</summary>
+        public static string DifficultyMultipliers_Damage_Name => ResourceManager.GetString("DifficultyMultipliers_Damage_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DifficultyMultipliers_Defense_Name text.</summary>
+        public static string DifficultyMultipliers_Defense_Name => ResourceManager.GetString("DifficultyMultipliers_Defense_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DifficultyMultipliers_AttackRate_Name text.</summary>
+        public static string DifficultyMultipliers_AttackRate_Name => ResourceManager.GetString("DifficultyMultipliers_AttackRate_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DifficultyMultipliers_DefenseRate_Name text.</summary>
+        public static string DifficultyMultipliers_DefenseRate_Name => ResourceManager.GetString("DifficultyMultipliers_DefenseRate_Name", resourceCulture)!;
     }
 }

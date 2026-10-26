@@ -1727,4 +1727,40 @@
   <data name="MonsterLevelMoneyDropConfiguration_MinimumMoney_Description" xml:space="preserve">
     <value>The minimum money of a money drop, for monsters of a low level.</value>
   </data>
+  <data name="MapDifficultyScaler_Name" xml:space="preserve">
+    <value>Map difficulty scaler</value>
+  </data>
+  <data name="MapDifficultyScaler_Description" xml:space="preserve">
+    <value>Multiplies the health, damage, defense, attack rate and defense rate of the monsters of each map, or of single monsters, so that maps need more resets without changing the level of the monsters. The multipliers of a monster replace the ones of its map. Changes take effect immediately.</value>
+  </data>
+  <data name="MapDifficultyScalerConfiguration_Maps_Name" xml:space="preserve">
+    <value>Maps</value>
+  </data>
+  <data name="MapDifficultyScalerConfiguration_Maps_Description" xml:space="preserve">
+    <value>The multipliers of the monsters of a map, by the number of the map. Maps which aren't listed stay unchanged.</value>
+  </data>
+  <data name="MapDifficultyScalerConfiguration_Monsters_Name" xml:space="preserve">
+    <value>Monsters</value>
+  </data>
+  <data name="MapDifficultyScalerConfiguration_Monsters_Description" xml:space="preserve">
+    <value>The multipliers of a monster, by the number of the monster, e.g. the golden monsters of the invasions. They replace the multipliers of the map.</value>
+  </data>
+  <data name="DifficultyMultipliers_Number_Name" xml:space="preserve">
+    <value>Number</value>
+  </data>
+  <data name="DifficultyMultipliers_Health_Name" xml:space="preserve">
+    <value>Health multiplier</value>
+  </data>
+  <data name="DifficultyMultipliers_Damage_Name" xml:space="preserve">
+    <value>Damage multiplier</value>
+  </data>
+  <data name="DifficultyMultipliers_Defense_Name" xml:space="preserve">
+    <value>Defense multiplier</value>
+  </data>
+  <data name="DifficultyMultipliers_AttackRate_Name" xml:space="preserve">
+    <value>Attack rate multiplier</value>
+  </data>
+  <data name="DifficultyMultipliers_DefenseRate_Name" xml:space="preserve">
+    <value>Defense rate multiplier</value>
+  </data>
 </root>
