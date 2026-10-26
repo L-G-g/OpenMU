@@ -50,6 +50,9 @@ void LoadResets(LogFunction log);
 // Stacks de pociones: carga stacks.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadStacks(LogFunction log);
 
+// Ventana de botin de las dungeons: carga loot.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadLoot(LogFunction log);
+
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
 // despues de dibujar vuelve a poner las reales.

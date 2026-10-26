@@ -2621,4 +2621,10 @@
   <data name="CashShopItemGiftRequestHandlerPlugIn_Description" xml:space="preserve">
     <value>Packet handler for cash shop gift requests (0xD2, 0x04 identifier).</value>
   </data>
+  <data name="ShowLootRollViewPlugIn_Name" xml:space="preserve">
+    <value>Show Loot Roll View (loot.dll)</value>
+  </data>
+  <data name="ShowLootRollViewPlugIn_Description" xml:space="preserve">
+    <value>Shows the need, greed or pass rolls of the dungeon in the window of loot.dll of the PeroniaMU client (packet C1 FC). The original client ignores it.</value>
+  </data>
 </root>

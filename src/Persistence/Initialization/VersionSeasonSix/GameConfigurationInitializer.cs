@@ -100,6 +100,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         StrongGoldenMobs.Apply(this.Context, this.GameConfiguration);
         ZenByMonsterLevel.Apply(this.Context, this.GameConfiguration);
         PotionStacks.Apply(this.Context, this.GameConfiguration);
+        IceQueenDungeon.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 
         // After all items exist.

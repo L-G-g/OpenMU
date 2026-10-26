@@ -1763,4 +1763,163 @@
   <data name="DifficultyMultipliers_DefenseRate_Name" xml:space="preserve">
     <value>Defense rate multiplier</value>
   </data>
+  <data name="DungeonFeaturePlugIn_Name" xml:space="preserve">
+    <value>Dungeon</value>
+  </data>
+  <data name="DungeonFeaturePlugIn_Description" xml:space="preserve">
+    <value>A dungeon for a party: an instance of a hunting map with stronger monsters, more excellent drops and a boss. The drops are shared with need, greed or pass (chat commands /need, /greed and /pass).</value>
+  </data>
+  <data name="DungeonNpcTalkPlugIn_Name" xml:space="preserve">
+    <value>Dungeon NPC</value>
+  </data>
+  <data name="DungeonNpcTalkPlugIn_Description" xml:space="preserve">
+    <value>When the party leader talks to the NPC of the dungeon (the NPC designation of the Dungeon feature), the whole party enters the dungeon, if every member can enter.</value>
+  </data>
+  <data name="NeedLootChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /need</value>
+  </data>
+  <data name="NeedLootChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Chooses need for a rolled item of a dungeon, optionally followed by the number of the roll. Only allowed if the character class can use the item.</value>
+  </data>
+  <data name="GreedLootChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /greed</value>
+  </data>
+  <data name="GreedLootChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Chooses greed for a rolled item of a dungeon, optionally followed by the number of the roll.</value>
+  </data>
+  <data name="PassLootChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /pass</value>
+  </data>
+  <data name="PassLootChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Chooses pass for a rolled item of a dungeon, optionally followed by the number of the roll.</value>
+  </data>
+  <data name="DungeonConfiguration_NpcDesignation_Name" xml:space="preserve">
+    <value>NPC designation</value>
+  </data>
+  <data name="DungeonConfiguration_NpcDesignation_Description" xml:space="preserve">
+    <value>The designation of the monster definition of the NPC at which the party leader enters the dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_GameLevel_Name" xml:space="preserve">
+    <value>Game level</value>
+  </data>
+  <data name="DungeonConfiguration_GameLevel_Description" xml:space="preserve">
+    <value>The game level of the mini game definition of the type Dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_EntryCooldown_Name" xml:space="preserve">
+    <value>Entry cooldown</value>
+  </data>
+  <data name="DungeonConfiguration_EntryCooldown_Description" xml:space="preserve">
+    <value>The time after an entry until a character can enter again.</value>
+  </data>
+  <data name="DungeonConfiguration_GameMastersIgnoreCooldown_Name" xml:space="preserve">
+    <value>Game masters ignore the cooldown</value>
+  </data>
+  <data name="DungeonConfiguration_GameMastersIgnoreCooldown_Description" xml:space="preserve">
+    <value>If checked, game masters can enter again before the cooldown passed, e.g. for tests.</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterHealthMultiplier_Name" xml:space="preserve">
+    <value>Monster health multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterDamageMultiplier_Name" xml:space="preserve">
+    <value>Monster damage multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterDefenseMultiplier_Name" xml:space="preserve">
+    <value>Monster defense multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExcellentDropChanceMultiplier_Name" xml:space="preserve">
+    <value>Excellent drop chance multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExcellentDropChanceMultiplier_Description" xml:space="preserve">
+    <value>The multiplier for the chance of the monsters to drop an excellent item, compared to the same monster outside of the dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_MinimumExcellentOptions_Name" xml:space="preserve">
+    <value>Minimum excellent options</value>
+  </data>
+  <data name="DungeonConfiguration_BossHealthMultiplier_Name" xml:space="preserve">
+    <value>Boss health multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_BossDamageMultiplier_Name" xml:space="preserve">
+    <value>Boss damage multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_BossDefenseMultiplier_Name" xml:space="preserve">
+    <value>Boss defense multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_RollDuration_Name" xml:space="preserve">
+    <value>Roll duration</value>
+  </data>
+  <data name="DungeonConfiguration_NeedRollMaximum_Name" xml:space="preserve">
+    <value>Need roll maximum</value>
+  </data>
+  <data name="DungeonConfiguration_NeedRollMaximum_Description" xml:space="preserve">
+    <value>The highest number of the dice for need. Need and greed roll together; a higher maximum than for greed gives need a better chance.</value>
+  </data>
+  <data name="DungeonConfiguration_GreedRollMaximum_Name" xml:space="preserve">
+    <value>Greed roll maximum</value>
+  </data>
+  <data name="DungeonConfiguration_RollAllItems_Name" xml:space="preserve">
+    <value>Roll all items</value>
+  </data>
+  <data name="DungeonConfiguration_RollAllItems_Description" xml:space="preserve">
+    <value>If checked, all dropped items are rolled. Otherwise only the excellent items; the others fall to the ground as usual.</value>
+  </data>
+  <data name="DungeonConfiguration_EntryX_Name" xml:space="preserve">
+    <value>Entry X</value>
+  </data>
+  <data name="DungeonConfiguration_EntryX_Description" xml:space="preserve">
+    <value>Where the players appear when they enter the dungeon, outside of the safezone (the start of the hunting area).</value>
+  </data>
+  <data name="DungeonConfiguration_EntryY_Name" xml:space="preserve">
+    <value>Entry Y</value>
+  </data>
+  <data name="DungeonConfiguration_BlockSafezone_Name" xml:space="preserve">
+    <value>Block safezone</value>
+  </data>
+  <data name="DungeonConfiguration_BlockSafezone_Description" xml:space="preserve">
+    <value>If set, the safezone (the town) of the map can't be entered in the dungeon.</value>
+  </data>
+  <data name="DungeonConfiguration_BossEffectNumber_Name" xml:space="preserve">
+    <value>Boss effect number</value>
+  </data>
+  <data name="DungeonConfiguration_BossEffectNumber_Description" xml:space="preserve">
+    <value>The number of the magic effect which the client shows on the boss. The elites.dll of the client draws it with a glow ([Elites] BossEffect). 0 shows no effect.</value>
+  </data>
+  <data name="DungeonConfiguration_Stages_Name" xml:space="preserve">
+    <value>Stages</value>
+  </data>
+  <data name="DungeonConfiguration_Stages_Description" xml:space="preserve">
+    <value>Each stage ends with a boss, which appears when the boss of the stage before is dead, the players killed enough monsters of the stage and enough time passed since the start. The monsters of the ways are spawn areas of the map with the trigger 'Automatic during event'.</value>
+  </data>
+  <data name="DungeonStage_BossDesignation_Name" xml:space="preserve">
+    <value>Boss designation</value>
+  </data>
+  <data name="DungeonStage_BossX_Name" xml:space="preserve">
+    <value>Boss X</value>
+  </data>
+  <data name="DungeonStage_BossY_Name" xml:space="preserve">
+    <value>Boss Y</value>
+  </data>
+  <data name="DungeonStage_MonsterNumber_Name" xml:space="preserve">
+    <value>Monster number</value>
+  </data>
+  <data name="DungeonStage_MonsterNumber_Description" xml:space="preserve">
+    <value>The number of the monsters which the players have to kill, e.g. 24 Worm, 22 Ice Monster, 21 Assassin.</value>
+  </data>
+  <data name="DungeonStage_KillCount_Name" xml:space="preserve">
+    <value>Kill count</value>
+  </data>
+  <data name="DungeonStage_MinimumTime_Name" xml:space="preserve">
+    <value>Minimum time</value>
+  </data>
+  <data name="DungeonStage_Hint_Name" xml:space="preserve">
+    <value>Hint (golden message)</value>
+  </data>
+  <data name="DungeonStage_ExcellentDropChance_Name" xml:space="preserve">
+    <value>Excellent drop chance of the boss (0 to 1)</value>
+  </data>
+  <data name="DungeonConfiguration_SpawnMonstersOfMap_Name" xml:space="preserve">
+    <value>Spawn the monsters of the map</value>
+  </data>
+  <data name="DungeonConfiguration_SpawnMonstersOfMap_Description" xml:space="preserve">
+    <value>If set, the usual monsters of the map appear in the dungeon, too. Otherwise only the spawn areas with the trigger 'Automatic during event' appear, e.g. along the ways between the bosses.</value>
+  </data>
 </root>

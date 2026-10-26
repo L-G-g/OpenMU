@@ -1,0 +1,481 @@
+// <copyright file="DungeonContext.cs" company="MUnique">
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+// </copyright>
+
+namespace MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
+
+using System.Collections.Concurrent;
+using System.Threading;
+using MUnique.OpenMU.AttributeSystem;
+using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.NPC;
+using MUnique.OpenMU.GameLogic.Views;
+using MUnique.OpenMU.Interfaces;
+using MUnique.OpenMU.Pathfinding;
+
+/// <summary>
+/// The context of a dungeon: an instance of a hunting map (the entrance map of the definition, e.g. Devias) for one party,
+/// isolated from the other players.
+/// </summary>
+/// <remarks>
+/// The map has the usual monsters of the map, which are stronger (<see cref="DungeonConfiguration.MonsterHealthMultiplier"/> etc.)
+/// and drop through the <see cref="DungeonDropGenerator"/>, plus the monsters of the spawn areas of the map which spawn only in events,
+/// e.g. along the ways between the bosses. The dungeon has <see cref="DungeonConfiguration.Stages"/>, each with a boss: it appears once
+/// at a fixed place when the boss of the stage before is dead, the players killed enough monsters of the stage and enough time passed.
+/// Golden messages tell the players what to do. A boss has a magic effect which the client shows (<see cref="DungeonConfiguration.BossEffectNumber"/>).
+/// The players appear at <see cref="DungeonConfiguration.EntryX"/>, <see cref="DungeonConfiguration.EntryY"/>, and
+/// the safezone of the map is blocked (<see cref="DungeonConfiguration.BlockSafezone"/>). The game ends after the game duration of the definition; dying or leaving the map
+/// leaves the dungeon for good, because the entry is used up.
+/// </remarks>
+public sealed class DungeonContext : MiniGameContext
+{
+    /// <summary>
+    /// The terrain attribute which blocks the safezone, like the gates of the Imperial Guardian.
+    /// </summary>
+    private const TerrainAttributeType SafezoneBlockAttribute = TerrainAttributeType.Water;
+
+    /// <summary>
+    /// The maximum number of areas in one message to the client, which has one byte for its size.
+    /// </summary>
+    private const int MaximumAreasPerMessage = 50;
+
+    private const int MapSize = 256;
+
+    /// <summary>
+    /// Every how many kills of the monsters of the stage the players see the progress.
+    /// </summary>
+    private const int KillProgressStep = 50;
+
+    private static readonly TimeSpan[] RemainingTimeMessages = [TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1)];
+
+    private readonly DungeonConfiguration _configuration;
+    private readonly List<(DungeonStage Stage, MonsterDefinition? Boss)> _stages;
+    private readonly ConcurrentDictionary<Monster, byte> _preparedMonsters = new();
+    private readonly ConcurrentDictionary<Monster, int> _bosses = new();
+    private readonly ConcurrentDictionary<short, int> _kills = new();
+    private readonly object _stageLock = new();
+    private int _stageIndex;
+    private bool _isStageBossSpawned;
+    private bool _isStageReadyAnnounced;
+    private DateTime _startTime = DateTime.UtcNow;
+    private List<(byte StartX, byte StartY, byte EndX, byte EndY)>? _blockedAreas;
+    private int _safezoneBlocked;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DungeonContext"/> class.
+    /// </summary>
+    /// <param name="key">The key of this context.</param>
+    /// <param name="definition">The definition of the mini game.</param>
+    /// <param name="gameContext">The game context to which this game belongs.</param>
+    /// <param name="mapInitializer">The map initializer, which is used when the event starts.</param>
+    public DungeonContext(MiniGameMapKey key, MiniGameDefinition definition, IGameContext gameContext, IMapInitializer mapInitializer)
+        : base(key, definition, gameContext, mapInitializer)
+    {
+        this._configuration = DungeonFeaturePlugIn.GetConfiguration(gameContext) ?? new DungeonConfiguration();
+        this._stages = this._configuration.Stages
+            .Select(stage => (stage, gameContext.Configuration.Monsters.FirstOrDefault(m => m.Designation.ValueInNeutralLanguage == stage.BossDesignation)))
+            .ToList();
+        this.Loot = new DungeonLoot(this, this._configuration, this.Logger);
+        var bossDefinitions = new Dictionary<MonsterDefinition, double>();
+        foreach (var (stage, boss) in this._stages)
+        {
+            if (boss is not null)
+            {
+                bossDefinitions[boss] = stage.ExcellentDropChance;
+            }
+        }
+
+        this.DropGenerator = new DungeonDropGenerator(gameContext.DropGenerator, this._configuration, this.Loot, bossDefinitions);
+    }
+
+    /// <summary>
+    /// Gets the loot of the dungeon, which shares the drops with need, greed or pass.
+    /// </summary>
+    public DungeonLoot Loot { get; }
+
+    /// <inheritdoc />
+    internal override bool IsInstanceOfNormalMap => true;
+
+    /// <inheritdoc />
+    internal override bool SpawnsMonstersOfMap => this._configuration.SpawnMonstersOfMap;
+
+    /// <inheritdoc />
+    protected override TimeSpan MinimumEnterDuration => TimeSpan.Zero;
+
+    /// <inheritdoc />
+    protected override TimeSpan CountdownDuration => TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Gets the players which are in the dungeon.
+    /// </summary>
+    /// <returns>The players.</returns>
+    internal async ValueTask<List<Player>> GetPlayersAsync()
+    {
+        var players = new List<Player>();
+        await this.ForEachPlayerAsync(player =>
+        {
+            lock (players)
+            {
+                players.Add(player);
+            }
+
+            return Task.CompletedTask;
+        }).ConfigureAwait(false);
+        return players;
+    }
+
+    /// <inheritdoc />
+    internal override Point? GetEntrySpawnPosition(Player player)
+    {
+        return ReferenceEquals(player.CurrentMap, this.Map)
+            ? new Point(this._configuration.EntryX, this._configuration.EntryY)
+            : null;
+    }
+
+    /// <inheritdoc />
+    protected override async ValueTask OnGameStartAsync(ICollection<Player> players)
+    {
+        this._startTime = DateTime.UtcNow;
+        await base.OnGameStartAsync(players).ConfigureAwait(false);
+        await this.ShowGoldenTextAsync(string.Format(DungeonMessages.StartedFormat, (int)Math.Round(this.Definition.GameDuration.TotalMinutes))).ConfigureAwait(false);
+        if (this._stages.Count > 0)
+        {
+            await this.ShowGoldenTextAsync(this._stages[0].Stage.Hint).ConfigureAwait(false);
+        }
+
+        _ = Task.Run(() => this.RunTimersAsync(this.GameEndedToken), this.GameEndedToken);
+    }
+
+    /// <inheritdoc />
+    protected override async ValueTask OnObjectAddedToMapAsync((GameMap Map, ILocateable Object) args)
+    {
+        await base.OnObjectAddedToMapAsync(args).ConfigureAwait(false);
+        if (this._configuration.BlockSafezone && Interlocked.Exchange(ref this._safezoneBlocked, 1) == 0)
+        {
+            this._blockedAreas = BlockSafezone(args.Map.Terrain);
+        }
+
+        if (args.Object is Player player && this._blockedAreas is { Count: > 0 } areas)
+        {
+            await SendBlockedAreasAsync(player, areas, true).ConfigureAwait(false);
+        }
+
+        if (args.Object is Monster { Definition.ObjectKind: NpcObjectKind.Monster } monster
+            && !this._bosses.ContainsKey(monster)
+            && this._preparedMonsters.TryAdd(monster, 0))
+        {
+            // The spawns of the map are created with the drop generator of the game, and a respawned monster is added again.
+            ApplyMultipliers(monster, this._configuration.MonsterHealthMultiplier, this._configuration.MonsterDamageMultiplier, this._configuration.MonsterDefenseMultiplier);
+            monster.Health = (int)monster.Attributes[Stats.MaximumHealth];
+            monster.DropGenerator = this.DropGenerator;
+            this.Logger.LogDebug("{context}: Prepared {monster} with {health} health.", this, monster, monster.Health);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async ValueTask OnObjectRemovedFromMapAsync((GameMap Map, ILocateable Object) args)
+    {
+        await base.OnObjectRemovedFromMapAsync(args).ConfigureAwait(false);
+        if (args.Object is Player player && this._blockedAreas is { Count: > 0 } areas)
+        {
+            // The player goes back to the same map number (e.g. Devias), whose terrain the client might not load again.
+            await SendBlockedAreasAsync(player, areas, false).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnMonsterDied(object? sender, DeathInformation e)
+    {
+        base.OnMonsterDied(sender, e);
+        if (sender is not Monster monster)
+        {
+            return;
+        }
+
+        if (this._bosses.TryGetValue(monster, out var bossStage))
+        {
+            _ = this.OnBossDiedAsync(monster, bossStage);
+            return;
+        }
+
+        var kills = this._kills.AddOrUpdate(monster.Definition.Number, 1, (_, count) => count + 1);
+        string? message = null;
+        lock (this._stageLock)
+        {
+            if (this._stageIndex < this._stages.Count
+                && !this._isStageBossSpawned
+                && this._stages[this._stageIndex].Stage is { } stage
+                && stage.MonsterNumber == monster.Definition.Number
+                && kills < stage.KillCount
+                && kills % KillProgressStep == 0)
+            {
+                message = string.Format(DungeonMessages.KillProgressFormat, kills, stage.KillCount, monster.Definition.Designation.ValueInNeutralLanguage);
+            }
+        }
+
+        if (message is not null)
+        {
+            _ = this.ShowGoldenTextAsync(message);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async ValueTask GameEndedAsync(ICollection<Player> finishers)
+    {
+        await this.ShowGoldenTextAsync(DungeonMessages.TimeOver).ConfigureAwait(false);
+        await this.Loot.ResolveAllAsync().ConfigureAwait(false);
+        await base.GameEndedAsync(finishers).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Blocks the safezone of the terrain of the dungeon, so that the players can't go into the town.
+    /// </summary>
+    /// <param name="terrain">The terrain of the dungeon map, which belongs only to this dungeon.</param>
+    /// <returns>The blocked areas, as rectangles, to tell the clients.</returns>
+    private static List<(byte StartX, byte StartY, byte EndX, byte EndY)> BlockSafezone(GameMapTerrain terrain)
+    {
+        // Runs of safezone coordinates per row; a run continues the rectangle above if it has the same columns.
+        var areas = new List<(byte StartX, byte StartY, byte EndX, byte EndY)>();
+        var open = new Dictionary<(int StartX, int EndX), int>();
+        for (var y = 0; y <= MapSize; y++)
+        {
+            // The row after the last one has no runs, so that all open rectangles are closed.
+            var runs = new HashSet<(int StartX, int EndX)>();
+            for (var x = 0; y < MapSize && x < MapSize; x++)
+            {
+                if (!terrain.SafezoneMap[x, y])
+                {
+                    continue;
+                }
+
+                var start = x;
+                while (x + 1 < MapSize && terrain.SafezoneMap[x + 1, y])
+                {
+                    x++;
+                }
+
+                runs.Add((start, x));
+            }
+
+            foreach (var (run, startY) in open.Where(entry => !runs.Contains(entry.Key)).ToList())
+            {
+                areas.Add(((byte)run.StartX, (byte)startY, (byte)run.EndX, (byte)(y - 1)));
+                open.Remove(run);
+            }
+
+            foreach (var run in runs)
+            {
+                open.TryAdd(run, y);
+            }
+        }
+
+        foreach (var (startX, startY, endX, endY) in areas)
+        {
+            for (int x = startX; x <= endX; x++)
+            {
+                for (int y = startY; y <= endY; y++)
+                {
+                    terrain.ApplyTerrainAttribute((byte)x, (byte)y, SafezoneBlockAttribute, true);
+                }
+            }
+        }
+
+        return areas;
+    }
+
+    private static async ValueTask SendBlockedAreasAsync(Player player, List<(byte StartX, byte StartY, byte EndX, byte EndY)> areas, bool block)
+    {
+        foreach (var chunk in areas.Chunk(MaximumAreasPerMessage))
+        {
+            await player.InvokeViewPlugInAsync<IChangeTerrainAttributesViewPlugin>(p => p.ChangeAttributesAsync(SafezoneBlockAttribute, block, chunk)).ConfigureAwait(false);
+        }
+    }
+
+    private static void ApplyMultipliers(Monster monster, float health, float damage, float defense)
+    {
+        Multiply(monster, Stats.MaximumHealth, health);
+        Multiply(monster, Stats.MinimumPhysBaseDmg, damage);
+        Multiply(monster, Stats.MaximumPhysBaseDmg, damage);
+        Multiply(monster, Stats.DefenseBase, defense);
+
+        static void Multiply(Monster monster, AttributeDefinition attribute, float multiplier)
+        {
+            if (Math.Abs(multiplier - 1) > 0.001f)
+            {
+                monster.Attributes.AddElement(new SimpleElement(multiplier, AggregateType.Multiplicate), attribute);
+            }
+        }
+    }
+
+    private async Task RunTimersAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.WhenAll(this.ShowRemainingTimeAsync(cancellationToken), this.RunStagesAsync(cancellationToken)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The game ended.
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Unexpected error in the timers of the dungeon.", this);
+        }
+    }
+
+    /// <summary>
+    /// Checks every second whether the boss of the current stage can appear. A skipped wait (/skipwait of a game master)
+    /// lets it appear right away, without the kills and the time.
+    /// </summary>
+    private async Task RunStagesAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var skipped = await this.DelayWithSkipAsync(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            int stageIndex;
+            string? message = null;
+            var spawn = false;
+            lock (this._stageLock)
+            {
+                stageIndex = this._stageIndex;
+                if (stageIndex >= this._stages.Count)
+                {
+                    return;
+                }
+
+                if (this._isStageBossSpawned)
+                {
+                    continue;
+                }
+
+                var stage = this._stages[stageIndex].Stage;
+                var killsReached = this._kills.GetValueOrDefault(stage.MonsterNumber) >= stage.KillCount;
+                var remainingTime = stage.MinimumTime - (DateTime.UtcNow - this._startTime);
+                if (skipped || (killsReached && remainingTime <= TimeSpan.Zero))
+                {
+                    this._isStageBossSpawned = true;
+                    spawn = true;
+                }
+                else if (killsReached && !this._isStageReadyAnnounced)
+                {
+                    this._isStageReadyAnnounced = true;
+                    message = string.Format(DungeonMessages.StageReadyFormat, stage.KillCount, stage.BossDesignation, (int)Math.Ceiling(remainingTime.TotalSeconds));
+                }
+            }
+
+            if (message is not null)
+            {
+                await this.ShowGoldenTextAsync(message).ConfigureAwait(false);
+            }
+
+            if (spawn)
+            {
+                await this.SpawnBossAsync(stageIndex).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task OnBossDiedAsync(Monster boss, int stageIndex)
+    {
+        try
+        {
+            string? nextHint = null;
+            lock (this._stageLock)
+            {
+                if (stageIndex != this._stageIndex)
+                {
+                    return;
+                }
+
+                this._stageIndex++;
+                this._isStageBossSpawned = false;
+                this._isStageReadyAnnounced = false;
+                if (this._stageIndex < this._stages.Count)
+                {
+                    nextHint = this._stages[this._stageIndex].Stage.Hint;
+                }
+            }
+
+            await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossKilledFormat, boss.Definition.Designation.ValueInNeutralLanguage)).ConfigureAwait(false);
+            await this.ShowGoldenTextAsync(nextHint ?? DungeonMessages.Completed).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Unexpected error after the boss {boss} died.", this, boss);
+        }
+    }
+
+    private async Task ShowRemainingTimeAsync(CancellationToken cancellationToken)
+    {
+        var start = DateTime.UtcNow;
+        foreach (var remaining in RemainingTimeMessages.Where(remaining => remaining < this.Definition.GameDuration).OrderByDescending(remaining => remaining))
+        {
+            var wait = this.Definition.GameDuration - remaining - (DateTime.UtcNow - start);
+            if (wait > TimeSpan.Zero)
+            {
+                await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+            }
+
+            var minutes = (int)remaining.TotalMinutes;
+            await this.ShowGoldenTextAsync(minutes == 1 ? DungeonMessages.RemainingOneMinute : string.Format(DungeonMessages.RemainingMinutesFormat, minutes)).ConfigureAwait(false);
+        }
+    }
+
+    private async ValueTask SpawnBossAsync(int stageIndex)
+    {
+        var (stage, definition) = this._stages[stageIndex];
+        if (definition is null)
+        {
+            this.Logger.LogWarning("{context}: The boss '{boss}' isn't defined.", this, stage.BossDesignation);
+            return;
+        }
+
+        var spawnArea = new MonsterSpawnArea
+        {
+            GameMap = this.Map.Definition,
+            MonsterDefinition = definition,
+            SpawnTrigger = SpawnTrigger.OnceAtEventStart,
+            Quantity = 1,
+            X1 = stage.BossX,
+            X2 = stage.BossX,
+            Y1 = stage.BossY,
+            Y2 = stage.BossY,
+        };
+        var boss = new Monster(spawnArea, definition, this.Map, this.DropGenerator, new BasicMonsterIntelligence(), this.GameContext.PlugInManager, this.GameContext.PathFinderPool, this);
+        ApplyMultipliers(boss, this._configuration.BossHealthMultiplier, this._configuration.BossDamageMultiplier, this._configuration.BossDefenseMultiplier);
+        try
+        {
+            boss.Initialize();
+        }
+        catch (InvalidOperationException ex)
+        {
+            this.Logger.LogWarning(ex, "{context}: Couldn't spawn the boss at {x}, {y}.", this, spawnArea.X1, spawnArea.Y1);
+            boss.Dispose();
+            return;
+        }
+
+        this._bosses[boss] = stageIndex;
+        await this.Map.AddAsync(boss).ConfigureAwait(false);
+        boss.OnSpawn();
+        if (this._configuration.BossEffectNumber > 0)
+        {
+            var effect = new MagicEffectDefinition
+            {
+                Number = this._configuration.BossEffectNumber,
+                Name = "Dungeon Boss",
+                InformObservers = true,
+                StopByDeath = false,
+            };
+            await boss.MagicEffectList.AddEffectAsync(new MagicEffect(Timeout.InfiniteTimeSpan, effect)).ConfigureAwait(false);
+        }
+
+        await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossAppearedFormat, definition.Designation.ValueInNeutralLanguage, boss.Position.X, boss.Position.Y)).ConfigureAwait(false);
+    }
+
+    private async ValueTask ShowGoldenTextAsync(string text)
+    {
+        await this.ForEachPlayerAsync(player => player.InvokeViewPlugInAsync<IShowMessagePlugIn>(p => p.ShowMessageAsync(text, MessageType.GoldenCenter)).AsTask()).ConfigureAwait(false);
+    }
+}

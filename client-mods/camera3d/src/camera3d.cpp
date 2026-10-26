@@ -391,6 +391,7 @@ namespace
         LoadElites(&Log);
         LoadResets(&Log);
         LoadStacks(&Log);
+        LoadLoot(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())
