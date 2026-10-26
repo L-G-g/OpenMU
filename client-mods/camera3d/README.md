@@ -162,7 +162,18 @@ Enabled=1               ; 0: no se carga elites.dll
 Effect=1                ; número del efecto que el servidor le pone a los elites
 Color=0.6,0.2,1.0,1.5   ; rojo, verde, azul (de 0 a 1) e intensidad del cromo
 Tint=0.35               ; intensidad del tinte parejo (0: solo el cromo)
+BossEffect=2            ; número del efecto que el servidor le pone a los jefes
+BossColor=0.6,0.2,1.0,2.5 ; color de los jefes (violeta, con el cromo más fuerte)
+BossTint=0.6            ; opacidad del teñido de los jefes (0: sin teñido, solo el brillo)
 ```
+
+Los jefes (por ejemplo la Ice Queen de la primera dungeon, que usa el modelo de las Ice Queen normales)
+se marcan igual con otro efecto: el plugin "Dungeon" le pone al jefe el efecto `BossEffectNumber` (2 por
+defecto). Con `elites.dll` se llama "<nombre> Boss" ("Ice Queen Boss") y brilla con `BossColor`.
+El brillo se suma a lo que hay detrás, y sobre un modelo claro como el de la Ice Queen queda casi
+blanco. Por eso a los jefes antes del brillo se les dibuja la textura teñida del color de `BossColor`,
+mezclada con alfa `BossTint` (`RenderBody` con `0x02` y alfa menor a 1: el juego activa la mezcla con
+alfa, `0x00635FD0`, sin sumar luz). Los elites normales no cambian.
 
 El servidor (plugin "Elite Monster Effect", `EffectNumber` 1 por defecto) le pone a cada elite un efecto
 y lo manda con `C1 07 MagicEffectStatus [activo] [número del objeto, 2 bytes big endian] [efecto]` al
@@ -249,6 +260,7 @@ Todo se activa además con `camera3d.ini`:
   | `target N` | Estado del objeto `N` | como una línea de `objects` |
   | `peek DIRECCIÓN [BYTES]` | Bytes de la memoria del juego, para investigar | hexadecimal |
   | `enter N` | En la selección de personaje, entrar con el personaje `N` (lo mismo que el botón Connect, `0x004D6A60` con `0x00E60B4C`) | `slot name` |
+  | `party N` | Invitar al jugador `N` a la party, como el botón Party de la ventana de comandos (`0x0078F100`, C1 40) | `key name` |
 
   El cliente no recibe la vida de los monstruos, así que `hp=na`.
 
@@ -335,6 +347,54 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 | `0x0077F9B7` | `JNZ` en los textos de la ventana (`0x0077F990`): si la clase es de tercera clase (`0x005878E0`) escribe "Master" (texto 1745) | Pasa a `JMP`: siempre "Level: %d" (texto 200) y la experiencia (texto 201) |
 | `0x0077FA10` | CALL a `sprintf` (`0x0050D100`) del texto del nivel, de 32 bytes en `[EBP-0x128]` | Escribe el nivel y le agrega `Format` con los resets |
 
+## Ventana de botín de las dungeons (loot.dll)
+
+En una dungeon de OpenMU (plugin "Dungeon") los drops se reparten con una tirada: cada jugador de la
+party elige need, greed o pass. Sin esta DLL se elige escribiendo `/need N`, `/greed N` o `/pass N`
+(N es el número de la tirada que avisa el servidor). Con `loot.dll` las tiradas abiertas aparecen en
+una ventana chica abajo en el centro de la pantalla, arriba de los avisos dorados, del chat y de la
+barra de abajo, así no tapan al personaje (hasta 4, apiladas hacia arriba), con el item, el tiempo que
+queda y los botones Need, Greed y Pass. Need está apagado si el item no es para la clase del personaje.
+El botón manda el mismo comando de chat. `camera3d.dll` la carga si está en la misma carpeta, después
+de `stacks.dll` (`src/loadloot.cpp`):
+
+```
+[Loot]
+Enabled=1               ; 0: no se carga loot.dll
+Bottom=300              ; borde de abajo de la ventana, en coordenadas de 640x480 (la barra empieza en 429)
+```
+
+El servidor (vista "Show Loot Roll View (loot.dll)", `ShowLootRollViewPlugIn`) manda paquetes que el
+`main.exe` original ignora (el reparto devuelve 1 para los códigos mayores a `0xF9`):
+
+- `C1 30 FC 00 [tirada, 2 bytes big endian] [segundos] [puede need: 0 o 1] [item, 40 bytes de texto]`:
+  empezó una tirada para este jugador.
+- `C1 07 FC 01 [tirada, 2 bytes big endian] [ganó: 0 o 1]`: el jugador eligió o la tirada terminó. Si
+  ganó, el servidor le agrega el item al inventario enseguida (`C1 22 [lugar] [item]`).
+
+`src/loot/loot.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por `healthbars.dll`, `elites.dll` y `resets.dll` si están) | Se encadena. `0xFC` se queda en la DLL: abre o cierra la fila de la tirada |
+| `0x004D9CCC` | CALL `0x004D5EC0` en la escena principal, después de dibujar la interfaz (`0x008609C0`), entre `BeginBitmap` (`0x00637770`) y `EndBitmap` (`0x00637870`) | Pasa por la DLL: dibuja la ventana (proyección 2D del juego, píxeles con el origen abajo) y después llama a la original |
+| `0x00860998` | CALL `0x00815880` (eventos del mouse de las ventanas, `__thiscall` sobre el administrador `[0x09867090]`) en la actualización de la interfaz (`0x00860970`) | Con el mouse sobre la ventana no llama a la original (ninguna otra ventana lo recibe; pone en 0 la ventana con el mouse, `+0x38`) y procesa el click al soltar el botón (`0x00790F00`) |
+| `0x00860910` | "Mouse sobre la interfaz" (`__thiscall` sobre el sistema de ventanas: el administrador tiene una ventana con el mouse en `+0x38`). Lo consultan la lógica del personaje (`0x005B5FC0`: caminar, atacar), la elección del objeto bajo el mouse (`0x005B81E0`) y el chat (`0x004D8FD0`) | Se reemplaza con un salto: devuelve 1 con el mouse sobre la ventana; si no, lo mismo que la original |
+| `0x005BDE40` | Envío del chat (`void __cdecl(const char*)`, C1 00), el del Enter de la ventana de chat | Manda `/need N`, `/greed N` o `/pass N` |
+| `0x08793728` | Espera del chat: `0x005BDE40` descarta el mensaje si es mayor a `0x32` (y uno igual al anterior si es mayor a 0); baja en cada paso | Los pedidos esperan en una cola hasta que el chat se puede mandar |
+
+Los textos se dibujan con el texto del juego (`0x00E8203C`: `SetFont` `0x00420120`, `RenderText`
+`0x00420150`; orden 1 izquierda, 2 derecha, 3 centro), como el mapa del comando M.
+
+Item ganado: al recibir un item en el inventario (`0x22`, `0x0064B440`) el juego muestra "<item>
+Obtained" con el nombre del item del piso que el jugador quiso levantar por última vez: el índice
+`0x081C0420` en la tabla de items del piso (`0x081F6C00`, `0x350` bytes cada uno: tipo `short` en
+`+0x02`, nivel en los bits 3 a 6 de `+0x04`). Un item ganado no se levantó del piso, así que el mensaje
+nombraba otro (o el Kris, el item 0,0). Para los `0x22` que siguen a los `FC 01` ganados (uno por
+tirada, hasta 10 s después del último; dos tiradas pueden terminar juntas), la DLL pone el índice en 0 y en ese lugar de la tabla el tipo del item recibido (`0x0058AA80`, la misma
+función que usa el juego con los datos del item del paquete) y su nivel; llama al reparto y deja todo
+como estaba. Así el mensaje dice el nombre correcto.
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -348,12 +408,14 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
 - `src/loadresets.cpp`: carga de `resets.dll` si está junto a la DLL.
 - `src/loadstacks.cpp`: carga de `stacks.dll` si está junto a la DLL.
+- `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
-  `resets.dll` y `stacks.dll`.
+  `resets.dll`, `stacks.dll` y `loot.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
 - `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
 - `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
+- `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -369,11 +431,12 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -385,7 +448,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll` y `stacks.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll` y `loot.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
