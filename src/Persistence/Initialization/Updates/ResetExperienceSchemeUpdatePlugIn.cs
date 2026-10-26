@@ -27,7 +27,7 @@ public class ResetExperienceSchemeUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "The resets 1 to 10 require level 300, then the required level rises by 10 every 10 resets up to 400 from the 101st reset on (configured as required level tiers of the reset feature, the other reset settings stay as they are). Characters with less than 10 resets have the buff of the Elf Soldier permanently, and the Elf Soldier doesn't give it anymore. Characters of level 300 to 399 gain 5 times the experience. A monster always gives the same experience, because the random experience multipliers are set to 1.";
+    internal const string PlugInDescription = "The resets 1 to 10 require level 300, then the required level rises by 10 every 10 resets up to 400 from the 101st reset on (configured as required level tiers of the reset feature, the other reset settings stay as they are). Characters with less than 10 resets have the buff of the Elf Soldier permanently, and the Elf Soldier doesn't give it anymore. Characters of level 300 to 399 gain 5 times the experience. A monster always gives the same experience, because the random experience multipliers are set to 1. Version 2: killing monsters more than 10 levels below the character doesn't reduce the experience anymore.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;
@@ -47,6 +47,28 @@ public class ResetExperienceSchemeUpdatePlugIn : UpdatePlugInBase
 
     /// <inheritdoc />
     public override DateTime CreatedAt => new(2026, 10, 19, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <inheritdoc />
+    public override int Version => 2;
+
+    /// <inheritdoc />
+    public override DateTime UpdatedAt => new(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// From version 1 on, only the experience level penalty is removed, so that the reset settings and plugins which
+    /// the owner customized after the first version stay as they are.
+    /// </remarks>
+    protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration, int? installedVersion)
+    {
+        if (installedVersion >= 1)
+        {
+            ResetExperienceScheme.RemoveExperienceLevelPenalty(context, gameConfiguration);
+            return ValueTask.CompletedTask;
+        }
+
+        return this.ApplyAsync(context, gameConfiguration);
+    }
 
     /// <inheritdoc />
     protected override async ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)

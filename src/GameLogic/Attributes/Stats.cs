@@ -122,6 +122,11 @@ public class Stats
     public static AttributeDefinition RandomExperienceMaxMultiplier { get; } = new(new Guid("74CE26C6-6D59-4420-AF3F-457E138AE41C"), "Random Experience Max Multiplier", "Defines the maximum multiplier for the randomized experience gain.");
 
     /// <summary>
+    /// Gets the attribute definition which defines if the experience of a kill is reduced, when the killer has more than 10 levels above the killed monster.
+    /// </summary>
+    public static AttributeDefinition IgnoreExperienceLevelPenalty { get; } = new(new Guid("9357CB19-143D-4229-955B-AE9DD54606DB"), "Ignore Experience Level Penalty", "Defines if the experience of a kill isn't reduced, when the killer has more than 10 levels above the killed monster. 1 means it's not reduced.");
+
+    /// <summary>
     /// Gets the bonus experience rate attribute definition, which is added to <see cref="ExperienceRate"/> or <see cref="MasterExperienceRate"/>.
     /// </summary>
     /// <remarks>So far includes skeleton xfm ring, pet panda, pet skeleton bonus.</remarks>

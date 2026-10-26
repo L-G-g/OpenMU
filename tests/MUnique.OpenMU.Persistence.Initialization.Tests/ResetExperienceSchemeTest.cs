@@ -69,8 +69,9 @@ internal class ResetExperienceSchemeTest
         var (context, gameConfiguration) = await CreateSeason6ConfigurationAsync().ConfigureAwait(false);
         using var _ = context;
         RestorePreviousData(context, gameConfiguration);
-
         var update = new ResetExperienceSchemeUpdatePlugIn();
+        await SetInstalledVersionAsync(context, update, null).ConfigureAwait(false);
+
         await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
         AssertScheme(gameConfiguration);
         AssertOtherResetSettingsKept(gameConfiguration);
@@ -133,6 +134,33 @@ internal class ResetExperienceSchemeTest
         });
     }
 
+    /// <summary>
+    /// Tests that the update from version 1 only removes the experience level penalty
+    /// and keeps the reset settings which the owner changed after version 1.
+    /// </summary>
+    [Test]
+    public async Task UpdateFromVersion1RemovesOnlyLevelPenaltyAsync()
+    {
+        var (context, gameConfiguration) = await CreateSeason6ConfigurationAsync().ConfigureAwait(false);
+        using var _ = context;
+        var update = new ResetExperienceSchemeUpdatePlugIn();
+        await SetInstalledVersionAsync(context, update, 1).ConfigureAwait(false);
+        gameConfiguration.GlobalBaseAttributeValues.Remove(gameConfiguration.GlobalBaseAttributeValues.Single(v => v.Definition?.Id == Stats.IgnoreExperienceLevelPenalty.Id));
+        var resetPlugInConfiguration = GetResetPlugInConfiguration(gameConfiguration);
+        resetPlugInConfiguration.SetConfiguration(new ResetConfiguration { RequiredLevel = 350 }, null);
+        var customizedResetConfiguration = resetPlugInConfiguration.CustomConfiguration;
+
+        await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+        await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetGlobalValue(gameConfiguration, Stats.IgnoreExperienceLevelPenalty), Is.EqualTo(1));
+            Assert.That(gameConfiguration.GlobalBaseAttributeValues.Count(v => v.Definition?.Id == Stats.IgnoreExperienceLevelPenalty.Id), Is.EqualTo(1));
+            Assert.That(resetPlugInConfiguration.CustomConfiguration, Is.EqualTo(customizedResetConfiguration));
+        });
+    }
+
     private static void AssertScheme(GameConfiguration gameConfiguration)
     {
         var resetConfiguration = GetResetConfiguration(gameConfiguration, ReferenceHandler.Preserve);
@@ -145,6 +173,7 @@ internal class ResetExperienceSchemeTest
             Assert.That(gameConfiguration.Monsters.Single(m => m.Number == ElfSoldierNumber).Buffs, Is.Empty);
             Assert.That(GetGlobalValue(gameConfiguration, Stats.RandomExperienceMinMultiplier), Is.EqualTo(1));
             Assert.That(GetGlobalValue(gameConfiguration, Stats.RandomExperienceMaxMultiplier), Is.EqualTo(1));
+            Assert.That(GetGlobalValue(gameConfiguration, Stats.IgnoreExperienceLevelPenalty), Is.EqualTo(1));
             Assert.That(gameConfiguration.PlugInConfigurations.Single(c => c.TypeId == typeof(PermanentBuffBelowResetCountPlugIn).GUID).IsActive, Is.True);
             Assert.That(gameConfiguration.PlugInConfigurations.Single(c => c.TypeId == typeof(LevelRangeExperiencePlugIn).GUID).IsActive, Is.True);
             Assert.That(
@@ -179,6 +208,7 @@ internal class ResetExperienceSchemeTest
             new ResetConfiguration { RequiredLevel = 300, ResetLimit = 360, PointsPerReset = 200, LevelAfterReset = 1 },
             ReferenceHandler.Preserve);
 
+        gameConfiguration.GlobalBaseAttributeValues.Remove(gameConfiguration.GlobalBaseAttributeValues.Single(v => v.Definition?.Id == Stats.IgnoreExperienceLevelPenalty.Id));
         foreach (var (attribute, value) in new[] { (Stats.RandomExperienceMinMultiplier, 0.8f), (Stats.RandomExperienceMaxMultiplier, 1.2f) })
         {
             var definition = gameConfiguration.Attributes.Single(a => a.Id == attribute.Id);
@@ -197,6 +227,33 @@ internal class ResetExperienceSchemeTest
         }
 
         Assert.That(GetResetConfiguration(gameConfiguration, ReferenceHandler.Preserve)!.RequiredLevelTiers, Is.Empty);
+    }
+
+    private static async ValueTask SetInstalledVersionAsync(IContext context, ResetExperienceSchemeUpdatePlugIn update, int? version)
+    {
+        var entries = (await context.GetAsync<ConfigurationUpdate>().ConfigureAwait(false)).Where(e => e.Key == update.Key).ToList();
+        foreach (var entry in entries)
+        {
+            if (version is { } installedVersion)
+            {
+                entry.Version = installedVersion;
+            }
+            else
+            {
+                await context.DeleteAsync(entry).ConfigureAwait(false);
+            }
+        }
+
+        if (version is { } newVersion && entries.Count == 0)
+        {
+            var entry = context.CreateNew<ConfigurationUpdate>();
+            entry.Key = update.Key;
+            entry.Version = newVersion;
+            entry.Name = update.Name;
+            entry.Description = update.Description;
+            entry.CreatedAt = update.CreatedAt;
+            entry.InstalledAt = DateTime.UtcNow;
+        }
     }
 
     private static PlugInConfiguration GetResetPlugInConfiguration(GameConfiguration gameConfiguration)

@@ -341,13 +341,13 @@ public sealed class Party : AsyncDisposable
         var memberCount = recipients.Count;
         var totalLevel = recipients.Sum(p => (int)p.Attributes![Stats.TotalLevel]);
         var averageLevel = totalLevel / memberCount;
-        var baseExperience = killed.CalculateBaseExperience(averageLevel);
+        var attributes = recipients[0].Attributes!;
+        var baseExperience = killed.CalculateBaseExperience(averageLevel, attributes[Stats.IgnoreExperienceLevelPenalty] <= 0);
 
         var partyBonusMultiplier = Math.Pow(1.05, memberCount - 1);
         var mapExperienceMultiplier = killed.CurrentMap?.Definition.ExpMultiplier ?? 1;
         var totalBaseExperience = baseExperience * memberCount * partyBonusMultiplier * mapExperienceMultiplier;
 
-        var attributes = recipients[0].Attributes!;
         var randomMinMultiplier = attributes[Stats.RandomExperienceMinMultiplier];
         var randomMaxMultiplier = attributes[Stats.RandomExperienceMaxMultiplier];
         var totalExperience = CalculateTotalExperience(totalBaseExperience, randomMinMultiplier, randomMaxMultiplier);

@@ -600,8 +600,9 @@ public static class AttackableExtensions
     /// </summary>
     /// <param name="killedObject">The killed target object.</param>
     /// <param name="killerLevel">The level of the killer.</param>
+    /// <param name="applyLevelPenalty">If set to <c>true</c>, the experience is reduced when the killer has more than 10 levels above the killed object.</param>
     /// <returns>The calculated base experience.</returns>
-    public static double CalculateBaseExperience(this IAttackable killedObject, float killerLevel)
+    public static double CalculateBaseExperience(this IAttackable killedObject, float killerLevel, bool applyLevelPenalty = true)
     {
         if (killedObject.IsSummonedMonster)
         {
@@ -612,7 +613,7 @@ public static class AttackableExtensions
         var targetLevel = killedObject.Attributes[Stats.Level];
         var tempExperience = (targetLevel + 25) * targetLevel / 3.0;
 
-        if (killerLevel > targetLevel + 10)
+        if (applyLevelPenalty && killerLevel > targetLevel + 10)
         {
             tempExperience *= (targetLevel + 10) / killerLevel;
         }
