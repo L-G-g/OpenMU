@@ -1824,7 +1824,7 @@
     <value>Roll all items</value>
   </data>
   <data name="DungeonConfiguration_RollAllItems_Description" xml:space="preserve">
-    <value>If checked, all dropped items are rolled. Otherwise only the excellent and ancient items and the jewels; the others fall to the ground as usual.</value>
+    <value>If checked, all dropped items are rolled. Otherwise only the excellent items; the others fall to the ground as usual.</value>
   </data>
   <data name="DungeonConfiguration_EntryX_Name" xml:space="preserve">
     <value>Entry X</value>

@@ -25,7 +25,6 @@ public sealed class DungeonLoot
     private readonly DungeonContext _context;
     private readonly DungeonConfiguration _configuration;
     private readonly ILogger _logger;
-    private readonly HashSet<ItemDefinition> _jewels;
     private readonly object _sync = new();
     private readonly List<LootRoll> _openRolls = new();
     private int _lastRollId;
@@ -41,10 +40,6 @@ public sealed class DungeonLoot
         this._context = context;
         this._configuration = configuration;
         this._logger = logger;
-        this._jewels = context.GameContext.Configuration.DropItemGroups
-            .Where(group => group.ItemType == SpecialItemType.Jewel)
-            .SelectMany(group => group.PossibleItems)
-            .ToHashSet();
     }
 
     /// <summary>
@@ -212,10 +207,7 @@ public sealed class DungeonLoot
 
     private bool IsRolled(Item item)
     {
-        return this._configuration.RollAllItems
-               || item.IsExcellent()
-               || item.IsAncient()
-               || this._jewels.Contains(item.Definition!);
+        return this._configuration.RollAllItems || item.IsExcellent();
     }
 
     private async ValueTask ResolveAsync(LootRoll roll)

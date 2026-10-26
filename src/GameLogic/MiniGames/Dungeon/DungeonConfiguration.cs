@@ -149,7 +149,7 @@ public class DungeonConfiguration
     public int GreedRollMaximum { get; set; } = 100;
 
     /// <summary>
-    /// Gets or sets a value indicating whether all dropped items are rolled, not only the excellent and ancient items and the jewels.
+    /// Gets or sets a value indicating whether all dropped items are rolled, not only the excellent items.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_RollAllItems_Name), Description = nameof(PlugInResources.DungeonConfiguration_RollAllItems_Description))]
     public bool RollAllItems { get; set; }
