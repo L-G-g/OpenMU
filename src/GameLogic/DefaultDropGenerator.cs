@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.GameLogic;
 
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.PlugIns;
 using Nito.AsyncEx;
 
 /// <summary>
@@ -14,7 +15,8 @@ using Nito.AsyncEx;
 public class DefaultDropGenerator : IDropGenerator
 {
     /// <summary>
-    /// The amount of money which is dropped at least, and added to the gained experience.
+    /// The amount of money which is dropped at least, and added to the gained experience,
+    /// unless an <see cref="IMoneyDropCalculationPlugIn"/> calculates it differently.
     /// </summary>
     private const int BaseMoneyDrop = 7;
     private const int DropLevelMaxGap = 12;
@@ -110,6 +112,7 @@ public class DefaultDropGenerator : IDropGenerator
             return ([], null);
         }
 
+        var moneyAmount = await CalculateMoneyAmountAsync(monster, gainedExperience, player).ConfigureAwait(false);
         using var l = await this._lock.LockAsync().ConfigureAwait(false);
         this._guaranteedDropGroups.Clear();
         this._chanceDropGroups.Clear();
@@ -129,7 +132,7 @@ public class DefaultDropGenerator : IDropGenerator
         }
 
         uint money = 0;
-        var (droppedItems, moneyResult) = this.GenerateDrops(monster, gainedExperience);
+        var (droppedItems, moneyResult) = this.GenerateDrops(monster, moneyAmount);
         if (moneyResult > 0)
         {
             money = moneyResult;
@@ -149,7 +152,7 @@ public class DefaultDropGenerator : IDropGenerator
     /// <inheritdoc/>
     public (Item? Item, uint? Money, ItemDropEffect DropEffect) GenerateItemDrop(IEnumerable<DropItemGroup> groups)
     {
-        var group = this.SelectRandomGroup(groups.OrderBy(group => group.Chance), 1.0);
+        var group = this.SelectRandomGroup(groups.Where(group => group.Chance > 0).OrderBy(group => group.Chance), 1.0);
         if (group is null)
         {
             return (null, null, ItemDropEffect.Undefined);
@@ -167,6 +170,85 @@ public class DefaultDropGenerator : IDropGenerator
         }
 
         return (this.GenerateItemDrop(group), null, dropEffect);
+    }
+
+    /// <summary>
+    /// Generates an excellent item of the zone of a monster level or of a zone before it, e.g. for the bosses of a dungeon.
+    /// </summary>
+    /// <remarks>
+    /// The weapons, shields and armor pieces come from <see cref="GetZoneEquipment"/> of the zone which contains the monster level
+    /// and of all zones before it, and the other items (e.g. rings and pendants) are chosen by the monster level as usual.
+    /// Without zones, it's a random excellent item of the monster level.
+    /// </remarks>
+    /// <param name="monsterLevel">The monster level.</param>
+    /// <param name="minimumExcellentOptions">The minimum number of excellent options of the item.</param>
+    /// <returns>The excellent item, or <c>null</c> if there is none for the monster level.</returns>
+    public async ValueTask<Item?> GenerateExcellentItemUpToZoneAsync(int monsterLevel, int minimumExcellentOptions)
+    {
+        using var l = await this._lock.LockAsync().ConfigureAwait(false);
+        var zoneMaximumLevels = this.GetZoneMaximumLevels(byte.MaxValue).Where(level => level != byte.MaxValue || this._zoneMaximumLevels!.Contains(level)).ToList();
+        Item? item;
+        if (zoneMaximumLevels.Count == 0)
+        {
+            item = this.GenerateRandomExcellentItem(monsterLevel);
+        }
+        else
+        {
+            var zoneOfMonster = zoneMaximumLevels.Where(level => level >= monsterLevel).DefaultIfEmpty(zoneMaximumLevels[^1]).Min();
+            var equipment = zoneMaximumLevels
+                .Where(level => level <= zoneOfMonster)
+                .SelectMany(level => this.GetZoneEquipment(level, true))
+                .Distinct()
+                .ToList();
+            var others = this.GetOtherItems(monsterLevel, true);
+            var count = equipment.Count + others.Count;
+            if (count == 0)
+            {
+                return null;
+            }
+
+            var index = this._randomizer.NextInt(0, count);
+            item = this.CreateRandomItem(index < equipment.Count ? equipment[index] : others[index - equipment.Count]);
+            item.HasSkill = item.CanHaveSkill(); // every excellent item got skill
+            this.AddRandomExcOptions(item);
+            item.Durability = item.GetMaximumDurabilityOfOnePiece();
+        }
+
+        if (item is not null)
+        {
+            this.AddExcellentOptions(item, minimumExcellentOptions);
+        }
+
+        return item;
+    }
+
+    /// <summary>
+    /// Adds random excellent options to an excellent item until it has the minimum number of them.
+    /// </summary>
+    /// <param name="item">The item.</param>
+    /// <param name="minimumExcellentOptions">The minimum number of excellent options.</param>
+    public void AddExcellentOptions(Item item, int minimumExcellentOptions)
+    {
+        var excellentOptions = item.Definition?.PossibleItemOptions.FirstOrDefault(
+            o => o.PossibleOptions.Any(p => object.Equals(p.OptionType, ItemOptionTypes.Excellent)));
+        if (excellentOptions is null)
+        {
+            return;
+        }
+
+        var target = Math.Min(minimumExcellentOptions, excellentOptions.PossibleOptions.Count);
+        while (item.ItemOptions.Count(o => object.Equals(o.ItemOption?.OptionType, ItemOptionTypes.Excellent)) < target)
+        {
+            var newOption = excellentOptions.PossibleOptions
+                .Where(option => item.ItemOptions.All(link => !object.Equals(link.ItemOption, option)))
+                .SelectRandom(this._randomizer);
+            if (newOption is null)
+            {
+                return;
+            }
+
+            item.ItemOptions.Add(new ItemOptionLink { ItemOption = newOption });
+        }
     }
 
     /// <summary>
@@ -486,7 +568,18 @@ public class DefaultDropGenerator : IDropGenerator
         return ((2 * dividend) + divisor) / (2 * divisor);
     }
 
-    private (IList<Item>? Items, uint Money) GenerateDrops(MonsterDefinition monster, int gainedExperience)
+    private static async ValueTask<uint> CalculateMoneyAmountAsync(MonsterDefinition monster, int gainedExperience, Player player)
+    {
+        var args = new MoneyDropCalculationArgs(monster, gainedExperience, (double)gainedExperience + BaseMoneyDrop);
+        if (player.GameContext.PlugInManager.GetPlugInPoint<IMoneyDropCalculationPlugIn>() is { } plugInPoint)
+        {
+            await plugInPoint.CalculateMoneyDropAsync(player, args).ConfigureAwait(false);
+        }
+
+        return (uint)Math.Clamp(Math.Round(args.Money), 0, uint.MaxValue);
+    }
+
+    private (IList<Item>? Items, uint Money) GenerateDrops(MonsterDefinition monster, uint moneyAmount)
     {
         uint money = 0;
         List<Item>? droppedItems = null;
@@ -500,7 +593,7 @@ public class DefaultDropGenerator : IDropGenerator
                 break;
             }
 
-            var item = this.GenerateItemDropOrMoney(monster, group, gainedExperience, out var droppedMoney);
+            var item = this.GenerateItemDropOrMoney(monster, group, moneyAmount, out var droppedMoney);
             if (item is not null)
             {
                 droppedItems ??= new List<Item>(monster.NumberOfMaximumItemDrops);
@@ -532,7 +625,7 @@ public class DefaultDropGenerator : IDropGenerator
                     continue;
                 }
 
-                var item = this.GenerateItemDropOrMoney(monster, group, gainedExperience, out var droppedMoney);
+                var item = this.GenerateItemDropOrMoney(monster, group, moneyAmount, out var droppedMoney);
                 if (item is not null)
                 {
                     droppedItems ??= new List<Item>(monster.NumberOfMaximumItemDrops);
@@ -724,7 +817,7 @@ public class DefaultDropGenerator : IDropGenerator
         }
     }
 
-    private Item? GenerateItemDropOrMoney(MonsterDefinition monster, DropItemGroup selectedGroup, int gainedExperience, out uint? droppedMoney)
+    private Item? GenerateItemDropOrMoney(MonsterDefinition monster, DropItemGroup selectedGroup, uint moneyAmount, out uint? droppedMoney)
     {
         droppedMoney = null;
 
@@ -741,7 +834,7 @@ public class DefaultDropGenerator : IDropGenerator
         var item = this.GenerateSpecialItem(monster, selectedGroup);
         if (item is null && selectedGroup.ItemType == SpecialItemType.Money)
         {
-            droppedMoney = (uint)(gainedExperience + BaseMoneyDrop);
+            droppedMoney = moneyAmount;
         }
 
         return item;

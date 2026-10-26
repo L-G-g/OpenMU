@@ -29,6 +29,9 @@ void SetSmoothMotion(bool smooth);
 // Mapa del TAB: los marcadores de hotspots (nombre terminado en "(Hotspot)") se dibujan en violeta.
 bool InstallMiniMapHotspots(LogFunction log);
 
+// MU Helper: con camera3d.ini [MuHelper] SeguirConInventario=1 (por defecto) el inventario no lo frena.
+bool InstallMuHelperInventory(LogFunction log);
+
 // Herramientas de prueba: carga muauto.dll si esta junto a camera3d.dll (los jugadores no la tienen).
 // TestToolsTick se llama en cada paso de logica, despues de que el juego actualiza sus teclas.
 void LoadTestTools(HMODULE module, LogFunction log);
@@ -39,6 +42,16 @@ void LoadHealthBars(LogFunction log);
 
 // Monstruos elite: carga elites.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadElites(LogFunction log);
+
+// Nivel y resets en la ventana del personaje: carga resets.dll si esta junto a camera3d.dll y camera3d.ini no la
+// desactiva.
+void LoadResets(LogFunction log);
+
+// Stacks de pociones: carga stacks.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadStacks(LogFunction log);
+
+// Ventana de botin de las dungeons: carga loot.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadLoot(LogFunction log);
 
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y

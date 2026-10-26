@@ -48,4 +48,9 @@ public enum MiniGameType
     /// The imperial guardian event (fortress of the imperial guardian).
     /// </summary>
     ImperialGuardian,
+
+    /// <summary>
+    /// A dungeon: an instance of a hunting map for a party, with stronger monsters and a boss.
+    /// </summary>
+    Dungeon,
 }

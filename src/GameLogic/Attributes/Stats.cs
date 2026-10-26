@@ -153,6 +153,12 @@ public class Stats
     public static AttributeDefinition Resets { get; } = new(new Guid("89A891A7-F9F9-4AB5-AF36-12056E53A5F7"), "Resets", "Reset quantity of current character");
 
     /// <summary>
+    /// Gets the attribute definition for the time of the last entry of a character into a dungeon,
+    /// in minutes since <see cref="MiniGames.Dungeon.DungeonEntryAction.EntryTimeEpoch"/>.
+    /// </summary>
+    public static AttributeDefinition DungeonLastEntry { get; } = new(new Guid("6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1E01"), "Dungeon last entry", "The time of the last entry into a dungeon, in minutes since 2026-01-01 (UTC).");
+
+    /// <summary>
     /// Gets the registered renas / items attribute definition.
     /// </summary>
     public static AttributeDefinition RegisteredRenas { get; } = new(new Guid("45B1C2A3-3E4F-5A6B-7C8D-9E0F1A2B3C4D"), "Registered Renas", "Progress towards next item registration reward");

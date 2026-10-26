@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameServer.RemoteView.Character;
 using System.Runtime.InteropServices;
 using MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.Resets;
 using MUnique.OpenMU.GameLogic.Views.Character;
 using MUnique.OpenMU.Network.Packets.ServerToClient;
 using MUnique.OpenMU.Network.PlugIns;
@@ -67,6 +68,12 @@ public class UpdateCharacterStatsPlugIn : IUpdateCharacterStatsPlugIn
             this._player.SelectedCharacter.GetMaximumFruitPoints(),
             (byte)this._player.SelectedCharacter.InventoryExtensions)
             .ConfigureAwait(false);
+
+        if (this._player.GameContext.FeaturePlugIns.GetPlugIn<ResetFeaturePlugIn>() is not null)
+        {
+            // Not part of the original protocol: the client mod resets.dll shows it in the character information window.
+            await connection.SendCharacterResetCountAsync((uint)this._player.Attributes[Stats.Resets]).ConfigureAwait(false);
+        }
 
         if (this._player.SelectedCharacter.CharacterClass!.IsMasterClass)
         {

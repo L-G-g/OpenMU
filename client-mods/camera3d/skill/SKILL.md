@@ -62,6 +62,7 @@ trabajando en la PC. Cuentas del servidor de prueba: la contraseña es el nombre
 | `Invoke-MuSkill S [-Target N \| -X x -Y y]` | `skill S [N \| X Y]` | `result=sent packet=0x19..` o `timeout`; si el objetivo está lejos, se acerca |
 | `Invoke-Mu @("peek 0x07BC4F04 4")` | `peek DIRECCION [BYTES]` | bytes en hexadecimal |
 | `Invoke-Mu @("enter 0")` | `enter N` | en la selección de personaje, entra con el personaje `N` |
+| `Invoke-Mu @("party 3")` | `party N` | invita al jugador `N` a la party (el otro acepta con OK en su cliente) |
 
 - `N` es el índice del objeto (`index` de `objects`), `S` el número de habilidad (por ejemplo 48 =
   Greater Fortitude del DK, 41 = Twisting Slash). El personaje tiene que tenerla aprendida.
@@ -75,6 +76,10 @@ trabajando en la PC. Cuentas del servidor de prueba: la contraseña es el nombre
   monstruos (`hp=na`): para saber si murió, `result=killed` o `target`.
 - Comandos de bajo nivel (`move`, `click`, `key`, `text`, `wait`, `shot`, ...) siguen disponibles con
   `Invoke-Mu`; ver `src/muauto/automation.cpp`.
+- El chat y los atajos (C, M, ...) funcionan con el juego en segundo plano: `key enter`, `text /move
+  lorencia`, `key enter`. `focus` dice si la caja del chat tiene el foco (`game` distinto de `main`): si
+  quedó abierta, no hay que apretar Enter antes de escribir. Con el juego en segundo plano, lo que se
+  escribe en otras ventanas no le llega.
 
 ## Ejemplo: matar el monstruo más cercano
 
