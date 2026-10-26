@@ -101,8 +101,10 @@ internal class ResetExperienceSchemeTest
         using var _ = context;
         RestorePreviousData(context, gameConfiguration);
         var buff = gameConfiguration.Monsters.Single(m => m.Number == ElfSoldierNumber).Buffs.Single();
+        var update = new ResetExperienceSchemeUpdatePlugIn();
+        await SetInstalledVersionAsync(context, update, null).ConfigureAwait(false);
 
-        await new ResetExperienceSchemeUpdatePlugIn().ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+        await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
