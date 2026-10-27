@@ -12,7 +12,10 @@ using MUnique.OpenMU.PlugIns;
 /// The chat command which handles the spectres of a player (see <see cref="SpectreFeaturePlugIn"/>):
 /// <c>/espectro guerrero|mago|elfa</c> summons or dismisses a spectre, <c>/espectro fuera</c> dismisses all,
 /// <c>/espectro info</c> shows them, <c>/espectro reset &lt;kind&gt;</c> resets one, and
-/// <c>/espectro puntos &lt;kind&gt; &lt;str&gt; &lt;agi&gt; &lt;vit&gt; &lt;ene&gt;</c> sets the percentages by which it spends its points.
+/// <c>/espectro puntos &lt;kind&gt; &lt;str&gt; &lt;agi&gt; &lt;vit&gt; &lt;ene&gt;</c> sets the percentages by which it spends its points,
+/// <c>/espectro equipar &lt;kind&gt; &lt;inventory slot&gt;</c> equips an item of the inventory on it,
+/// <c>/espectro quitar &lt;kind&gt; &lt;equipment slot&gt;</c> takes an item off, and <c>/espectro panel</c>
+/// sends the state of the spectres to the spectre window of the client.
 /// </summary>
 [Guid("8E2F4A6C-1B3D-4C5E-8F7A-9B0C1D2E3F40")]
 [PlugIn]
@@ -22,7 +25,7 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
 {
     private const string Command = "/espectro";
 
-    private const string Usage = "Uso: /espectro guerrero|mago|elfa, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene>";
+    private const string Usage = "Uso: /espectro guerrero|mago|elfa, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene>, /espectro equipar <clase> <lugar>, /espectro quitar <clase> <lugar>";
 
     /// <inheritdoc />
     public string Key => Command;
@@ -46,12 +49,22 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
             case "fuera":
                 await SpectreFeaturePlugIn.DismissAllAsync(player).ConfigureAwait(false);
                 await player.ShowBlueMessageAsync("Tus espectros se fueron.").ConfigureAwait(false);
+                await SpectreFeaturePlugIn.SendPanelAsync(player).ConfigureAwait(false);
                 return;
             case "info":
                 await feature.ShowInfoAsync(player).ConfigureAwait(false);
                 return;
             case "reset" when arguments.Count == 2 && TryParseKind(arguments[1], out var kind):
                 await feature.ResetAsync(player, kind).ConfigureAwait(false);
+                return;
+            case "panel":
+                await SpectreFeaturePlugIn.SendPanelAsync(player).ConfigureAwait(false);
+                return;
+            case "equipar" when arguments.Count == 3 && TryParseKind(arguments[1], out var kind) && byte.TryParse(arguments[2], out var slot):
+                await feature.EquipAsync(player, kind, slot).ConfigureAwait(false);
+                return;
+            case "quitar" when arguments.Count == 3 && TryParseKind(arguments[1], out var kind) && byte.TryParse(arguments[2], out var slot):
+                await feature.UnequipAsync(player, kind, slot).ConfigureAwait(false);
                 return;
             case "puntos" when arguments.Count == 6 && TryParseKind(arguments[1], out var kind):
                 var percentages = arguments.Skip(2).Select(a => int.TryParse(a, out var value) ? value : -1).ToList();

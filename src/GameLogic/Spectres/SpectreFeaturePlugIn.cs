@@ -4,8 +4,10 @@
 
 namespace MUnique.OpenMU.GameLogic.Spectres;
 
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Threading;
 using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.DataModel.Entities;
@@ -249,7 +251,39 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     /// </summary>
     /// <param name="ownerAccount">The account of the owner.</param>
     /// <returns>The login name.</returns>
-    internal static string GetLoginName(Account ownerAccount) => LoginPrefix + ownerAccount.GetId().ToString("N")[..8];
+    internal static string GetLoginName(Account ownerAccount)
+    {
+        // A hash of the whole id, because ids may differ in a few bytes only. The login name has up to 10 characters.
+        var hash = BinaryPrimitives.ReadUInt64LittleEndian(SHA256.HashData(ownerAccount.GetId().ToByteArray()));
+        var name = new char[8];
+        for (var i = 0; i < name.Length; i++)
+        {
+            name[i] = "0123456789abcdefghijklmnopqrstuvwxyz"[(int)(hash % 36)];
+            hash /= 36;
+        }
+
+        return LoginPrefix + new string(name);
+    }
+
+    /// <summary>
+    /// Sends the state of the spectres of a player to the spectre window of the player's client.
+    /// </summary>
+    /// <param name="owner">The owner.</param>
+    /// <returns>The task.</returns>
+    internal static async ValueTask SendPanelAsync(Player owner)
+    {
+        if (owner is SpectrePlayer)
+        {
+            return;
+        }
+
+        var spectres = Owners.TryGetValue(owner, out var state) ? state.Spectres : null;
+        var entries = Enum.GetValues<SpectreKind>()
+            .Select(kind => spectres?.TryGetValue(kind, out var spectre) == true ? CreatePanelEntry(spectre) : null)
+            .Select((entry, index) => entry ?? SpectrePanelEntry.NotSummoned((SpectreKind)index))
+            .ToList();
+        await owner.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowSpectrePanelAsync(entries)).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Summons a spectre of the player, or dismisses it, if it's already summoned.
@@ -263,10 +297,12 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         {
             await DismissAsync(owner, kind).ConfigureAwait(false);
             await owner.ShowBlueMessageAsync($"Tu espectro {GetKindName(kind)} se fue.").ConfigureAwait(false);
+            await SendPanelAsync(owner).ConfigureAwait(false);
             return;
         }
 
         await this.SummonAsync(owner, kind).ConfigureAwait(false);
+        await SendPanelAsync(owner).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -375,6 +411,7 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
             {
                 character.KeyConfiguration = [StatPercentagesMarker, .. percentages.Select(p => (byte)p)];
                 await SpendStatPointsAsync(spectre).ConfigureAwait(false);
+                await SendPanelAsync(owner).ConfigureAwait(false);
             }
         });
 
@@ -419,9 +456,30 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
             if (await BotResetHandler.TryResetAsync(spectre, resetConfiguration, false).ConfigureAwait(false))
             {
                 await owner.ShowBlueMessageAsync($"Tu espectro {GetKindName(kind)} ahora tiene {(int)(spectre.Attributes?[Stats.Resets] ?? 0)} resets.").ConfigureAwait(false);
+                await SendPanelAsync(owner).ConfigureAwait(false);
             }
         });
     }
+
+    /// <summary>
+    /// Equips an item of the inventory of a player on a summoned spectre of the player.
+    /// </summary>
+    /// <param name="owner">The owner.</param>
+    /// <param name="kind">The kind of the spectre.</param>
+    /// <param name="inventorySlot">The slot of the item in the inventory of the owner.</param>
+    /// <returns>The task.</returns>
+    internal ValueTask EquipAsync(Player owner, SpectreKind kind, byte inventorySlot)
+        => ChangeEquipmentAsync(owner, kind, spectre => SpectreEquipment.EquipAsync(spectre, inventorySlot));
+
+    /// <summary>
+    /// Takes an item off a summoned spectre of a player and puts it into the inventory of the player.
+    /// </summary>
+    /// <param name="owner">The owner.</param>
+    /// <param name="kind">The kind of the spectre.</param>
+    /// <param name="equipmentSlot">The equipment slot of the spectre.</param>
+    /// <returns>The task.</returns>
+    internal ValueTask UnequipAsync(Player owner, SpectreKind kind, byte equipmentSlot)
+        => ChangeEquipmentAsync(owner, kind, spectre => SpectreEquipment.UnequipAsync(spectre, equipmentSlot));
 
     private static bool IsInGame(Player player)
     {
@@ -433,6 +491,54 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
                && state != PlayerState.Authenticated
                && state != PlayerState.LoginScreen
                && state != PlayerState.Initial;
+    }
+
+    private static SpectrePanelEntry? CreatePanelEntry(SpectrePlayer spectre)
+    {
+        if (spectre.SelectedCharacter is not { } character || spectre.Attributes is not { } attributes || spectre.Inventory is not { } inventory)
+        {
+            return null;
+        }
+
+        var equipment = Enumerable.Range(0, SpectrePanelEntry.EquipmentSlots).Select(slot => inventory.GetItem((byte)slot)).ToArray();
+        return new SpectrePanelEntry(
+            spectre.Kind,
+            true,
+            spectre.Name,
+            (int)attributes[Stats.Level],
+            (int)attributes[Stats.Resets],
+            character.LevelUpPoints,
+            StatAttributes.Select(stat => (int)attributes[stat]).ToArray(),
+            GetStatPercentages(character, spectre.Kind),
+            equipment,
+            equipment.Select(item => item is null ? string.Empty : SpectreEquipment.Describe(item)).ToArray());
+    }
+
+    private static async ValueTask ChangeEquipmentAsync(Player owner, SpectreKind kind, Func<SpectrePlayer, ValueTask<string>> change)
+    {
+        if (!Owners.TryGetValue(owner, out var state) || !state.Spectres.TryGetValue(kind, out var spectre))
+        {
+            await owner.ShowBlueMessageAsync($"Primero invoca a tu espectro {GetKindName(kind)}.").ConfigureAwait(false);
+            return;
+        }
+
+        // Within the tick of the spectre, so that its equipment doesn't change during its combat.
+        spectre.PendingBotActions.Enqueue(async () =>
+        {
+            string message;
+            try
+            {
+                message = await owner.RunPersistenceExclusiveAsync(() => change(spectre)).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                owner.Logger.LogError(ex, "Error while changing the equipment of the spectre {Name}.", spectre.Name);
+                message = "No se pudo cambiar el equipo del espectro.";
+            }
+
+            await owner.ShowBlueMessageAsync(message).ConfigureAwait(false);
+            await SendPanelAsync(owner).ConfigureAwait(false);
+        });
     }
 
     private static bool MustHide(Player owner) => owner.CurrentMiniGame is not null || owner.DuelRoom is not null;

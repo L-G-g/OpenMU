@@ -32,6 +32,12 @@ internal sealed class SpectreIntelligence : AsyncDisposable
     /// </summary>
     private const int MaximumTicksOutOfRange = 6;
 
+    /// <summary>
+    /// The number of ticks after which the spectre is shown as spectre to the players around it again, so that
+    /// players which just came close see it as spectre, too.
+    /// </summary>
+    private const int ShowSpectreInterval = 4;
+
     private readonly SpectrePlayer _spectre;
     private readonly BuffHandler _buffHandler;
     private readonly HealingHandler _healingHandler;
@@ -43,6 +49,10 @@ internal sealed class SpectreIntelligence : AsyncDisposable
     private Task? _loopTask;
 
     private int _ticksOutOfRange;
+
+    private int _ticks;
+
+    private (int Level, int Resets) _shownProgress;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpectreIntelligence"/> class.
@@ -126,6 +136,11 @@ internal sealed class SpectreIntelligence : AsyncDisposable
 
         var spectre = this._spectre;
         var owner = spectre.Owner;
+        if (this._ticks++ % ShowSpectreInterval == 0)
+        {
+            await this.ShowSpectreAsync().ConfigureAwait(false);
+        }
+
         if (spectre.PlayerState.CurrentState != PlayerState.EnteredWorld
             || owner.PlayerState.CurrentState != PlayerState.EnteredWorld
             || owner.CurrentMap is not { } ownerMap
@@ -186,6 +201,25 @@ internal sealed class SpectreIntelligence : AsyncDisposable
         if (!this._combatHandler.HasTarget && spectre.GetDistanceTo(owner) > IdleDistance)
         {
             await this.WalkToOwnerAsync(ownerMap).ConfigureAwait(false);
+        }
+    }
+
+    private async ValueTask ShowSpectreAsync()
+    {
+        var spectre = this._spectre;
+        if (spectre.CurrentMap is null)
+        {
+            return;
+        }
+
+        await spectre.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowSpectreAsync(spectre), false).ConfigureAwait(false);
+
+        // The window of the owner shows the level and resets of the spectre.
+        var progress = (spectre.Level, (int)(spectre.Attributes?[Stats.Resets] ?? 0));
+        if (progress != this._shownProgress)
+        {
+            this._shownProgress = progress;
+            await SpectreFeaturePlugIn.SendPanelAsync(spectre.Owner).ConfigureAwait(false);
         }
     }
 

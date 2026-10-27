@@ -2627,4 +2627,10 @@
   <data name="ShowLootRollViewPlugIn_Description" xml:space="preserve">
     <value>Shows the need, greed or pass rolls of the dungeon in the window of loot.dll of the PeroniaMU client (packet C1 FC). The original client ignores it.</value>
   </data>
+  <data name="ShowSpectresViewPlugIn_Name" xml:space="preserve">
+    <value>Show Spectres View (espectros.dll)</value>
+  </data>
+  <data name="ShowSpectresViewPlugIn_Description" xml:space="preserve">
+    <value>Shows the spectres in the window of espectros.dll of the PeroniaMU client and marks them, so that the client draws them transparent (packet FD). The original client ignores it.</value>
+  </data>
 </root>
