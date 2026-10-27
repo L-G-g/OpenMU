@@ -62,6 +62,7 @@ namespace
 
     LogFunction g_log = nullptr;
     RightClickFilter g_filter = nullptr; // espectros.dll: equipar al espectro en lugar de al personaje
+    KeyTickCallback g_keyTick = nullptr; // espectros.dll: su tecla (Shift+S)
 
     // Lo que hace un click derecho.
     enum Action
@@ -498,6 +499,10 @@ namespace
         using KeyUpdateType = void(__fastcall*)(BYTE*);
         reinterpret_cast<KeyUpdateType>(KeyUpdateFunction)(keyStates);
         TestToolsTick(keyStates);
+        if (g_keyTick != nullptr)
+        {
+            g_keyTick(keyStates);
+        }
 
         const BYTE right = keyStates[VK_RBUTTON];
         if (g_rightConsumed)
@@ -569,6 +574,11 @@ bool RightClickFilterMessage(UINT message)
 void SetRightClickFilter(RightClickFilter filter)
 {
     g_filter = filter;
+}
+
+void SetEspectrosKeyTick(KeyTickCallback callback)
+{
+    g_keyTick = callback;
 }
 
 bool InstallRightClick(LogFunction log)

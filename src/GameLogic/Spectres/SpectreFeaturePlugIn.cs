@@ -24,7 +24,7 @@ using MUnique.OpenMU.PlugIns;
 /// a character of its own, which is stored in a hidden account of the owner's account (see <see cref="GetLoginName"/>);
 /// each character of the owner has its own spectres. A summoned spectre follows its owner, buffs the owner and
 /// hunts the monsters around the owner (see <see cref="SpectreIntelligence"/>); it can't be hurt and doesn't duel.
-/// Inside mini games and duels, the spectres of a player disappear until the player leaves them.
+/// Inside safezones, mini games and duels, the spectres of a player disappear until the player leaves them.
 /// The kills of a spectre count as kills of the owner; the spectres of a player share the experience which the
 /// player gets for a kill, and spend their level up points by the percentages which the player chose.
 /// </summary>
@@ -63,6 +63,8 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     /// <summary>
     /// Gives the spectres of the players which got experience for a kill their share of it: the spectres of a
     /// player share the configured percentage of the experience which the player got.
+    /// A player who gets master experience (a master class at the maximum level) gets much less of it than of the
+    /// normal experience, so then the spectres share the normal experience which they would get for the kill.
     /// </summary>
     /// <param name="shares">The experience which the players got for the kill.</param>
     /// <param name="killed">The killed object.</param>
@@ -76,24 +78,34 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
 
         foreach (var share in shares)
         {
-            if (share.Experience <= 0
-                || !Owners.TryGetValue(share.Player, out var state)
+            if (!Owners.TryGetValue(share.Player, out var state)
                 || state.Spectres.Values.ToList() is not { Count: > 0 } spectres)
             {
                 continue;
             }
 
-            var percent = spectres[0].Configuration.ExperiencePercent;
-            var experience = (int)Math.Min(int.MaxValue, (long)share.Experience * percent / 100 / spectres.Count);
-            if (experience <= 0)
+            var ownerGetsMasterExperience = GetsMasterExperience(share.Player);
+            if (share.Experience <= 0 && !ownerGetsMasterExperience)
             {
                 continue;
             }
 
+            var percent = spectres[0].Configuration.ExperiencePercent;
+            var count = spectres.Count;
             foreach (var spectre in spectres)
             {
                 // Added within the tick of the spectre, so that the level-up doesn't run concurrently to its combat.
-                spectre.PendingBotActions.Enqueue(() => spectre.AddExperienceAsync(experience, killed));
+                spectre.PendingBotActions.Enqueue(async () =>
+                {
+                    long experience = ownerGetsMasterExperience
+                        ? await spectre.CalculateExpAfterKillAsync(killed).ConfigureAwait(false)
+                        : share.Experience;
+                    experience = Math.Min(int.MaxValue, experience * percent / 100 / count);
+                    if (experience > 0)
+                    {
+                        await spectre.AddExperienceAsync((int)experience, killed).ConfigureAwait(false);
+                    }
+                });
             }
         }
 
@@ -293,7 +305,7 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     /// <returns>The task.</returns>
     internal async ValueTask ToggleAsync(Player owner, SpectreKind kind)
     {
-        if (Owners.TryGetValue(owner, out var existing) && existing.Spectres.ContainsKey(kind))
+        if (Owners.TryGetValue(owner, out var existing) && (existing.Spectres.ContainsKey(kind) || existing.HiddenKinds.TryRemove(kind, out _)))
         {
             await DismissAsync(owner, kind).ConfigureAwait(false);
             await owner.ShowBlueMessageAsync($"Tu espectro {GetKindName(kind)} se fue.").ConfigureAwait(false);
@@ -318,13 +330,27 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
             return;
         }
 
-        if (MustHide(owner) || owner.CurrentMap is null)
+        if (IsInMiniGameOrDuel(owner) || owner.CurrentMap is null)
         {
             await owner.ShowBlueMessageAsync("No podes invocar espectros aca.").ConfigureAwait(false);
             return;
         }
 
         var state = Owners.GetOrAdd(owner, _ => new OwnerState());
+        if (owner.IsAtSafezone())
+        {
+            // The spectre appears when the owner leaves the safezone (see ExecuteTaskAsync).
+            if (state.Spectres.Count + state.HiddenKinds.Count >= configuration.MaximumActiveSpectres)
+            {
+                await owner.ShowBlueMessageAsync($"Ya tenes {configuration.MaximumActiveSpectres} espectros invocados.").ConfigureAwait(false);
+                return;
+            }
+
+            state.HiddenKinds[kind] = true;
+            await owner.ShowBlueMessageAsync($"Tu espectro {GetKindName(kind)} va a aparecer cuando salgas de la zona segura.").ConfigureAwait(false);
+            return;
+        }
+
         if (!state.TryEnter())
         {
             return;
@@ -541,7 +567,13 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         });
     }
 
-    private static bool MustHide(Player owner) => owner.CurrentMiniGame is not null || owner.DuelRoom is not null;
+    private static bool GetsMasterExperience(Player player)
+        => player.SelectedCharacter?.CharacterClass?.IsMasterClass == true
+           && player.Level >= player.GameContext.Configuration.MaximumLevel;
+
+    private static bool IsInMiniGameOrDuel(Player owner) => owner.CurrentMiniGame is not null || owner.DuelRoom is not null;
+
+    private static bool MustHide(Player owner) => IsInMiniGameOrDuel(owner) || owner.IsAtSafezone();
 
     private static byte[] GetDefaultStatPercentages(SpectreKind kind) => kind switch
     {

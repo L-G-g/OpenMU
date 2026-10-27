@@ -10,7 +10,7 @@
 //     invocar, retirar, equipar, quitar, cambiar porcentajes, resetear y subir de nivel, y al pedirlo.
 // La ventana contesta con el comando de chat /espectro, que el servidor ya entiende.
 //
-// La ventana (tecla S) muestra una pestana por espectro: invocar o retirar, resetear, los items equipados (un click
+// La ventana (Shift+S) muestra una pestana por espectro: invocar o retirar, resetear, los items equipados (un click
 // lo quita y lo devuelve al inventario), las estadisticas y los porcentajes con los que el espectro reparte sus
 // puntos (+ y -, y Aplicar cuando suman 100). Con la ventana abierta, un click derecho sobre un item equipable del
 // inventario se lo equipa al espectro de la pestana elegida.
@@ -20,10 +20,11 @@
 //     los eventos del mouse de las ventanas (0x00860998) ya pueden estar redirigidos por otras DLL (por ejemplo
 //     loot.dll): se lee a donde apuntan y se llama a eso. El "mouse sobre la interfaz" (0x00860910) tambien puede
 //     estar reemplazado por un salto (loot.dll): se salta a eso, o si no se hace lo mismo que el original.
-//   - Tecla S: las teclas rapidas (CNewUIHotKey, vtable 0x00D45088) se procesan en su UpdateKeyEvent ([3],
-//     0x007D3320), que el administrador de ventanas llama solo si ninguna ventana se quedo con la tecla (por
-//     ejemplo el chat mientras se escribe). Se reemplaza esa entrada de la vtable: con S (recien apretada,
-//     0x00790F20) se abre o se cierra la ventana; con Esc y la ventana abierta, se cierra.
+//   - Teclado: camera3d.dll avisa en cada paso de logica, despues de que el juego actualiza su tabla de teclas
+//     (GetAsyncKeyState de las 256). Shift+S abre o cierra la ventana y Esc la cierra; la tecla se borra de la
+//     tabla mientras siga apretada, asi ninguna ventana la ve (S sola, con el inventario abierto, abre la tienda
+//     personal). Solo si el foco es la ventana principal del juego (0x00E8C578): escribiendo en el chat, el foco
+//     es la caja del chat.
 //   - Items: se dibujan en 3D con la funcion del juego (0x005CF310, la del item agarrado con el mouse), con la misma
 //     preparacion que hace el juego para ese item (0x004D5C60): matrices, vista y perspectiva propias.
 //   - Transparencia: al empezar cada cuadro (camera3d.dll) el alfa de los espectros a la vista (OBJECT +0x98, el
@@ -50,12 +51,10 @@ namespace
     constexpr DWORD MouseCallSite = 0x00860998;        // CALL 0x00815880: eventos del mouse de las ventanas
     constexpr DWORD MouseOnUiFunction = 0x00860910;    // char __thiscall (sistema de ventanas): mouse sobre la interfaz
     const BYTE MouseOnUiPrologue[] = { 0x55, 0x8B, 0xEC, 0x51, 0x89, 0x4D, 0xFC };
-    constexpr DWORD HotKeyUpdateSlot = 0x00D45094;     // CNewUIHotKey vtable [3]: UpdateKeyEvent
-    constexpr DWORD HotKeyUpdateFunction = 0x007D3320; // bool __thiscall
-    constexpr DWORD HotKeyBlocked = 0x10;              // byte: 1 sin teclas rapidas (lo mira la original al empezar)
+    HWND* const MainWindow = reinterpret_cast<HWND*>(0x00E8C578);
+    constexpr BYTE KeyUp = 0, KeyPressed = 2, KeyHeld = 3; // estados de la tabla de teclas
     constexpr DWORD SendChatFunction = 0x005BDE40;     // void __cdecl (const char* texto): C1 00
     constexpr DWORD IsReleaseFunction = 0x00790F00;    // bool __cdecl(int tecla): recien soltada
-    constexpr DWORD IsPressFunction = 0x00790F20;      // bool __cdecl(int tecla): recien apretada
     constexpr DWORD SetFontFunction = 0x00420120;      // void __thiscall CUIRenderText::SetFont(HFONT)
     constexpr DWORD RenderTextFunction = 0x00420150;   // void __thiscall (x, y, texto, ancho, alto, orden, SIZE*)
     constexpr DWORD EnableAlphaBlendFunction = 0x00635FD0; // void __cdecl(bool): mezcla con alfa (estado del juego)
@@ -107,7 +106,6 @@ namespace
     using DrawType = void(__cdecl*)();
     using MouseType = int(__fastcall*)(BYTE* manager, void* unused);
     using MouseOnUiType = char(__fastcall*)(BYTE** system, void* unused);
-    using HotKeyType = bool(__fastcall*)(BYTE* self, void* unused);
     using SendChatType = void(__cdecl*)(const char* text);
     using KeyStateType = bool(__cdecl*)(int key);
     using SetFontType = void(__fastcall*)(BYTE* text, void* unused, HFONT font);
@@ -146,7 +144,7 @@ namespace
     DrawType g_nextDraw = nullptr;
     MouseType g_nextMouse = nullptr;
     MouseOnUiType g_nextMouseOnUi = nullptr; // otra DLL ya reemplazo 0x00860910 (o nullptr)
-    HotKeyType g_nextHotKey = nullptr;
+    int g_suppressedKey = 0;                 // tecla que se borra de la tabla hasta que se suelte
     std::deque<std::string> g_pendingChat;
     bool g_open = false;
     bool g_mouseOver = false;
@@ -595,25 +593,45 @@ namespace
         return manager != nullptr && *reinterpret_cast<const DWORD*>(manager + WindowManagerMouse) != 0 ? 1 : 0;
     }
 
-    bool __fastcall HotKeyHook(BYTE* self, void* unused)
+    bool IsDown(const BYTE* keyStates, int key)
     {
-        if (self != nullptr && self[HotKeyBlocked] != 1)
+        return keyStates[key] == KeyPressed || keyStates[key] == KeyHeld;
+    }
+
+    void __cdecl KeyTick(BYTE* keyStates)
+    {
+        if (g_suppressedKey != 0)
         {
-            const auto isPress = reinterpret_cast<KeyStateType>(IsPressFunction);
-            if (isPress('S'))
+            if (IsDown(keyStates, g_suppressedKey))
             {
-                SetOpen(!g_open);
-                return false;
+                keyStates[g_suppressedKey] = KeyUp;
+                return;
             }
 
-            if (g_open && isPress(VK_ESCAPE))
-            {
-                SetOpen(false);
-                return false;
-            }
+            g_suppressedKey = 0;
         }
 
-        return g_nextHotKey(self, unused);
+        if (GetFocus() != *MainWindow)
+        {
+            return; // escribiendo en el chat (o el juego no tiene el foco)
+        }
+
+        if (keyStates['S'] == KeyPressed && IsDown(keyStates, VK_SHIFT))
+        {
+            g_suppressedKey = 'S';
+            SetOpen(!g_open);
+        }
+        else if (g_open && keyStates[VK_ESCAPE] == KeyPressed)
+        {
+            g_suppressedKey = VK_ESCAPE;
+            SetOpen(false);
+        }
+        else
+        {
+            return;
+        }
+
+        keyStates[g_suppressedKey] = KeyUp;
     }
 
     bool RightClickHook(int inventorySlot)
@@ -971,7 +989,6 @@ extern "C" __declspec(dllexport) bool StartEspectros(const EspectrosHost* host)
     const DWORD mouse = CallTarget(MouseCallSite);
     const DWORD mouseOnUi = JumpTarget(MouseOnUiFunction);
     if (dispatch == 0 || draw == 0 || mouse == 0
-        || *reinterpret_cast<const DWORD*>(HotKeyUpdateSlot) != HotKeyUpdateFunction
         || (mouseOnUi == 0
             && memcmp(reinterpret_cast<const void*>(MouseOnUiFunction), MouseOnUiPrologue, sizeof(MouseOnUiPrologue)) != 0))
     {
@@ -983,13 +1000,10 @@ extern "C" __declspec(dllexport) bool StartEspectros(const EspectrosHost* host)
     g_nextDraw = reinterpret_cast<DrawType>(draw);
     g_nextMouse = reinterpret_cast<MouseType>(mouse);
     g_nextMouseOnUi = reinterpret_cast<MouseOnUiType>(mouseOnUi);
-    g_nextHotKey = reinterpret_cast<HotKeyType>(HotKeyUpdateFunction);
     BYTE jump[5] = { 0xE9 };
     *reinterpret_cast<DWORD*>(jump + 1) = reinterpret_cast<DWORD>(&MouseOnUiHook) - (MouseOnUiFunction + 5);
-    const DWORD hotKey = reinterpret_cast<DWORD>(&HotKeyHook);
     if (!WriteCode(MouseOnUiFunction, jump, sizeof(jump)) || !RedirectCall(MouseCallSite, &MouseHook)
-        || !RedirectCall(DrawCallSite, &DrawHook) || !RedirectCall(DispatchCallSite, &PacketHook)
-        || !WriteCode(HotKeyUpdateSlot, &hotKey, sizeof(hotKey)))
+        || !RedirectCall(DrawCallSite, &DrawHook) || !RedirectCall(DispatchCallSite, &PacketHook))
     {
         g_log("Espectros: no se pudo instalar.");
         return false;
@@ -997,7 +1011,8 @@ extern "C" __declspec(dllexport) bool StartEspectros(const EspectrosHost* host)
 
     host->setBeforeRender(&BeforeRender);
     host->setRightClickFilter(&RightClickHook);
-    g_log("Espectros listos (tecla S, alfa %.2f).", g_alpha);
+    host->setKeyTick(&KeyTick);
+    g_log("Espectros listos (Shift+S, alfa %.2f).", g_alpha);
     return true;
 }
 

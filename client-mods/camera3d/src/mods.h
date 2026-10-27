@@ -61,6 +61,7 @@ void LoadEspectros(LogFunction log);
 void SetEspectrosBeforeRender(BeforeRenderCallback callback);
 void EspectrosBeforeRender();
 void SetRightClickFilter(RightClickFilter filter);
+void SetEspectrosKeyTick(KeyTickCallback callback);
 
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
