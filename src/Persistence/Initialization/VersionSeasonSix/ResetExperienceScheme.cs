@@ -79,6 +79,7 @@ internal static class ResetExperienceScheme
     {
         SetRequiredLevelTiers(context, gameConfiguration);
         MakeExperienceFixed(context, gameConfiguration);
+        RemoveExperienceLevelPenalty(context, gameConfiguration);
         ActivatePlugIn(context, gameConfiguration, typeof(PermanentBuffBelowResetCountPlugIn), new PermanentBuffBelowResetCountConfiguration());
         ActivatePlugIn(context, gameConfiguration, typeof(LevelRangeExperiencePlugIn), new LevelRangeExperienceConfiguration());
     }
@@ -117,6 +118,29 @@ internal static class ResetExperienceScheme
     internal static void RestoreElfSoldierBuffEffect(IContext context, GameConfiguration gameConfiguration)
     {
         ElfSoldierBuffEffect.GetOrCreate(context, gameConfiguration);
+    }
+
+    /// <summary>
+    /// Removes the experience penalty for killing monsters which are more than 10 levels below the killer,
+    /// by setting <see cref="Stats.IgnoreExperienceLevelPenalty"/> to 1 for all characters.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    internal static void RemoveExperienceLevelPenalty(IContext context, GameConfiguration gameConfiguration)
+    {
+        var attribute = Stats.IgnoreExperienceLevelPenalty;
+        if (gameConfiguration.Attributes.FirstOrDefault(a => a.Id == attribute.Id) is not { } definition)
+        {
+            definition = context.CreateNew<AttributeDefinition>(attribute.Id, attribute.Designation, attribute.Description);
+            gameConfiguration.Attributes.Add(definition);
+        }
+
+        foreach (var value in gameConfiguration.GlobalBaseAttributeValues.Where(v => v.Definition?.Id == definition.Id).ToList())
+        {
+            gameConfiguration.GlobalBaseAttributeValues.Remove(value);
+        }
+
+        gameConfiguration.GlobalBaseAttributeValues.Add(context.CreateNew<ConstValueAttribute>(1f, definition));
     }
 
     /// <summary>

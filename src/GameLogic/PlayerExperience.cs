@@ -79,7 +79,7 @@ internal sealed class PlayerExperience
         var expRateAttribute = isMasterExperience ? Stats.MasterExperienceRate : Stats.ExperienceRate;
         var gameRate = isMasterExperience ? this._player.GameContext.MasterExperienceRate : this._player.GameContext.ExperienceRate;
 
-        var experience = killedObject.CalculateBaseExperience(attributes[Stats.TotalLevel]);
+        var experience = killedObject.CalculateBaseExperience(attributes[Stats.TotalLevel], attributes[Stats.IgnoreExperienceLevelPenalty] <= 0);
         experience *= gameRate;
         experience *= attributes[expRateAttribute] + attributes[Stats.BonusExperienceRate];
         experience *= this._player.CurrentMap?.Definition.ExpMultiplier ?? 1;
