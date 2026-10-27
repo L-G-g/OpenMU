@@ -116,7 +116,7 @@ public sealed class HealingHandler
 
     private async ValueTask PerformPartyHealingAsync()
     {
-        if (!this._config!.AutoHealParty || this._player.Party is not { } party)
+        if (!this._config!.AutoHealParty)
         {
             return;
         }
@@ -127,7 +127,7 @@ public sealed class HealingHandler
             return;
         }
 
-        foreach (var member in party.PartyList.OfType<Player>())
+        foreach (var member in this._player.GetSupportTargets().OfType<Player>())
         {
             if (member == this._player)
             {

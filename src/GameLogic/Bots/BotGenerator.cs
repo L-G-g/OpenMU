@@ -236,6 +236,101 @@ internal sealed class BotGenerator
     }
 
     /// <summary>
+    /// Creates a character of a bot in the specified account, with its class skills and starter gear.
+    /// </summary>
+    /// <param name="context">The persistence context.</param>
+    /// <param name="account">The account.</param>
+    /// <param name="name">The name of the character.</param>
+    /// <param name="characterClass">The character class.</param>
+    /// <param name="level">The level.</param>
+    /// <param name="slot">The character slot.</param>
+    /// <param name="experienceTable">The experience table.</param>
+    /// <param name="seededResets">The resets which the character already did.</param>
+    /// <param name="starterItemLevel">The level of the starter items.</param>
+    /// <param name="equipStarterArmor">If set to <c>true</c>, the character gets a starter armor set.</param>
+    /// <param name="resetConfiguration">The reset configuration.</param>
+    /// <returns>The created character.</returns>
+    public Character CreateCharacter(IPlayerContext context, Account account, string name, CharacterClass characterClass, int level, byte slot, long[] experienceTable, int seededResets, byte starterItemLevel, bool equipStarterArmor, ResetConfiguration? resetConfiguration)
+    {
+        // A character generated beyond the class evolution level was created as its second-generation
+        // class right away - like a player who completed the class quest long ago. Everything downstream
+        // (stat weights, skills, gear) keys off the evolved class. A character with a seeded reset
+        // history evolved in its first cycle at the latest - provided the reset's required level lies
+        // beyond the evolution level (the check below), which makes it pass the evolution on the way
+        // to its first reset regardless of its current in-cycle level.
+        var passedEvolutionInEarlierCycle = seededResets > 0 && resetConfiguration?.RequiredLevel >= BotProgression.ClassEvolutionLevel;
+        if ((level >= BotProgression.ClassEvolutionLevel || passedEvolutionInEarlierCycle)
+            && BotProgression.GetEvolutionTarget(characterClass) is { } evolvedClass)
+        {
+            characterClass = evolvedClass;
+        }
+
+        var character = context.CreateNew<Character>();
+        character.CharacterClass = characterClass;
+        character.Name = name;
+        character.CharacterSlot = slot;
+        character.CreateDate = DateTime.UtcNow;
+        character.KeyConfiguration = CreateDefaultKeyConfiguration();
+
+        // Distinct, because a character class may define the same stat attribute more than once (data
+        // which got duplicated by an update); a character must never hold an attribute twice.
+        foreach (var attribute in characterClass.StatAttributes
+                     .DistinctBy(a => a.Attribute)
+                     .Select(a => context.CreateNew<StatAttribute>(a.Attribute, a.BaseValue)))
+        {
+            character.Attributes.Add(attribute);
+        }
+
+        character.CurrentMap = characterClass.HomeMap;
+        var spawnGate = character.CurrentMap!.ExitGates.Where(g => g.IsSpawnGate).SelectRandom();
+        if (spawnGate is not null)
+        {
+            character.PositionX = (byte)Rand.NextInt(spawnGate.X1, spawnGate.X2);
+            character.PositionY = (byte)Rand.NextInt(spawnGate.Y1, spawnGate.Y2);
+        }
+
+        var levelAttribute = character.Attributes.First(a => a.Definition == Stats.Level);
+        levelAttribute.Value = level;
+        if (seededResets > 0
+            && character.Attributes.FirstOrDefault(a => a.Definition == Stats.Resets) is { } resetsAttribute)
+        {
+            // Persisted exactly like a real player's resets (a per-character stat attribute), so the
+            // reset counter, the effective level and the reset limit all see the seeded history.
+            resetsAttribute.Value = seededResets;
+        }
+
+        character.Experience = experienceTable[Math.Min(level, experienceTable.Length - 1)];
+        character.LevelUpPoints = CalculateLevelUpPoints(characterClass, level, seededResets, resetConfiguration);
+        character.InventoryExtensions = BotInventoryExtensions;
+        DistributeStatPoints(character, characterClass, resetConfiguration is not null);
+
+        // Skills survive resets, so a seeded veteran knows everything the highest level of its past
+        // cycles unlocked; level-gated skills are checked against that level, not the current one.
+        var highestLevelReached = seededResets > 0 && resetConfiguration is not null
+            ? Math.Max(level, resetConfiguration.RequiredLevel)
+            : level;
+        this.LearnClassSkills(context, character, characterClass, highestLevelReached);
+
+        character.Inventory = context.CreateNew<ItemStorage>();
+        character.Inventory.Money = StartMoney;
+
+        // A fresh character starts like a regular player's new character - weapon only, no armor -
+        // and loots its first set like everyone else. Veterans keep the basic set, without which
+        // they could not survive the maps their start level puts them on.
+        var starterGear = new BotStarterGearEquipper(context, this._gameContext.Configuration, character, starterItemLevel);
+        starterGear.EquipWeapon();
+        if (equipStarterArmor)
+        {
+            starterGear.EquipArmorSet();
+        }
+
+        starterGear.AddPotions();
+
+        account.Characters.Add(character);
+        return character;
+    }
+
+    /// <summary>
     /// Grows the elf share of the queue to the buffer quota plus archer keep.
     /// Natural split yields fewer buffers than parties need. Converted slots
     /// are drawn randomly so class and account index stay uncorrelated.
@@ -542,85 +637,6 @@ internal sealed class BotGenerator
 
             return BotAccountDeleteOutcome.Failed;
         }
-    }
-
-    private void CreateCharacter(IPlayerContext context, Account account, string name, CharacterClass characterClass, int level, byte slot, long[] experienceTable, int seededResets, byte starterItemLevel, bool equipStarterArmor, ResetConfiguration? resetConfiguration)
-    {
-        // A character generated beyond the class evolution level was created as its second-generation
-        // class right away - like a player who completed the class quest long ago. Everything downstream
-        // (stat weights, skills, gear) keys off the evolved class. A character with a seeded reset
-        // history evolved in its first cycle at the latest - provided the reset's required level lies
-        // beyond the evolution level (the check below), which makes it pass the evolution on the way
-        // to its first reset regardless of its current in-cycle level.
-        var passedEvolutionInEarlierCycle = seededResets > 0 && resetConfiguration?.RequiredLevel >= BotProgression.ClassEvolutionLevel;
-        if ((level >= BotProgression.ClassEvolutionLevel || passedEvolutionInEarlierCycle)
-            && BotProgression.GetEvolutionTarget(characterClass) is { } evolvedClass)
-        {
-            characterClass = evolvedClass;
-        }
-
-        var character = context.CreateNew<Character>();
-        character.CharacterClass = characterClass;
-        character.Name = name;
-        character.CharacterSlot = slot;
-        character.CreateDate = DateTime.UtcNow;
-        character.KeyConfiguration = CreateDefaultKeyConfiguration();
-
-        // Distinct, because a character class may define the same stat attribute more than once (data
-        // which got duplicated by an update); a character must never hold an attribute twice.
-        foreach (var attribute in characterClass.StatAttributes
-                     .DistinctBy(a => a.Attribute)
-                     .Select(a => context.CreateNew<StatAttribute>(a.Attribute, a.BaseValue)))
-        {
-            character.Attributes.Add(attribute);
-        }
-
-        character.CurrentMap = characterClass.HomeMap;
-        var spawnGate = character.CurrentMap!.ExitGates.Where(g => g.IsSpawnGate).SelectRandom();
-        if (spawnGate is not null)
-        {
-            character.PositionX = (byte)Rand.NextInt(spawnGate.X1, spawnGate.X2);
-            character.PositionY = (byte)Rand.NextInt(spawnGate.Y1, spawnGate.Y2);
-        }
-
-        var levelAttribute = character.Attributes.First(a => a.Definition == Stats.Level);
-        levelAttribute.Value = level;
-        if (seededResets > 0
-            && character.Attributes.FirstOrDefault(a => a.Definition == Stats.Resets) is { } resetsAttribute)
-        {
-            // Persisted exactly like a real player's resets (a per-character stat attribute), so the
-            // reset counter, the effective level and the reset limit all see the seeded history.
-            resetsAttribute.Value = seededResets;
-        }
-
-        character.Experience = experienceTable[Math.Min(level, experienceTable.Length - 1)];
-        character.LevelUpPoints = CalculateLevelUpPoints(characterClass, level, seededResets, resetConfiguration);
-        character.InventoryExtensions = BotInventoryExtensions;
-        DistributeStatPoints(character, characterClass, resetConfiguration is not null);
-
-        // Skills survive resets, so a seeded veteran knows everything the highest level of its past
-        // cycles unlocked; level-gated skills are checked against that level, not the current one.
-        var highestLevelReached = seededResets > 0 && resetConfiguration is not null
-            ? Math.Max(level, resetConfiguration.RequiredLevel)
-            : level;
-        this.LearnClassSkills(context, character, characterClass, highestLevelReached);
-
-        character.Inventory = context.CreateNew<ItemStorage>();
-        character.Inventory.Money = StartMoney;
-
-        // A fresh character starts like a regular player's new character - weapon only, no armor -
-        // and loots its first set like everyone else. Veterans keep the basic set, without which
-        // they could not survive the maps their start level puts them on.
-        var starterGear = new BotStarterGearEquipper(context, this._gameContext.Configuration, character, starterItemLevel);
-        starterGear.EquipWeapon();
-        if (equipStarterArmor)
-        {
-            starterGear.EquipArmorSet();
-        }
-
-        starterGear.AddPotions();
-
-        account.Characters.Add(character);
     }
 
     /// <summary>

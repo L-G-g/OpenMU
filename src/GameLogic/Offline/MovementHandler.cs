@@ -84,38 +84,11 @@ public sealed class MovementHandler
     }
 
     /// <summary>
-    /// Picks the point to walk to when closing in on a target: straight along the line towards it,
-    /// stopping at attack range. The previous behavior re-randomized a point around the target every
-    /// tick, which made the character zig-zag visibly towards its prey and re-path constantly.
-    /// Falls back to a random point near the target when the straight-line point is not walkable.
-    /// </summary>
-    private static Point GetApproachPoint(GameMap map, Point from, Point to, byte stopRange)
-    {
-        var dx = to.X - from.X;
-        var dy = to.Y - from.Y;
-        var distance = Math.Max(Math.Abs(dx), Math.Abs(dy));
-        if (distance <= stopRange)
-        {
-            return from;
-        }
-
-        var factor = (double)(distance - stopRange) / distance;
-        var x = (byte)Math.Clamp(from.X + (int)Math.Round(dx * factor), 0, 255);
-        var y = (byte)Math.Clamp(from.Y + (int)Math.Round(dy * factor), 0, 255);
-        if (map.Terrain.WalkMap[x, y] && !map.Terrain.SafezoneMap[x, y])
-        {
-            return new Point(x, y);
-        }
-
-        return map.Terrain.GetRandomCoordinate(to, stopRange);
-    }
-
-    /// <summary>
     /// Walks the player to the specified target position.
     /// </summary>
     /// <param name="target">The target position to walk to.</param>
     /// <returns>True if the walk was successful; otherwise, false.</returns>
-    private async ValueTask<bool> WalkToAsync(Point target)
+    public async ValueTask<bool> WalkToAsync(Point target)
     {
         if (this._player.IsWalking || this._player.CurrentMap is not { } map)
         {
@@ -148,6 +121,33 @@ public sealed class MovementHandler
         {
             this._player.GameContext.PathFinderPool.Return(pathFinder);
         }
+    }
+
+    /// <summary>
+    /// Picks the point to walk to when closing in on a target: straight along the line towards it,
+    /// stopping at attack range. The previous behavior re-randomized a point around the target every
+    /// tick, which made the character zig-zag visibly towards its prey and re-path constantly.
+    /// Falls back to a random point near the target when the straight-line point is not walkable.
+    /// </summary>
+    private static Point GetApproachPoint(GameMap map, Point from, Point to, byte stopRange)
+    {
+        var dx = to.X - from.X;
+        var dy = to.Y - from.Y;
+        var distance = Math.Max(Math.Abs(dx), Math.Abs(dy));
+        if (distance <= stopRange)
+        {
+            return from;
+        }
+
+        var factor = (double)(distance - stopRange) / distance;
+        var x = (byte)Math.Clamp(from.X + (int)Math.Round(dx * factor), 0, 255);
+        var y = (byte)Math.Clamp(from.Y + (int)Math.Round(dy * factor), 0, 255);
+        if (map.Terrain.WalkMap[x, y] && !map.Terrain.SafezoneMap[x, y])
+        {
+            return new Point(x, y);
+        }
+
+        return map.Terrain.GetRandomCoordinate(to, stopRange);
     }
 
     private bool ShouldRegroup(out double distance)

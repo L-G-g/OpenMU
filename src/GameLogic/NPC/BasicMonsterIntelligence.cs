@@ -131,7 +131,7 @@ public class BasicMonsterIntelligence : INpcIntelligence, IDisposable
         }
 
         var possibleTargets = tempObservers.OfType<IAttackable>()
-            .Where(a => a.IsActive() && !a.IsAtSafezone() && a is not Player { IsInvisible: true })
+            .Where(a => a.IsActive() && !a.IsAtSafezone() && a is not Player { IsInvisible: true } and not Spectres.SpectrePlayer)
             .ToList();
 
         // Also consider summoned monsters belonging to players in range.
@@ -298,7 +298,7 @@ public class BasicMonsterIntelligence : INpcIntelligence, IDisposable
     {
         return this.CurrentTarget is not null
                && this.CurrentTarget.IsAlive
-               && this.CurrentTarget is not Player { IsInvisible: true }
+               && this.CurrentTarget is not Player { IsInvisible: true } and not Spectres.SpectrePlayer
                && !this.CurrentTarget.IsTeleporting
                && !this.CurrentTarget.IsAtSafezone()
                && this.CurrentTarget.IsInRange(this.Monster.Position, this.Npc.Definition.ViewRange)

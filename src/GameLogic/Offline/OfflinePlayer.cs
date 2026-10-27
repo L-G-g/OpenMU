@@ -387,6 +387,13 @@ public class OfflinePlayer : Player
     }
 
     /// <summary>
+    /// Gets the players which this player buffs and heals besides itself, by default the members of its party.
+    /// </summary>
+    /// <returns>The players to support.</returns>
+    internal virtual IEnumerable<IAttackable> GetSupportTargets()
+        => this.Party?.PartyList.OfType<IAttackable>() ?? [];
+
+    /// <summary>
     /// Called when an AI tick of this player finished without an exception. Does nothing here - a bot
     /// uses it to forget earlier failures (see <see cref="Bots.BotPlayer"/>).
     /// </summary>
