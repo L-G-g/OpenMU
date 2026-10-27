@@ -25,6 +25,13 @@ public class DuelActions
         ArgumentNullException.ThrowIfNull(player);
         ArgumentNullException.ThrowIfNull(target);
 
+        if (player is Spectres.SpectrePlayer || target is Spectres.SpectrePlayer)
+        {
+            // Spectres don't duel.
+            await player.InvokeViewPlugInAsync<IShowDuelRequestResultPlugIn>(p => p.ShowDuelRequestResultAsync(DuelStartResult.Refused, target)).ConfigureAwait(false);
+            return;
+        }
+
         if (player.DuelRoom is not null)
         {
             await player.ShowLocalizedBlueMessageAsync(nameof(PlayerMessage.AlreadyInDuel)).ConfigureAwait(false);

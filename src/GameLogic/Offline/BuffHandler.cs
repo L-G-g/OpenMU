@@ -205,12 +205,12 @@ public sealed class BuffHandler
     /// <returns>True if the buff was applied to a party member.</returns>
     private async ValueTask<bool> TryApplyPartyBuffAsync(SkillEntry skillEntry)
     {
-        if (this._config is not { SupportParty: true } || this._player.Party is not { } party)
+        if (this._config is not { SupportParty: true })
         {
             return false;
         }
 
-        foreach (var member in party.PartyList.OfType<IAttackable>())
+        foreach (var member in this._player.GetSupportTargets())
         {
             if (member == this._player)
             {

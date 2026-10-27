@@ -4803,5 +4803,41 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized DungeonConfiguration_SpawnMonstersOfMap_Description text.</summary>
         public static string DungeonConfiguration_SpawnMonstersOfMap_Description => ResourceManager.GetString("DungeonConfiguration_SpawnMonstersOfMap_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreFeaturePlugIn_Name text.</summary>
+        public static string SpectreFeaturePlugIn_Name => ResourceManager.GetString("SpectreFeaturePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreFeaturePlugIn_Description text.</summary>
+        public static string SpectreFeaturePlugIn_Description => ResourceManager.GetString("SpectreFeaturePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumActiveSpectres_Name text.</summary>
+        public static string SpectreConfiguration_MaximumActiveSpectres_Name => ResourceManager.GetString("SpectreConfiguration_MaximumActiveSpectres_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumActiveSpectres_Description text.</summary>
+        public static string SpectreConfiguration_MaximumActiveSpectres_Description => ResourceManager.GetString("SpectreConfiguration_MaximumActiveSpectres_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_ExperiencePercent_Name text.</summary>
+        public static string SpectreConfiguration_ExperiencePercent_Name => ResourceManager.GetString("SpectreConfiguration_ExperiencePercent_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_ExperiencePercent_Description text.</summary>
+        public static string SpectreConfiguration_ExperiencePercent_Description => ResourceManager.GetString("SpectreConfiguration_ExperiencePercent_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_WarpDistance_Name text.</summary>
+        public static string SpectreConfiguration_WarpDistance_Name => ResourceManager.GetString("SpectreConfiguration_WarpDistance_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_WarpDistance_Description text.</summary>
+        public static string SpectreConfiguration_WarpDistance_Description => ResourceManager.GetString("SpectreConfiguration_WarpDistance_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_UnlimitedMana_Name text.</summary>
+        public static string SpectreConfiguration_UnlimitedMana_Name => ResourceManager.GetString("SpectreConfiguration_UnlimitedMana_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_UnlimitedMana_Description text.</summary>
+        public static string SpectreConfiguration_UnlimitedMana_Description => ResourceManager.GetString("SpectreConfiguration_UnlimitedMana_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreChatCommandPlugIn_Name text.</summary>
+        public static string SpectreChatCommandPlugIn_Name => ResourceManager.GetString("SpectreChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreChatCommandPlugIn_Description text.</summary>
+        public static string SpectreChatCommandPlugIn_Description => ResourceManager.GetString("SpectreChatCommandPlugIn_Description", resourceCulture)!;
     }
 }

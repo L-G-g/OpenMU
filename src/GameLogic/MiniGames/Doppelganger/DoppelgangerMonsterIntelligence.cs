@@ -239,7 +239,7 @@ public sealed class DoppelgangerMonsterIntelligence : INpcIntelligence, IDisposa
     private bool IsValidTarget(Monster monster, IAttackable target)
     {
         return target.IsActive()
-               && target is not Player { IsInvisible: true }
+               && target is not Player { IsInvisible: true } and not Spectres.SpectrePlayer
                && !target.IsAtSafezone()
                && target.IsInRange(monster.Position, monster.Definition.AttackRange)
                && monster.HasLineOfSightTo(target);

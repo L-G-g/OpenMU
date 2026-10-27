@@ -165,6 +165,7 @@ namespace
 
         // La camara se calcula al empezar a dibujar cada cuadro.
         RightClickBeforeRender();
+        EspectrosBeforeRender();
 
         // 1) Giro: la funcion original calcula la posicion de la camara a partir del angulo de giro,
         //    asi que alcanza con fijarlo antes. Si el juego cambio el angulo por su cuenta (escenas
@@ -392,6 +393,7 @@ namespace
         LoadResets(&Log);
         LoadStacks(&Log);
         LoadLoot(&Log);
+        LoadEspectros(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())

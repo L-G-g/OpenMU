@@ -299,7 +299,8 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
     /// <returns>The target player of a hit notification.</returns>
     protected virtual Player? GetHitNotificationTarget(IAttacker attacker)
     {
-        return attacker as Player ?? (attacker as IPlayerSurrogate)?.Owner;
+        // A spectre is a player on its own, but it hunts for its owner (see Spectres.SpectrePlayer).
+        return attacker is IPlayerSurrogate surrogate ? surrogate.Owner : attacker as Player;
     }
 
     /// <summary>
@@ -380,6 +381,7 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
             var experienceShares = player.Party is { } party
                 ? await party.DistributeExperienceAfterKillAsync(this, player).ConfigureAwait(false)
                 : [new ExperienceShare(player, await player.AddExpAfterKillAsync(this).ConfigureAwait(false))];
+            await Spectres.SpectreFeaturePlugIn.ShareExperienceAsync(experienceShares, this).ConfigureAwait(false);
             if (attacker == player)
             {
                 await player.AfterKilledMonsterAsync().ConfigureAwait(false);

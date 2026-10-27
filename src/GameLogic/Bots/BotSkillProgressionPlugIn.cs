@@ -47,7 +47,7 @@ public class BotSkillProgressionPlugIn : ICharacterLevelUpPlugIn
     /// <inheritdoc />
     public void CharacterLeveledUp(Player player)
     {
-        if (player.Account?.IsBot != true
+        if ((player.Account?.IsBot != true && player is not Spectres.SpectrePlayer)
             || player.SelectedCharacter?.CharacterClass is not { }
             || player.SkillList is not { })
         {
@@ -73,7 +73,16 @@ public class BotSkillProgressionPlugIn : ICharacterLevelUpPlugIn
         try
         {
             this.EvolveClassIfDue(player);
-            await this.SpendStatPointsAsync(player).ConfigureAwait(false);
+            if (player is Spectres.SpectrePlayer spectre)
+            {
+                // The owner of a spectre chooses how it spends its points.
+                await Spectres.SpectreFeaturePlugIn.SpendStatPointsAsync(spectre).ConfigureAwait(false);
+            }
+            else
+            {
+                await this.SpendStatPointsAsync(player).ConfigureAwait(false);
+            }
+
             await this.LearnNewSkillsAsync(player).ConfigureAwait(false);
         }
         catch (Exception ex)

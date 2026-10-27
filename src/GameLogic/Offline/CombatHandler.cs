@@ -156,6 +156,11 @@ public sealed class CombatHandler
     public int SkillCooldownTicks => this._skillCooldownTicks;
 
     /// <summary>
+    /// Gets a value indicating whether the handler currently fights a target.
+    /// </summary>
+    public bool HasTarget => this._currentTarget is not null;
+
+    /// <summary>
     /// Gets the hunting range in tiles.
     /// </summary>
     public byte HuntingRange => CalculateHuntingRange(this._config);

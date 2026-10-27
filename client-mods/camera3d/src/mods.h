@@ -53,6 +53,16 @@ void LoadStacks(LogFunction log);
 // Ventana de botin de las dungeons: carga loot.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadLoot(LogFunction log);
 
+// Espectros: carga espectros.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadEspectros(LogFunction log);
+
+// Espectros: lo que se llama al empezar a dibujar cada cuadro (camera3d.cpp) y el filtro del click derecho sobre un
+// item equipable del inventario (rightclick.cpp).
+void SetEspectrosBeforeRender(BeforeRenderCallback callback);
+void EspectrosBeforeRender();
+void SetRightClickFilter(RightClickFilter filter);
+void SetEspectrosKeyTick(KeyTickCallback callback);
+
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
 // despues de dibujar vuelve a poner las reales.

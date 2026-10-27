@@ -1922,4 +1922,40 @@
   <data name="DungeonConfiguration_SpawnMonstersOfMap_Description" xml:space="preserve">
     <value>If set, the usual monsters of the map appear in the dungeon, too. Otherwise only the spawn areas with the trigger 'Automatic during event' appear, e.g. along the ways between the bosses.</value>
   </data>
+  <data name="SpectreFeaturePlugIn_Name" xml:space="preserve">
+    <value>Spectres</value>
+  </data>
+  <data name="SpectreFeaturePlugIn_Description" xml:space="preserve">
+    <value>Every character can summon spectres of a warrior, a mage and an elf (/espectro). They follow their owner, buff and heal the owner, hunt the monsters around the owner and can't be hurt. They share the experience of the owner's kills, spend their points by percentages chosen by the owner and can be reset by the owner.</value>
+  </data>
+  <data name="SpectreConfiguration_MaximumActiveSpectres_Name" xml:space="preserve">
+    <value>Maximum active spectres</value>
+  </data>
+  <data name="SpectreConfiguration_MaximumActiveSpectres_Description" xml:space="preserve">
+    <value>The maximum number of spectres which a player can have summoned at the same time, one of each kind.</value>
+  </data>
+  <data name="SpectreConfiguration_ExperiencePercent_Name" xml:space="preserve">
+    <value>Experience percent</value>
+  </data>
+  <data name="SpectreConfiguration_ExperiencePercent_Description" xml:space="preserve">
+    <value>The experience which the summoned spectres of a player share, in percent of the experience which the player gets for a kill. With 100, one spectre gets the same experience as its owner, and three get a third of it each.</value>
+  </data>
+  <data name="SpectreConfiguration_WarpDistance_Name" xml:space="preserve">
+    <value>Warp distance</value>
+  </data>
+  <data name="SpectreConfiguration_WarpDistance_Description" xml:space="preserve">
+    <value>The distance to its owner above which a spectre is warped next to the owner instead of walking, e.g. after the owner used a warp.</value>
+  </data>
+  <data name="SpectreConfiguration_UnlimitedMana_Name" xml:space="preserve">
+    <value>Unlimited mana</value>
+  </data>
+  <data name="SpectreConfiguration_UnlimitedMana_Description" xml:space="preserve">
+    <value>If set, the spectres never run out of mana and ability, because they can't use potions.</value>
+  </data>
+  <data name="SpectreChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /espectro</value>
+  </data>
+  <data name="SpectreChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Summons, dismisses, resets and configures the spectres of the player. Needs the Spectres feature.</value>
+  </data>
 </root>

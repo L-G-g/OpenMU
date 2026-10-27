@@ -150,3 +150,37 @@ struct LootHost
 // bool StartLoot(const LootHost* host): se llama una vez, despues de StartStacks.
 using StartLootFunction = bool (*)(const LootHost* host);
 constexpr const char* StartLootName = "StartLoot";
+
+// --- Espectros (espectros.dll) ---
+// camera3d.dll carga espectros.dll si el archivo esta junto a ella y camera3d.ini no la desactiva
+// ([Espectros] Enabled=0), y llama a su funcion exportada StartEspectros, despues de loot.dll. espectros.dll
+// encadena el reparto de paquetes, el dibujo despues de la interfaz y el mouse de las ventanas a lo que haya
+// (por ejemplo loot.dll). El teclado lo recibe de camera3d.dll, en cada paso de logica.
+
+constexpr int EspectrosHostVersion = 1;
+
+// Se llama al empezar a dibujar cada cuadro de la escena principal.
+using BeforeRenderCallback = void (*)();
+
+// Se llama en cada paso de logica, despues de que el juego actualiza su tabla de estados de teclas (0 suelta,
+// 2 recien apretada, 3 apretada, 1 recien soltada); puede cambiar estados para que el juego no vea una tecla.
+using KeyTickCallback = void (*)(BYTE* keyStates);
+
+// Click derecho sobre un item equipable del inventario (lugar del servidor: 12 + fila * 8 + columna).
+// Devuelve true si lo usa (y el click derecho no hace nada mas).
+using RightClickFilter = bool (*)(int inventorySlot);
+
+// Lo que camera3d.dll le ofrece a espectros.dll.
+struct EspectrosHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Espectros]
+    void (*setBeforeRender)(BeforeRenderCallback callback);
+    void (*setRightClickFilter)(RightClickFilter filter);
+    void (*setKeyTick)(KeyTickCallback callback);
+};
+
+// bool StartEspectros(const EspectrosHost* host): se llama una vez, despues de StartLoot.
+using StartEspectrosFunction = bool (*)(const EspectrosHost* host);
+constexpr const char* StartEspectrosName = "StartEspectros";
