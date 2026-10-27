@@ -46,12 +46,12 @@ public class StatIncreaseResultPlugIn : IStatIncreaseResultPlugIn
 
         var statType = attribute.GetStatType();
         var updatedDependentMaximumStat = attribute == Stats.BaseEnergy
-            ? (ushort)this._player.Attributes![Stats.MaximumMana]
+            ? this._player.Attributes![Stats.MaximumMana].ToUInt16Clamped()
             : attribute == Stats.BaseVitality
-                ? (ushort)this._player.Attributes![Stats.MaximumHealth]
+                ? this._player.Attributes![Stats.MaximumHealth].ToUInt16Clamped()
                 : default;
-        var updatedMaximumShield = (ushort)this._player.Attributes![Stats.MaximumShield];
-        var updatedMaximumAbility = (ushort)this._player.Attributes[Stats.MaximumAbility];
+        var updatedMaximumShield = this._player.Attributes![Stats.MaximumShield].ToUInt16Clamped();
+        var updatedMaximumAbility = this._player.Attributes[Stats.MaximumAbility].ToUInt16Clamped();
 
         if (addedPoints == 0)
         {

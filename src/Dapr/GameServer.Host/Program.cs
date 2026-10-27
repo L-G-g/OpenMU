@@ -14,6 +14,7 @@ using MUnique.OpenMU.GameServer.Host;
 using MUnique.OpenMU.Interfaces;
 using MUnique.OpenMU.PlugIns;
 using MUnique.OpenMU.ServerClients;
+using MUnique.OpenMU.Telemetry;
 using MUnique.OpenMU.Web.Map;
 using GameServer = MUnique.OpenMU.GameServer.GameServer;
 
@@ -29,8 +30,10 @@ var plugInConfigurations = new List<PlugInConfiguration>();
 // Add services to the container.
 var services = builder.Services;
 services.AddSingleton<GameServer>()
+    .AddSingleton<DaprAppTokenAuthorizationFilter>()
+    .AddSingleton<AdministrationDeliveries>()
     .AddSingleton<IGameServer>(s => s.GetService<GameServer>()!)
-    .AddSingleton<IList<IManageableServer>>(s => new List<IManageableServer>() { s.GetService<GameServer>()! })
+    .AddSingleton<IList<IManageableServer>>(s => new List<IManageableServer> { s.GetService<GameServer>()! })
     .AddSingleton(s => s.GetService<GameServer>()!.Context)
     .AddSingleton<GameServerStatePublisher>()
     .AddSingleton<ConfigurationChangeMediator>()

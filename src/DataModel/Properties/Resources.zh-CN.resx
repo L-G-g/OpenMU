@@ -126,7 +126,7 @@
 		<value>服务器时区</value>
 	</data>
 	<data name="SystemConfiguration_TimeZoneId_Description" xml:space="preserve">
-		<value>用于解释定时活动（例如入侵、血色城堡、恶魔广场）时间的时区 ID。建议使用 IANA 时区 ID，例如“Asia/Shanghai”。留空时使用 UTC。</value>
+		<value>用于解释定时活动（例如入侵、血色城堡、恶魔广场）和攻城战日程的时间的时区 ID。建议使用 IANA 时区 ID，例如“Asia/Shanghai”。留空时使用 UTC。</value>
 	</data>
 	<data name="SystemConfiguration_Name" xml:space="preserve">
 		<value>系统配置</value>
@@ -138,7 +138,7 @@
 		<value>自动更新数据库结构</value>
 	</data>
 	<data name="SystemConfiguration_AutoUpdateSchema_Description" xml:space="preserve">
-		<value>一体化服务器（MUnique.OpenMU.Startup）启动时自动更新数据库结构。分布式部署需要通过管理后台手动执行更新。</value>
+		<value>一体化服务器（MUnique.OpenMU.Startup）启动时自动更新数据库结构，并应用必需的配置更新。分布式部署需要通过管理后台手动执行更新。</value>
 	</data>
     <data name="Slot" xml:space="preserve">
       <value>栏位</value>
@@ -243,4 +243,7 @@
   <data name="TerrainWithoutClientUpdate" xml:space="preserve"><value>不同步至客户端</value></data>
   <data name="ChatServerSummary" xml:space="preserve"><value>[聊天服务器 编号={0}，说明={1}]</value></data>
   <data name="ServerEndpointSummary" xml:space="preserve"><value>客户端：{0}；端口：{1}</value></data>
+  <data name="ItemRequirementFormulaSummary" xml:space="preserve"><value>{0}：{1} + 基础值 × (掉落等级 + 等级 × {2}) × {3} / 100</value></data>
+  <data name="ItemRequirementFormulaKeptBaseSummary" xml:space="preserve"><value>{0}：基础值</value></data>
+  <data name="ItemRequirementFormulaLevelBasisSummary" xml:space="preserve"><value>{0}：{1} + 基础值 × (等级需求，否则掉落等级 + 等级 × {2}) × {3} / 100</value></data>
 </root>

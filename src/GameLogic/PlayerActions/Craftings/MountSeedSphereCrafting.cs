@@ -59,6 +59,21 @@ public class MountSeedSphereCrafting : SimpleItemCraftingHandler
         return null;
     }
 
+    /// <summary>
+    /// Gets the level of the socket option for the specified seed sphere definition.
+    /// </summary>
+    /// <remarks>
+    /// The item level of a seed sphere defines the kind of option (see <see cref="SeedSphereCrafting"/>),
+    /// while the level of the option is defined by the sphere which was used to create the seed sphere.
+    /// The seed spheres are ordered by their sphere level, with one seed sphere per seed type.
+    /// </remarks>
+    /// <param name="seedSphereDefinition">The seed sphere definition.</param>
+    /// <returns>The level of the socket option, starting at 1.</returns>
+    internal static int GetSphereLevel(ItemDefinition seedSphereDefinition)
+    {
+        return ((seedSphereDefinition.Number - SeedSphereCrafting.SeedSphereNumberStart) / SeedSphereCrafting.SeedTypes) + 1;
+    }
+
     /// <inheritdoc />
     protected override async ValueTask<List<Item>> CreateOrModifyResultItemsAsync(IList<CraftingRequiredItemLink> requiredItems, Player player, byte socketSlot, byte successRate)
     {
@@ -97,22 +112,6 @@ public class MountSeedSphereCrafting : SimpleItemCraftingHandler
         }
 
         return new List<Item> { socketItem };
-    }
-
-    /// <summary>
-    /// Gets the level (1 to 5) of the sphere a seed sphere was made of.
-    /// </summary>
-    /// <remarks>
-    /// The level of the seed sphere item selects its option, so the level of the sphere has to be
-    /// taken from the item number instead: the seed spheres are numbered in blocks of one entry per
-    /// seed type, one block per sphere level (see <see cref="SeedSphereCrafting"/>). The socket option
-    /// level of a mounted seed sphere is this sphere level.
-    /// </remarks>
-    private static int GetSphereLevel(ItemDefinition seedSphereDefinition)
-    {
-        const int seedTypes = 6;
-        const int seedSphereNumberStart = 100;
-        return ((seedSphereDefinition.Number - seedSphereNumberStart) / seedTypes) + 1;
     }
 
     private IncreasableItemOption? GetPossibleBonusOption(Item socketItem)

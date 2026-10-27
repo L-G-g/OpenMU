@@ -144,7 +144,7 @@ internal class FixItemDataFromClientTest
         sphere4.Group = 12;
         sphere4.Number = 73;
         gameConfiguration.Items.Add(sphere4);
-        var seedSphereCrafting = gameConfiguration.Monsters.SelectMany(m => m.ItemCraftings).Single(c => c.Name == "Seed Sphere Creation");
+        var seedSphereCrafting = gameConfiguration.Monsters.SelectMany(m => m.ItemCraftings).Single(c => c.Number == 43); // Seed Sphere Creation
         seedSphereCrafting.SimpleCraftingSettings!.RequiredItems.Single(r => r.PossibleItems.Any(i => i.Number == 70)).PossibleItems.Add(sphere4);
 
         var seedSphere4 = context.CreateNew<ItemDefinition>();
