@@ -384,17 +384,17 @@ public sealed class Party : AsyncDisposable
                                    * attributes[Stats.TotalLevel]
                                    * player.GameContext.MasterExperienceRate
                                    * (attributes[Stats.MasterExperienceRate] + attributes[Stats.BonusExperienceRate]);
-            var exp = (int)await CalculateExperienceByPlugInsAsync(player, killed, true, masterExperience).ConfigureAwait(false);
+            var exp = await ApplyExperienceCalculationPlugInsAsync(player, killed, true, masterExperience).ConfigureAwait(false);
 
             await player.AddMasterExperienceAsync(exp, killed).ConfigureAwait(false);
             return exp;
         }
 
-        var experience = perLevel
-                         * attributes[Stats.Level]
-                         * player.GameContext.ExperienceRate
-                         * (attributes[Stats.ExperienceRate] + attributes[Stats.BonusExperienceRate]);
-        var normalExperience = (int)await CalculateExperienceByPlugInsAsync(player, killed, false, experience).ConfigureAwait(false);
+        var calculatedExperience = perLevel
+                                   * attributes[Stats.Level]
+                                   * player.GameContext.ExperienceRate
+                                   * (attributes[Stats.ExperienceRate] + attributes[Stats.BonusExperienceRate]);
+        var normalExperience = await ApplyExperienceCalculationPlugInsAsync(player, killed, false, calculatedExperience).ConfigureAwait(false);
 
         if (!isAtMaxLevel)
         {
@@ -408,19 +408,20 @@ public sealed class Party : AsyncDisposable
     }
 
     /// <summary>
-    /// Lets the <see cref="IExperienceCalculationPlugIn"/>s modify the experience share of a party member,
-    /// like they do for the experience of a kill without a party.
+    /// Lets the <see cref="IExperienceCalculationPlugIn"/>s modify the experience of a party member,
+    /// as it's done for a solo kill (see <see cref="PlayerExperience.CalculateAfterKillAsync"/>).
+    /// Otherwise, bonuses which are implemented as such a plugin would be lost in a party.
     /// </summary>
-    private static async ValueTask<double> CalculateExperienceByPlugInsAsync(Player player, IAttackable killed, bool isMasterExperience, double experience)
+    private static async ValueTask<int> ApplyExperienceCalculationPlugInsAsync(Player player, IAttackable killed, bool isMasterExperience, double experience)
     {
-        if (player.GameContext.PlugInManager.GetPlugInPoint<IExperienceCalculationPlugIn>() is not { } plugInPoint)
+        if (player.GameContext.PlugInManager.GetPlugInPoint<IExperienceCalculationPlugIn>() is { } plugInPoint)
         {
-            return experience;
+            var args = new ExperienceCalculationArgs(killed, isMasterExperience, experience);
+            await plugInPoint.CalculateExperienceAsync(player, args).ConfigureAwait(false);
+            experience = args.Experience;
         }
 
-        var args = new ExperienceCalculationArgs(killed, isMasterExperience, experience);
-        await plugInPoint.CalculateExperienceAsync(player, args).ConfigureAwait(false);
-        return args.Experience;
+        return (int)experience;
     }
 
     private async ValueTask ExitPartyAsync(IPartyMember member, byte index)

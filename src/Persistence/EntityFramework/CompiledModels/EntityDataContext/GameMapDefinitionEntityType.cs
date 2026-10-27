@@ -25,8 +25,8 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
                 "MUnique.OpenMU.Persistence.EntityFramework.Model.GameMapDefinition",
                 typeof(MUnique.OpenMU.Persistence.EntityFramework.Model.GameMapDefinition),
                 baseEntityType,
-                propertyCount: 9,
-                navigationCount: 8,
+                propertyCount: 11,
+                navigationCount: 9,
                 foreignKeyCount: 3,
                 unnamedIndexCount: 3,
                 keyCount: 1);
@@ -71,6 +71,22 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
                 typeof(Guid?),
                 nullable: true);
             gameConfigurationId.AddAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
+
+            var introducedIn = runtimeEntityType.AddProperty(
+                "IntroducedIn",
+                typeof(MUnique.OpenMU.DataModel.Configuration.GameVersion),
+                propertyInfo: typeof(MUnique.OpenMU.DataModel.Configuration.GameMapDefinition).GetProperty("IntroducedIn", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+                fieldInfo: typeof(MUnique.OpenMU.DataModel.Configuration.GameMapDefinition).GetField("<IntroducedIn>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly));
+            introducedIn.SetSentinelFromProviderValue(0);
+            introducedIn.AddAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
+
+            var isActive = runtimeEntityType.AddProperty(
+                "IsActive",
+                typeof(bool),
+                propertyInfo: typeof(MUnique.OpenMU.DataModel.Configuration.GameMapDefinition).GetProperty("IsActive", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+                fieldInfo: typeof(MUnique.OpenMU.DataModel.Configuration.GameMapDefinition).GetField("<IsActive>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+                sentinel: false);
+            isActive.AddAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
             var name = runtimeEntityType.AddProperty(
                 "Name",

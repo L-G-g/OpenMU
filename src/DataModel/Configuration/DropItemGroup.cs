@@ -125,6 +125,6 @@ public partial class DropItemGroup
     /// <inheritdoc />
     public override string ToString()
     {
-        return this.Description;
+        return this.Description.ToString() ?? string.Empty;
     }
 }
