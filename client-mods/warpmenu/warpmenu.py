@@ -1,11 +1,14 @@
 """Rewrites the warp menu (M) of the Season 6 1.04 client for the map level ladder of the server.
 
-- Orders the maps by the ladder (Lorencia, Noria, Elbeland, Devias, ..., Raklion, then Vulcanus and Arena).
+- Orders the maps by the ladder (Lorencia, Noria, Elbeland, Devias, ..., Raklion, then Crywolf, Vulcanus and Arena).
+- Adds the entries which the server has but the client files don't (Crywolf). The files have room for 50 entries,
+  and the client reads as many as the count at the start of the file says.
 - Sets the minimum levels of the maps which changed on the server.
 - Replaces the zen cost by the danger level of the map (the server doesn't charge zen for warps anymore),
   and renames the "Cost" column to "Danger level".
 
-The index and the gate of each entry are never changed, because the client sends the index to the server.
+The index and the gate of each existing entry are never changed, because the client sends the index to the server.
+Added entries use the index and gate of the warp list of the server (see VersionSeasonSix/Gates.cs).
 
 Usage: python warpmenu.py <client folder>
 The original files are kept next to the changed ones as *.bak, and the script always reads the originals,
@@ -24,15 +27,21 @@ TEXT_COST = 'Danger level'
 
 # The order of the entries by their index: Lorencia, Noria, Elbeland 1-3, Devias 1-4, Dungeon 1-3, Lost Tower 1-7,
 # Atlans 1-3, Tarkan 1-2, Aida 1-2, Icarus, Kanturu Ruins 1-3, Kanturu Relics, Karutan 1-2,
-# Swamp of Calmness, Raklion, then Vulcanus, which isn't on the ladder, and Arena.
+# Swamp of Calmness, Raklion, then Crywolf and Vulcanus, which aren't on the ladder, and Arena.
 # Unknown entries keep their relative order after these.
 ORDER = [2, 3, 31, 32, 43, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 18, 19, 20, 11, 12, 13, 21, 22, 25, 27, 23,
-         28, 29, 45, 30, 46, 47, 33, 34, 42, 1]
+         28, 29, 45, 30, 46, 47, 33, 34, 26, 42, 1]
+
+# The entries which are added when the file doesn't have them: index -> (name, map name, level, gate).
+# The level is the one of the server, the gate is the Crywolf spawn gate of the server.
+ADDED = {26: ('Crywolf', 'Crywolf_Fortress', 190, 118)}
+MAX_LEVEL = 400
 
 # The minimum levels which changed on the server, by index.
 LEVELS = {28: 180, 29: 180, 45: 180, 46: 240, 47: 250, 33: 270, 34: 280}
 
-# The danger level, by index. Entries which aren't listed (e.g. Arena and Vulcanus, which isn't on the ladder) get 0.
+# The danger level, by index. Entries which aren't listed (e.g. Arena, and Crywolf and Vulcanus, which aren't on
+# the ladder) get 0.
 DANGER = {}
 for danger, indexes in enumerate([
         [2, 3, 31, 32, 43],  # Lorencia, Noria, Elbeland
@@ -72,6 +81,17 @@ def convert_movereq(path):
     records = [bytearray(xor(body[i * RECORD_SIZE:(i + 1) * RECORD_SIZE])) for i in range(count)]
     rest = body[count * RECORD_SIZE:]
 
+    existing = {struct.unpack_from('<i', record, 0)[0] for record in records}
+    for index, (name, map_name, level, gate) in ADDED.items():
+        if index in existing:
+            continue
+        if len(rest) < RECORD_SIZE:
+            sys.exit(f'{path}: no room to add entry {index}')
+        records.append(bytearray(struct.pack('<i32s32siiii', index, name.encode('latin1'), map_name.encode('latin1'),
+                                             level, MAX_LEVEL, 0, gate)))
+        rest = rest[RECORD_SIZE:]
+        count += 1
+
     def sort_key(item):
         position, record = item
         index = struct.unpack_from('<i', record, 0)[0]
@@ -85,7 +105,7 @@ def convert_movereq(path):
         struct.pack_into('<i', record, 76, DANGER.get(index, 0))
 
     with open(path, 'wb') as f:
-        f.write(data[:4] + b''.join(xor(bytes(r)) for r in ordered) + rest)
+        f.write(struct.pack('<i', count) + b''.join(xor(bytes(r)) for r in ordered) + rest)
     print(f'{path}: {count} entries')
 
 
