@@ -395,6 +395,48 @@ tirada, hasta 10 s después del último; dos tiradas pueden terminar juntas), la
 función que usa el juego con los datos del item del paquete) y su nivel; llama al reparto y deja todo
 como estaba. Así el mensaje dice el nombre correcto.
 
+## Espectros (espectros.dll)
+
+Con el plugin "Spectres" de OpenMU cada personaje puede invocar espectros de guerrero, mago y elfa (bots
+que lo siguen, lo buffean y cazan con él). Sin esta DLL se manejan con el comando `/espectro`. Con
+`espectros.dll` la tecla S abre una ventana a la izquierda de la pantalla con una pestaña por espectro:
+invocar o retirar, resetear, los 12 items equipados (dibujados en 3D; un click lo quita y lo devuelve al
+inventario), las estadísticas y los porcentajes con los que reparte sus puntos (+ y -, y Aplicar cuando
+suman 100). Con la ventana abierta, un click derecho sobre un item equipable del inventario se lo equipa
+al espectro de la pestaña elegida. Los espectros se ven transparentes. `camera3d.dll` la carga si está en
+la misma carpeta, después de `loot.dll` (`src/loadespectros.cpp`):
+
+```
+[Espectros]
+Enabled=1               ; 0: no se carga espectros.dll
+Alpha=0.5               ; opacidad de los espectros (1: como un jugador)
+Left=10                 ; esquina de la ventana, en coordenadas de 640x480
+Top=40
+```
+
+El servidor (vista "Show Spectres View (espectros.dll)", `ShowSpectresViewPlugIn`) manda paquetes que el
+`main.exe` original ignora:
+
+- `C1 05 FD 01 [objeto, 2 bytes big endian]`: el objeto es un espectro (se repite cada 2 segundos).
+- `C2 [largo] FD 00` y una entrada por espectro: invocado, nombre, nivel, resets, puntos, estadísticas,
+  porcentajes y los 12 items (tipo, los 12 bytes del item y su descripción).
+
+La ventana contesta con `/espectro <g|m|e>`, `/espectro reset`, `/espectro equipar <clase> <lugar del
+inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `/espectro panel` (al abrirla).
+
+`src/espectros/espectros.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79`, `0x004D9CCC`, `0x00860998` | Reparto de paquetes, dibujo después de la interfaz y eventos del mouse de las ventanas (ver `loot.dll`) | Se encadenan a lo que haya. `0xFD` se queda en la DLL |
+| `0x00860910` | "Mouse sobre la interfaz" | Salto a la DLL: 1 con el mouse sobre la ventana; si no, salta a lo que había (`loot.dll`) o hace lo mismo que la original |
+| `0x00D45094` | `CNewUIHotKey` vtable `[3]`: `UpdateKeyEvent` (`0x007D3320`), las teclas rápidas; el administrador de ventanas la llama solo si ninguna ventana usó la tecla (por ejemplo el chat) | Se reemplaza: S (recién apretada, `0x00790F20`) abre o cierra la ventana; Esc la cierra |
+| `0x005CF310` | Dibujo 3D de un item (`x, y, ancho, alto, tipo, nivel, exc, ancient, agarrado`), el del item agarrado | Dibuja los items equipados, con la preparación de `0x004D5C60` (vista `0x006363D0`, perspectiva `0x006358A0`, giro de la cámara `0x00635830`) |
+| OBJECT `+0x98` | Alfa del objeto (CHARACTER `+0x308`) | Al empezar cada cuadro (`camera3d.dll`) se baja al de `Alpha` para los espectros; después de la interfaz vuelve al que tenía |
+
+`camera3d.dll` le avisa al empezar cada cuadro y le pregunta antes de equipar un item con click derecho
+(`src/rightclick.cpp`): con la ventana abierta, el item va al espectro.
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -409,13 +451,15 @@ como estaba. Así el mensaje dice el nombre correcto.
 - `src/loadresets.cpp`: carga de `resets.dll` si está junto a la DLL.
 - `src/loadstacks.cpp`: carga de `stacks.dll` si está junto a la DLL.
 - `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
+- `src/loadespectros.cpp`: carga de `espectros.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
-  `resets.dll`, `stacks.dll` y `loot.dll`.
+  `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
 - `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
 - `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
+- `src/espectros/`: `espectros.dll`, ventana de espectros (tecla S) y espectros transparentes.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -431,12 +475,13 @@ como estaba. Así el mensaje dice el nombre correcto.
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -448,7 +493,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll` y `loot.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

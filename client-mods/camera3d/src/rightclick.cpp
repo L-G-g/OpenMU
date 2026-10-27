@@ -61,6 +61,15 @@ namespace
     constexpr DWORD ItemCellX = 0x43, ItemCellY = 0x44;
 
     LogFunction g_log = nullptr;
+    RightClickFilter g_filter = nullptr; // espectros.dll: equipar al espectro en lugar de al personaje
+
+    // Lo que hace un click derecho.
+    enum Action
+    {
+        ActionNone = 0,     // nada: el juego lo procesa como siempre
+        ActionSequence = 1, // se simula un arrastre
+        ActionConsumed = 2, // lo uso otra DLL (filtro)
+    };
 
     // --- Secuencia simulada: una lista de pasos, uno por cuadro ---
     struct Step
@@ -302,18 +311,18 @@ namespace
         g_stepIndex = 0;
     }
 
-    // Decide que hacer con el click derecho. true si se inicio una secuencia (y el click se consume).
-    bool TryStartAction()
+    // Decide que hacer con el click derecho. Con una secuencia o el filtro, el click se consume.
+    Action TryStartAction()
     {
         if (*PickedItem != 0)
         {
-            return false; // ya hay un item agarrado
+            return ActionNone; // ya hay un item agarrado
         }
 
         const Windows windows = FindWindows();
         if (!IsVisible(windows.inventory))
         {
-            return false;
+            return ActionNone;
         }
 
         const DWORD inventoryGrid = Read<DWORD>(windows.inventory + InvGrids);
@@ -344,6 +353,14 @@ namespace
         // 1) Item del inventario
         if (GetHoveredItem(inventoryGrid, type, from))
         {
+            bool unused = false;
+            const DWORD hoveredItem = Read<DWORD>(inventoryGrid + GridHoveredItem);
+            if (g_filter != nullptr && targetGrid == 0 && EquipSlotFor(type, unused) >= 0
+                && g_filter(12 + Read<BYTE>(hoveredItem + ItemCellY) * 8 + Read<BYTE>(hoveredItem + ItemCellX)))
+            {
+                return ActionConsumed;
+            }
+
             if (targetGrid != 0)
             {
                 if (sell)
@@ -354,7 +371,7 @@ namespace
                 else if (!FindFreeSpot(targetGrid, GetItemSize(type), to))
                 {
                     g_log("Click derecho: no hay lugar en la ventana abierta.");
-                    return false;
+                    return ActionNone;
                 }
             }
             else
@@ -363,7 +380,7 @@ namespace
                 int slot = EquipSlotFor(type, alternative);
                 if (slot < 0)
                 {
-                    return false; // no se equipa: que el juego lo use (pociones, etc.)
+                    return ActionNone; // no se equipa: que el juego lo use (pociones, etc.)
                 }
 
                 if (EquippedType(slot) != -1 && alternative && EquippedType(slot + 1) == -1)
@@ -374,7 +391,7 @@ namespace
                 if (EquippedType(slot) != -1)
                 {
                     g_log("Click derecho: el casillero %d ya esta ocupado.", slot);
-                    return false;
+                    return ActionNone;
                 }
 
                 to = EquipSlotCenter(windows.inventory, slot);
@@ -382,7 +399,7 @@ namespace
 
             g_log("Click derecho: item %d (%d,%d) -> (%d,%d)", type, from.x, from.y, to.x, to.y);
             StartSequence(from, to);
-            return true;
+            return ActionSequence;
         }
 
         // 2) Item equipado -> inventario
@@ -392,13 +409,13 @@ namespace
             if (!FindFreeSpot(inventoryGrid, GetItemSize(type), to))
             {
                 g_log("Click derecho: no hay lugar en el inventario.");
-                return false;
+                return ActionNone;
             }
 
             from = EquipSlotCenter(windows.inventory, equipSlot);
             g_log("Click derecho: desequipar %d (casillero %d)", type, equipSlot);
             StartSequence(from, to);
-            return true;
+            return ActionSequence;
         }
 
         // 3) Item de la ventana del NPC -> inventario
@@ -407,15 +424,15 @@ namespace
             if (!FindFreeSpot(inventoryGrid, GetItemSize(type), to))
             {
                 g_log("Click derecho: no hay lugar en el inventario.");
-                return false;
+                return ActionNone;
             }
 
             g_log("Click derecho: item %d de la ventana al inventario", type);
             StartSequence(from, to);
-            return true;
+            return ActionSequence;
         }
 
-        return false;
+        return ActionNone;
     }
 
     // Siguiente estado de una tecla segun si esta apretada, igual que lo calcula el juego.
@@ -429,7 +446,7 @@ namespace
         return (state == KeyPressed || state == KeyHeld) ? KeyReleased : KeyUp;
     }
 
-    bool StartActionSafely()
+    Action StartActionSafely()
     {
         __try
         {
@@ -438,7 +455,7 @@ namespace
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
             g_log("Click derecho: error leyendo la memoria del juego; se ignora.");
-            return false;
+            return ActionNone;
         }
     }
 
@@ -507,12 +524,16 @@ namespace
             return;
         }
 
-        if (right == KeyPressed && StartActionSafely())
+        const Action action = right == KeyPressed ? StartActionSafely() : ActionNone;
+        if (action != ActionNone)
         {
             g_rightConsumed = true;
             __try
             {
-                RunSequenceNow(keyStates);
+                if (action == ActionSequence)
+                {
+                    RunSequenceNow(keyStates);
+                }
             }
             __except (EXCEPTION_EXECUTE_HANDLER)
             {
@@ -543,6 +564,11 @@ bool RightClickFilterMessage(UINT message)
 {
     // Mientras se simula el arrastre, el mouse real no tiene que mover el puntero del juego.
     return IsRunning() && (message == WM_MOUSEMOVE || message == WM_LBUTTONDOWN || message == WM_LBUTTONUP);
+}
+
+void SetRightClickFilter(RightClickFilter filter)
+{
+    g_filter = filter;
 }
 
 bool InstallRightClick(LogFunction log)
