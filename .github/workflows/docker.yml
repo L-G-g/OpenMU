@@ -54,8 +54,6 @@ jobs:
             dockerfile: src/Dapr/CentralServer.Host/Dockerfile
           - image: openmu-game
             dockerfile: src/Dapr/GameServer.Host/Dockerfile
-          - image: openmu-discord
-            dockerfile: src/Dapr/Discord.Host/Dockerfile
 
     steps:
       - uses: actions/checkout@v4
