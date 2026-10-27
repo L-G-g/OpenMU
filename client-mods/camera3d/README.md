@@ -399,7 +399,7 @@ como estaba. Así el mensaje dice el nombre correcto.
 
 Con el plugin "Spectres" de OpenMU cada personaje puede invocar espectros de guerrero, mago y elfa (bots
 que lo siguen, lo buffean y cazan con él). Sin esta DLL se manejan con el comando `/espectro`. Con
-`espectros.dll` la tecla S abre una ventana a la izquierda de la pantalla con una pestaña por espectro:
+`espectros.dll` Shift+S abre una ventana a la izquierda de la pantalla con una pestaña por espectro:
 invocar o retirar, resetear, los 12 items equipados (dibujados en 3D; un click lo quita y lo devuelve al
 inventario), las estadísticas y los porcentajes con los que reparte sus puntos (+ y -, y Aplicar cuando
 suman 100). Con la ventana abierta, un click derecho sobre un item equipable del inventario se lo equipa
@@ -430,12 +430,15 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 |---|---|---|
 | `0x0065FD79`, `0x004D9CCC`, `0x00860998` | Reparto de paquetes, dibujo después de la interfaz y eventos del mouse de las ventanas (ver `loot.dll`) | Se encadenan a lo que haya. `0xFD` se queda en la DLL |
 | `0x00860910` | "Mouse sobre la interfaz" | Salto a la DLL: 1 con el mouse sobre la ventana; si no, salta a lo que había (`loot.dll`) o hace lo mismo que la original |
-| `0x00D45094` | `CNewUIHotKey` vtable `[3]`: `UpdateKeyEvent` (`0x007D3320`), las teclas rápidas; el administrador de ventanas la llama solo si ninguna ventana usó la tecla (por ejemplo el chat) | Se reemplaza: S (recién apretada, `0x00790F20`) abre o cierra la ventana; Esc la cierra |
+| `0x00D45094` | `CNewUIHotKey` vtable `[3]`: `UpdateKeyEvent` (`0x007D3320`), las teclas rápidas; el administrador de ventanas la llama solo si ninguna ventana usó la tecla (por ejemplo el chat) | Se reemplaza: Esc (recién apretada, `0x00790F20`) cierra la ventana. Que se llame indica que se está en el juego |
 | `0x005CF310` | Dibujo 3D de un item (`x, y, ancho, alto, tipo, nivel, exc, ancient, agarrado`), el del item agarrado | Dibuja los items equipados, con la preparación de `0x004D5C60` (vista `0x006363D0`, perspectiva `0x006358A0`, giro de la cámara `0x00635830`) |
 | OBJECT `+0x98` | Alfa del objeto (CHARACTER `+0x308`) | Al empezar cada cuadro (`camera3d.dll`) se baja al de `Alpha` para los espectros; después de la interfaz vuelve al que tenía |
 
 `camera3d.dll` le avisa al empezar cada cuadro y le pregunta antes de equipar un item con click derecho
-(`src/rightclick.cpp`): con la ventana abierta, el item va al espectro.
+(`src/rightclick.cpp`): con la ventana abierta, el item va al espectro. También le pasa las teclas después
+de que el juego las actualiza y antes de que las vean las ventanas: con Shift sostenido y S recién apretada
+abre o cierra la ventana y borra la S, así el inventario abierto no abre la tienda personal (no mientras se
+escribe en el chat, cuando el foco está en su cuadro de texto).
 
 ## Archivos
 
@@ -459,7 +462,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
 - `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
-- `src/espectros/`: `espectros.dll`, ventana de espectros (tecla S) y espectros transparentes.
+- `src/espectros/`: `espectros.dll`, ventana de espectros (Shift+S) y espectros transparentes.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva

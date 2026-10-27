@@ -62,6 +62,10 @@ void SetEspectrosBeforeRender(BeforeRenderCallback callback);
 void EspectrosBeforeRender();
 void SetRightClickFilter(RightClickFilter filter);
 
+// Espectros: el filtro de teclas (Shift+S), despues de la actualizacion de teclas del juego (rightclick.cpp).
+void SetEspectrosKeyFilter(KeyFilter filter);
+void EspectrosKeyFilter(BYTE* keyStates);
+
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
 // despues de dibujar vuelve a poner las reales.

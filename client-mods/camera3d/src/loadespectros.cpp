@@ -2,8 +2,8 @@
 //
 // Si espectros.dll esta junto a camera3d.dll y camera3d.ini no la desactiva ([Espectros] Enabled=0), se carga
 // despues de loot.dll y se le pasa el log, la ruta de camera3d.ini, el aviso al empezar cada cuadro y el filtro
-// del click derecho del inventario. espectros.dll muestra la ventana de espectros (tecla S) y dibuja a los
-// espectros transparentes.
+// del click derecho del inventario y el filtro de teclas. espectros.dll muestra la ventana de espectros (Shift+S) y
+// dibuja a los espectros transparentes.
 //
 // Sin espectros.dll el cliente funciona igual que antes (los espectros se manejan con el comando /espectro).
 
@@ -58,12 +58,27 @@ void LoadEspectros(LogFunction log)
     host.iniPath = iniPath;
     host.setBeforeRender = &SetEspectrosBeforeRender;
     host.setRightClickFilter = &SetRightClickFilter;
+    host.setKeyFilter = &SetEspectrosKeyFilter;
     start(&host);
 }
 
 namespace
 {
     BeforeRenderCallback g_espectrosBeforeRender = nullptr;
+    KeyFilter g_espectrosKeyFilter = nullptr;
+}
+
+void SetEspectrosKeyFilter(KeyFilter filter)
+{
+    g_espectrosKeyFilter = filter;
+}
+
+void EspectrosKeyFilter(BYTE* keyStates)
+{
+    if (g_espectrosKeyFilter != nullptr)
+    {
+        g_espectrosKeyFilter(keyStates);
+    }
 }
 
 void SetEspectrosBeforeRender(BeforeRenderCallback callback)

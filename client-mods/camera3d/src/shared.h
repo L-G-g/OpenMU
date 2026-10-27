@@ -158,10 +158,14 @@ constexpr const char* StartLootName = "StartLoot";
 // (por ejemplo loot.dll), y reemplaza la actualizacion de teclas de las teclas rapidas (vtable 0x00D45088),
 // que no toca ninguna otra DLL.
 
-constexpr int EspectrosHostVersion = 1;
+constexpr int EspectrosHostVersion = 2;
 
 // Se llama al empezar a dibujar cada cuadro de la escena principal.
 using BeforeRenderCallback = void (*)();
+
+// Se llama en cada paso de logica, despues de que el juego actualiza sus teclas y antes de que las vean las
+// ventanas; puede cambiar el estado de las teclas (0 arriba, 1 soltada, 2 apretada, 3 sostenida).
+using KeyFilter = void (*)(BYTE* keyStates);
 
 // Click derecho sobre un item equipable del inventario (lugar del servidor: 12 + fila * 8 + columna).
 // Devuelve true si lo usa (y el click derecho no hace nada mas).
@@ -175,6 +179,7 @@ struct EspectrosHost
     const char* iniPath; // camera3d.ini, para leer la seccion [Espectros]
     void (*setBeforeRender)(BeforeRenderCallback callback);
     void (*setRightClickFilter)(RightClickFilter filter);
+    void (*setKeyFilter)(KeyFilter filter);
 };
 
 // bool StartEspectros(const EspectrosHost* host): se llama una vez, despues de StartLoot.

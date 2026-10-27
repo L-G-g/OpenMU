@@ -10,7 +10,7 @@
 //     invocar, retirar, equipar, quitar, cambiar porcentajes, resetear y subir de nivel, y al pedirlo.
 // La ventana contesta con el comando de chat /espectro, que el servidor ya entiende.
 //
-// La ventana (tecla S) muestra una pestana por espectro: invocar o retirar, resetear, los items equipados (un click
+// La ventana (Shift+S) muestra una pestana por espectro: invocar o retirar, resetear, los items equipados (un click
 // lo quita y lo devuelve al inventario), las estadisticas y los porcentajes con los que el espectro reparte sus
 // puntos (+ y -, y Aplicar cuando suman 100). Con la ventana abierta, un click derecho sobre un item equipable del
 // inventario se lo equipa al espectro de la pestana elegida.
@@ -20,10 +20,14 @@
 //     los eventos del mouse de las ventanas (0x00860998) ya pueden estar redirigidos por otras DLL (por ejemplo
 //     loot.dll): se lee a donde apuntan y se llama a eso. El "mouse sobre la interfaz" (0x00860910) tambien puede
 //     estar reemplazado por un salto (loot.dll): se salta a eso, o si no se hace lo mismo que el original.
-//   - Tecla S: las teclas rapidas (CNewUIHotKey, vtable 0x00D45088) se procesan en su UpdateKeyEvent ([3],
+//   - Shift+S: camera3d.dll pasa las teclas despues de que el juego las actualiza y antes de que las vean las
+//     ventanas (filtro de teclas): con Shift sostenido y S recien apretada se abre o se cierra la ventana y la S se
+//     borra, asi el inventario no abre la tienda personal. No mientras se escribe en el chat (el foco esta en su
+//     cuadro de texto) ni fuera del juego.
+//   - Esc: las teclas rapidas (CNewUIHotKey, vtable 0x00D45088) se procesan en su UpdateKeyEvent ([3],
 //     0x007D3320), que el administrador de ventanas llama solo si ninguna ventana se quedo con la tecla (por
-//     ejemplo el chat mientras se escribe). Se reemplaza esa entrada de la vtable: con S (recien apretada,
-//     0x00790F20) se abre o se cierra la ventana; con Esc y la ventana abierta, se cierra.
+//     ejemplo el chat mientras se escribe). Se reemplaza esa entrada de la vtable: con Esc (recien apretada,
+//     0x00790F20) y la ventana abierta, se cierra. Que se llame marca que se esta en el juego.
 //   - Items: se dibujan en 3D con la funcion del juego (0x005CF310, la del item agarrado con el mouse), con la misma
 //     preparacion que hace el juego para ese item (0x004D5C60): matrices, vista y perspectiva propias.
 //   - Transparencia: al empezar cada cuadro (camera3d.dll) el alfa de los espectros a la vista (OBJECT +0x98, el
@@ -56,6 +60,8 @@ namespace
     constexpr DWORD SendChatFunction = 0x005BDE40;     // void __cdecl (const char* texto): C1 00
     constexpr DWORD IsReleaseFunction = 0x00790F00;    // bool __cdecl(int tecla): recien soltada
     constexpr DWORD IsPressFunction = 0x00790F20;      // bool __cdecl(int tecla): recien apretada
+    HWND* const MainWindow = reinterpret_cast<HWND*>(0x00E8C578);
+    constexpr BYTE KeyUp = 0, KeyPressed = 2, KeyHeld = 3; // estado de las teclas del juego
     constexpr DWORD SetFontFunction = 0x00420120;      // void __thiscall CUIRenderText::SetFont(HFONT)
     constexpr DWORD RenderTextFunction = 0x00420150;   // void __thiscall (x, y, texto, ancho, alto, orden, SIZE*)
     constexpr DWORD EnableAlphaBlendFunction = 0x00635FD0; // void __cdecl(bool): mezcla con alfa (estado del juego)
@@ -102,6 +108,7 @@ namespace
     constexpr int EntryHeaderLength = 41;
     constexpr int EntryLength = EntryHeaderLength + SlotCount * SlotLength;
     constexpr DWORD MarkDuration = 5000; // la marca se repite cada 2 segundos
+    constexpr DWORD HotKeysSeenDuration = 1000; // las teclas rapidas se procesan en cada paso del juego
 
     using DispatchType = int(__cdecl*)(int, BYTE*, int, int);
     using DrawType = void(__cdecl*)();
@@ -149,6 +156,7 @@ namespace
     HotKeyType g_nextHotKey = nullptr;
     std::deque<std::string> g_pendingChat;
     bool g_open = false;
+    DWORD g_hotKeysSeen = 0; // ultima vez que el juego proceso las teclas rapidas
     bool g_mouseOver = false;
     bool g_received = false;
     int g_tab = 0;
@@ -595,17 +603,34 @@ namespace
         return manager != nullptr && *reinterpret_cast<const DWORD*>(manager + WindowManagerMouse) != 0 ? 1 : 0;
     }
 
+    // Shift+S: antes de que las ventanas vean la tecla, porque con el inventario abierto la S abre la tienda personal.
+    // Solo en el juego (las teclas rapidas se procesaron hace poco) y sin escribir en el chat (el foco esta en su
+    // cuadro de texto).
+    void KeyFilterHook(BYTE* keyStates)
+    {
+        const BYTE shift = keyStates[VK_SHIFT];
+        if (keyStates['S'] != KeyPressed || (shift != KeyPressed && shift != KeyHeld)
+            || GetTickCount() - g_hotKeysSeen > HotKeysSeenDuration)
+        {
+            return;
+        }
+
+        const HWND focus = GetFocus();
+        if (focus != nullptr && focus != *MainWindow)
+        {
+            return;
+        }
+
+        keyStates['S'] = KeyUp;
+        SetOpen(!g_open);
+    }
+
     bool __fastcall HotKeyHook(BYTE* self, void* unused)
     {
+        g_hotKeysSeen = GetTickCount();
         if (self != nullptr && self[HotKeyBlocked] != 1)
         {
             const auto isPress = reinterpret_cast<KeyStateType>(IsPressFunction);
-            if (isPress('S'))
-            {
-                SetOpen(!g_open);
-                return false;
-            }
-
             if (g_open && isPress(VK_ESCAPE))
             {
                 SetOpen(false);
@@ -997,7 +1022,8 @@ extern "C" __declspec(dllexport) bool StartEspectros(const EspectrosHost* host)
 
     host->setBeforeRender(&BeforeRender);
     host->setRightClickFilter(&RightClickHook);
-    g_log("Espectros listos (tecla S, alfa %.2f).", g_alpha);
+    host->setKeyFilter(&KeyFilterHook);
+    g_log("Espectros listos (Shift+S, alfa %.2f).", g_alpha);
     return true;
 }
 

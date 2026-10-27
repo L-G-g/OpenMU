@@ -498,6 +498,7 @@ namespace
         using KeyUpdateType = void(__fastcall*)(BYTE*);
         reinterpret_cast<KeyUpdateType>(KeyUpdateFunction)(keyStates);
         TestToolsTick(keyStates);
+        EspectrosKeyFilter(keyStates);
 
         const BYTE right = keyStates[VK_RBUTTON];
         if (g_rightConsumed)

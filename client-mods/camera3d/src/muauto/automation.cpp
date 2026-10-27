@@ -12,7 +12,8 @@
 //   move X Y               mover el mouse
 //   click X Y [right]      click (izquierdo por defecto)
 //   down X Y [right]       apretar y dejar apretado; up [right] para soltar
-//   key TECLA              apretar y soltar: nombre (enter, tab, esc, space, f1..f12, up, ...) o letra
+//   key TECLA              apretar y soltar: nombre (enter, tab, esc, space, f1..f12, up, ...) o letra;
+//                          shift+TECLA con Shift sostenido mientras tanto
 //   text TEXTO             escribir texto en la caja de texto activa
 //   wait N                 esperar N pasos de logica (40 ms cada uno)
 //   shot RUTA.bmp [N]      captura del proximo cuadro (o N cuadros despues)
@@ -86,6 +87,7 @@ namespace
     // Tecla o boton que la automatizacion mantiene: se simula apretar, sostener y soltar.
     int g_heldKey = -1;
     int g_releaseKey = -1;
+    bool g_heldShift = false; // key shift+TECLA: Shift se sostiene mientras la tecla
 
     // Pantallas de login y seleccion de personaje: usan otro lector del mouse (CInput, 0x00E7C228,
     // actualizado por 0x00407C70 desde 0x004D9DCC) que toma el cursor real de Windows y no ve nada si la
@@ -311,6 +313,13 @@ namespace
         }
         else if (_stricmp(name, "key") == 0)
         {
+            g_heldShift = _strnicmp(rest, "shift+", 6) == 0;
+            if (g_heldShift)
+            {
+                rest += 6;
+                keyStates[VK_SHIFT] = KeyPressed;
+            }
+
             const int key = KeyFromName(rest);
             if (key < 0)
             {
@@ -617,6 +626,12 @@ void AutomationTick(BYTE* keyStates)
             keyStates[g_releaseKey] = KeyReleased;
             SetButtonFlags(g_releaseKey, false);
             g_releaseKey = -1;
+            if (g_heldShift)
+            {
+                keyStates[VK_SHIFT] = KeyReleased;
+                g_heldShift = false;
+            }
+
             return;
         }
 
