@@ -204,7 +204,7 @@ internal class ItemStatProfilesDataTest
         {
             "armor: 274",
             "book: 3",
-            "default: 173",
+            "default: 159", // PeroniaMU: without the spheres 4 and 5 and their 12 seed spheres
             "firstTierWing: 4",
             "helper: 27",
             "orb: 12",

@@ -444,13 +444,14 @@ public static class IntroducedGameVersions
         (12, 65, 65, GameVersion.Season6Episode1), // Seed (Earth)
         (12, 70, 70, GameVersion.Season4Episode1), // Sphere (Mono)
         (12, 71, 72, GameVersion.Season5Episode4), // Sphere (Di) - Sphere (Tri)
-        (12, 73, 74, GameVersion.Season6Episode1), // Sphere (4) - Sphere (5)
         (12, 100, 104, GameVersion.Season4Episode1), // Seed Sphere (Fire) (1) - Seed Sphere (Lightning) (1)
         (12, 105, 105, GameVersion.Season6Episode1), // Seed Sphere (Earth) (1)
         (12, 106, 110, GameVersion.Season5Episode4), // Seed Sphere (Fire) (2) - Seed Sphere (Lightning) (2)
         (12, 111, 111, GameVersion.Season6Episode1), // Seed Sphere (Earth) (2)
         (12, 112, 116, GameVersion.Season5Episode4), // Seed Sphere (Fire) (3) - Seed Sphere (Lightning) (3)
-        (12, 117, 129, GameVersion.Season6Episode1), // Seed Sphere (Earth) (3) - Seed Sphere (Earth) (5)
+        (12, 117, 117, GameVersion.Season6Episode1), // Seed Sphere (Earth) (3)
+
+        // PeroniaMU: the spheres 4 and 5 (12/73, 12/74) and their seed spheres (12/118 to 12/129) are not created, like in the client of season 6 episode 3.
         (12, 130, 134, GameVersion.Season5Episode2), // Small Cape of Lord - Small Wings of Satan
         (12, 135, 135, GameVersion.Season6Episode1), // Little Warrior's Cloak
         (13, 0, 2, GameVersion.Version075), // Guardian Angel - Horn of Uniria

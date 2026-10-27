@@ -7,6 +7,8 @@ namespace MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.Interfaces;
+using MUnique.OpenMU.Persistence.Initialization.Properties;
 
 /// <summary>
 /// Makes the monsters of the golden invasion stronger, lets each of them always drop its Box of Kundun,
@@ -101,7 +103,14 @@ internal static class StrongGoldenMobs
     private static void SetBoxOfKundun(IContext context, GameConfiguration gameConfiguration, MonsterDefinition monster, byte boxLevel)
     {
         var itemLevel = (byte)(BoxOfKundunFirstItemLevel + boxLevel - 1);
-        var description = $"Box of Kundun +{boxLevel}";
+        var description = boxLevel switch
+        {
+            1 => LocalizedString.FromResource(() => DropGroupDescriptions.BoxOfKundunPlus1),
+            2 => LocalizedString.FromResource(() => DropGroupDescriptions.BoxOfKundunPlus2),
+            3 => LocalizedString.FromResource(() => DropGroupDescriptions.BoxOfKundunPlus3),
+            4 => LocalizedString.FromResource(() => DropGroupDescriptions.BoxOfKundunPlus4),
+            _ => LocalizedString.FromResource(() => DropGroupDescriptions.BoxOfKundunPlus5),
+        };
         if (monster.DropItemGroups.FirstOrDefault(g => g.Chance >= 1 && g.PossibleItems.Any(IsBox)) is { } existing)
         {
             // The drop item groups of the boxes belong to one monster each, so they can be changed.

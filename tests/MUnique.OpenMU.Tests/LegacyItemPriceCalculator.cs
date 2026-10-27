@@ -203,7 +203,8 @@ internal class LegacyItemPriceCalculator
         { (int)SpecialItems.Halloween6, item => 150 * item.Durability() },
         { (int)SpecialItems.GemOfSecret, item => item.Level == 0 ? 60000 : 0 },
         { (int)SpecialItems.SuspiciousScrapOfPaper, item => 30000 * item.Durability() },
-        { (int)SpecialItems.GaionsOrder, item => 30000 * item.Durability() },
+        { (int)SpecialItems.GaionsOrder, _ => 100000 }, // PeroniaMU: sold at Lumen
+        { (int)SpecialItems.MirrorOfDimensions, _ => 100000 }, // PeroniaMU: sold at Lumen
         { (int)SpecialItems.FirstSecromiconFragment, item => 30000 * item.Durability() },
         { (int)SpecialItems.SecondSecromiconFragment, item => 30000 * item.Durability() },
         { (int)SpecialItems.ThirdSecromiconFragment, item => 30000 * item.Durability() },
@@ -291,6 +292,7 @@ internal class LegacyItemPriceCalculator
         FeatherOfCondor = 0x350D,
         SuspiciousScrapOfPaper = 0x650E,
         GaionsOrder = 0x660E,
+        MirrorOfDimensions = 0x6F0E, // getId(14,111),
         FirstSecromiconFragment = 0x670E,
         SecondSecromiconFragment = 0x680E,
         ThirdSecromiconFragment = 0x690E,

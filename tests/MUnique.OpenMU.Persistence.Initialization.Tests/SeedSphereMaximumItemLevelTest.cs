@@ -68,7 +68,8 @@ internal class SeedSphereMaximumItemLevelTest
     private static void AssertMaximumItemLevelsAllowEveryOption(GameConfiguration gameConfiguration)
     {
         var seedSpheres = GetSeedSpheres(gameConfiguration);
-        Assert.That(seedSpheres, Has.Count.EqualTo(30));
+        // The season 6 episode 3 client knows three spheres (Mono, Di, Tri), so there are 3 * 6 seed spheres.
+        Assert.That(seedSpheres, Has.Count.EqualTo(18));
         Assert.Multiple(() =>
         {
             foreach (var seedSphere in seedSpheres)

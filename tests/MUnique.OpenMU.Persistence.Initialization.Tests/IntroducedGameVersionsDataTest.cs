@@ -52,7 +52,8 @@ internal class IntroducedGameVersionsDataTest
         foreach (var (from, to, _) in IntroducedGameVersions.Monsters)
         {
             Assert.That(from, Is.LessThanOrEqualTo(to));
-            Assert.That(gameConfiguration.Monsters.Count(m => m.Number >= from && m.Number <= to), Is.EqualTo(to - from + 1), $"Monsters {from} - {to}");
+            // Distinct, because the map level ladder of PeroniaMU copies monsters with their number (e.g. for Lorencia).
+            Assert.That(gameConfiguration.Monsters.Where(m => m.Number >= from && m.Number <= to).Select(m => m.Number).Distinct().Count(), Is.EqualTo(to - from + 1), $"Monsters {from} - {to}");
         }
 
         foreach (var (group, from, to, _) in IntroducedGameVersions.Items)
@@ -94,7 +95,8 @@ internal class IntroducedGameVersionsDataTest
 
         Assert.That(gameConfiguration.Maps.Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
         Assert.That(gameConfiguration.CharacterClasses.Select(c => c.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
-        Assert.That(gameConfiguration.MiniGameDefinitions.Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
+        // The dungeons of PeroniaMU are no content of the original game, so they keep the unknown version and are never deactivated by version.
+        Assert.That(gameConfiguration.MiniGameDefinitions.Where(m => m.Type != MiniGameType.Dungeon).Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
     }
 
     /// <summary>

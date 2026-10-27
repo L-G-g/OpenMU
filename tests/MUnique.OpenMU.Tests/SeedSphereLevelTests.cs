@@ -23,7 +23,10 @@ using MUnique.OpenMU.PlugIns;
 [TestFixture]
 public class SeedSphereLevelTests
 {
-    private const int SphereLevels = 5;
+    /// <summary>
+    /// The number of sphere levels of the season 6 episode 3 client: Mono, Di and Tri.
+    /// </summary>
+    private const int SphereLevels = 3;
 
     private GameConfiguration _gameConfiguration = null!;
 
@@ -47,7 +50,7 @@ public class SeedSphereLevelTests
     }
 
     /// <summary>
-    /// Gets the combinations of the sphere levels (0 to 4) and the seed numbers (60 to 65).
+    /// Gets the combinations of the sphere levels (0 to 2) and the seed numbers (60 to 65).
     /// </summary>
     private static IEnumerable<TestCaseData> SphereLevelsAndSeeds =>
         from sphereLevel in Enumerable.Range(0, SphereLevels)
@@ -56,20 +59,20 @@ public class SeedSphereLevelTests
 
     /// <summary>
     /// Tests that the socket option level of each seed sphere is defined by its sphere,
-    /// so that a Mono seed sphere results in level 1 and a fifth level seed sphere in level 5.
+    /// so that a Mono seed sphere results in level 1 and a Tri seed sphere in level 3.
     /// </summary>
     [Test]
     public void SocketOptionLevelFollowsSphereOfSeedSphere()
     {
         var seedSpheres = this._gameConfiguration.Items
-            .Where(i => i.Group == 12 && i.Number >= SeedSphereCrafting.SeedSphereNumberStart && i.Number < SeedSphereCrafting.SeedSphereNumberStart + (5 * SeedSphereCrafting.SeedTypes))
+            .Where(i => i.Group == 12 && i.Number >= SeedSphereCrafting.SeedSphereNumberStart && i.Number < SeedSphereCrafting.SeedSphereNumberStart + (SphereLevels * SeedSphereCrafting.SeedTypes))
             .ToList();
-        Assert.That(seedSpheres, Has.Count.EqualTo(5 * SeedSphereCrafting.SeedTypes));
+        Assert.That(seedSpheres, Has.Count.EqualTo(SphereLevels * SeedSphereCrafting.SeedTypes));
 
         foreach (var seedSphere in seedSpheres)
         {
-            // The sphere level of a seed sphere is initialized as its drop level, starting at 0.
-            Assert.That(MountSeedSphereCrafting.GetSphereLevel(seedSphere), Is.EqualTo(seedSphere.DropLevel + 1), seedSphere.Name.ValueInNeutralLanguage);
+            // The drop level of a seed sphere is its sphere level, like in the client.
+            Assert.That(MountSeedSphereCrafting.GetSphereLevel(seedSphere), Is.EqualTo(seedSphere.DropLevel), seedSphere.Name.ValueInNeutralLanguage);
         }
     }
 

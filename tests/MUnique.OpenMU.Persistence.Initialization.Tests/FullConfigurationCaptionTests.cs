@@ -45,10 +45,17 @@ internal class FullConfigurationCaptionTests
         using var existingContext = existingProvider.CreateNewContext();
         var existing = (await existingContext.GetAsync<GameConfiguration>().ConfigureAwait(false)).Single();
         var chinese = CultureInfo.GetCultureInfo("zh-CN");
-        var captions = LocalizedCaption.FindAll(existing).Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage)).ToArray();
-        Assert.That(captions.Select(caption => $"{caption.Owner.GetType().Name}/{caption.Property.Name}/{caption.Value.ValueInNeutralLanguage}"),
+        var allCaptions = LocalizedCaption.FindAll(existing).Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage)).ToArray();
+        Assert.That(allCaptions.Select(GetCaptionKey),
             Is.EquivalentTo(LocalizedCaption.FindAll(reference).Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage))
-                .Select(caption => $"{caption.Owner.GetType().Name}/{caption.Property.Name}/{caption.Value.ValueInNeutralLanguage}")));
+                .Select(GetCaptionKey)));
+
+        // PeroniaMU adds texts which are no resources, e.g. the descriptions of the zone drops, so they can't be translated or linked.
+        var customTexts = LocalizedCaption.FindAll(reference)
+            .Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage) && string.IsNullOrEmpty(caption.Value.SourceKey))
+            .Select(GetCaptionKey)
+            .ToHashSet(StringComparer.Ordinal);
+        var captions = allCaptions.Where(caption => !customTexts.Contains(GetCaptionKey(caption))).ToArray();
         foreach (var caption in captions)
         {
             Assert.That(caption.Value.SourceKey, Is.Not.Null, caption.Value.ValueInNeutralLanguage);
@@ -59,7 +66,7 @@ internal class FullConfigurationCaptionTests
         var custom = existing.Skills.First();
         custom.Name = custom.Name.WithTranslation(chinese, "自定义技能");
         var result = ConfigurationCaptions.LinkSourceKeys(existing, reference);
-        var unlinked = LocalizedCaption.FindAll(existing).Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage) && caption.Value.SourceKey is null).ToArray();
+        var unlinked = LocalizedCaption.FindAll(existing).Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage) && string.IsNullOrEmpty(caption.Value.SourceKey) && !customTexts.Contains(GetCaptionKey(caption))).ToArray();
         Assert.That(unlinked.Select(caption => $"{caption.Owner.GetType().Name}.{caption.Property.Name}: {caption.Value.ValueInNeutralLanguage}"), Is.Empty, string.Join("\n", unlinked.Select(caption => $"{caption.Owner.GetType().Name}.{caption.Property.Name}: {caption.Value.ValueInNeutralLanguage}")));
         Assert.That(result.Linked, Is.EqualTo(captions.Length));
         Assert.That(result.SkippedBecauseOfCustomizedNeutralText, Is.Zero);
@@ -70,7 +77,7 @@ internal class FullConfigurationCaptionTests
         Assert.That(custom.Name.GetOwnTranslation(chinese), Is.EqualTo("自定义技能"));
         Assert.That(ConfigurationCaptions.LinkSourceKeys(existing, reference).Linked, Is.Zero);
         Assert.That(ConfigurationCaptions.DetermineChanges(existing).Any(change => change.CultureName == chinese.Name && change.IsRecommended), Is.False);
-        foreach (var caption in LocalizedCaption.FindAll(existing).Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage)))
+        foreach (var caption in LocalizedCaption.FindAll(existing).Where(caption => !string.IsNullOrWhiteSpace(caption.Value.ValueInNeutralLanguage) && !customTexts.Contains(GetCaptionKey(caption))))
         {
             Assert.That(caption.Value.GetOwnTranslation(chinese), Is.Not.Null.And.Not.Empty, caption.Value.SourceKey);
         }
@@ -104,6 +111,8 @@ internal class FullConfigurationCaptionTests
         Assert.That(existing.DropItemGroups.All(group => group.Description.ValueInNeutralLanguage == (customized ? "Custom description" : "Shared description")), Is.True);
         Assert.That(ConfigurationCaptions.LinkSourceKeys(existing, reference).Linked, Is.Zero);
     }
+
+    private static string GetCaptionKey(LocalizedCaption caption) => $"{caption.Owner.GetType().Name}/{caption.Property.Name}/{caption.Value.ValueInNeutralLanguage}";
 
     private static async Task InitializeAsync(InMemoryPersistenceContextProvider provider, string version)
     {

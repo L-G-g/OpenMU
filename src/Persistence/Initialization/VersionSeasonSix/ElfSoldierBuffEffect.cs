@@ -8,6 +8,8 @@ using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.DataModel.Attributes;
 using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.Interfaces;
+using MUnique.OpenMU.Persistence.Initialization.Properties;
 using MUnique.OpenMU.Persistence.Initialization.Skills;
 
 /// <summary>
@@ -31,7 +33,7 @@ internal static class ElfSoldierBuffEffect
         var buffEffect = context.CreateNew<MagicEffectDefinition>();
         gameConfiguration.MagicEffects.Add(buffEffect);
         buffEffect.Number = (short)MagicEffectNumber.ElfSoldierBuff;
-        buffEffect.Name = "Elf Soldier Buff";
+        buffEffect.Name = LocalizedString.FromResource(() => MagicEffectNames.ElfSoldierBuff);
         buffEffect.InformObservers = true;
         buffEffect.StopByDeath = true;
 
