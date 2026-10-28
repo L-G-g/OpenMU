@@ -11,6 +11,7 @@ using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.Persistence.Initialization.Updates;
 using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
+using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix.Maps;
 using MUnique.OpenMU.Persistence.InMemory;
 using MUnique.OpenMU.PlugIns;
 
@@ -25,6 +26,7 @@ internal class MapLevelLadderTest
     private const short CyclopsNumber = 17;
     private const short DevilSquareMapNumber = 9;
     private const short VulcanusMapNumber = 63;
+    private const short SwampOfCalmnessMapNumber = 56;
 
     /// <summary>
     /// Tests that a new season 6 database has the ladder.
@@ -51,6 +53,7 @@ internal class MapLevelLadderTest
         Assert.That(GetCopies(gameConfiguration), Is.Empty);
 
         var update = new MapLevelLadderUpdatePlugIn();
+        await SetInstalledVersionAsync(context, update, null).ConfigureAwait(false);
         await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
         AssertLadder(gameConfiguration);
 
@@ -66,6 +69,54 @@ internal class MapLevelLadderTest
             Assert.That(gameConfiguration.DropItemGroups, Has.Count.EqualTo(dropGroupCount));
             Assert.That(gameConfiguration.Maps.Sum(m => m.DropItemGroups.Count), Is.EqualTo(mapDropGroupCount));
             Assert.That(GetLumenStore(gameConfiguration).Items, Has.Count.EqualTo(lumenItemCount));
+        });
+    }
+
+    /// <summary>
+    /// Tests that the update from version 1 puts Crywolf on the ladder, in parallel to Swamp of Calmness,
+    /// and gives its monsters the multipliers of Swamp of Calmness in an existing configuration of the difficulty scaler.
+    /// </summary>
+    [Test]
+    public async Task UpdateFromVersion1PutsCrywolfOnLadderAsync()
+    {
+        var (context, gameConfiguration) = await CreateSeason6ConfigurationAsync().ConfigureAwait(false);
+        using var _ = context;
+        var crywolf = gameConfiguration.Maps.Single(m => m.Number == CrywolfFortress.Number);
+        var swamp = gameConfiguration.Maps.Single(m => m.Number == SwampOfCalmnessMapNumber);
+        var jewelGroup = swamp.DropItemGroups.Single(g => g.ItemType == SpecialItemType.Jewel);
+
+        // The state of version 1: Crywolf with the common drops, its original monsters and the warp from level 190.
+        crywolf.DropItemGroups.Remove(jewelGroup);
+        new[] { 2, 3 }.Select(n => gameConfiguration.DropItemGroups.Single(g => g.GetId() == GuidHelper.CreateGuid<DropItemGroup>((short)n))).ToList().ForEach(crywolf.DropItemGroups.Add);
+        crywolf.ExpMultiplier = 1;
+        var hammerScout = MapLevelLadder.GetOriginalMonster(gameConfiguration, 310)!;
+        hammerScout.Attributes.Single(a => a.AttributeDefinition?.Id == Stats.Level.Id).Value = 97;
+        gameConfiguration.WarpList.Single(w => w.Index == MapLevelLadder.CrywolfWarpIndex).LevelRequirement = 190;
+        var scalerConfiguration = new MapDifficultyScalerConfiguration();
+        scalerConfiguration.Monsters = scalerConfiguration.Monsters.Where(m => !MapLevelLadder.CrywolfMonsterNumbers.Contains(m.Number)).ToList();
+        var swampMultipliers = scalerConfiguration.Maps.Single(m => m.Number == SwampOfCalmnessMapNumber);
+        var scalerPlugIn = gameConfiguration.PlugInConfigurations.Single(c => c.TypeId == typeof(MapDifficultyScaler).GUID);
+        scalerPlugIn.SetConfiguration(scalerConfiguration, new ConfigureNpcTalkPlugInsPlugInBase.IdReferenceHandler());
+        var swampGroups = swamp.DropItemGroups.ToList();
+        var swampExperience = swamp.ExpMultiplier;
+
+        var update = new MapLevelLadderUpdatePlugIn();
+        await SetInstalledVersionAsync(context, update, 1).ConfigureAwait(false);
+        await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+        await update.ApplyUpdateAsync(context, gameConfiguration).ConfigureAwait(false);
+
+        AssertLadder(gameConfiguration);
+        var multipliers = scalerPlugIn.GetConfiguration<MapDifficultyScalerConfiguration>(new ConfigureNpcTalkPlugInsPlugInBase.IdReferenceHandler())!.Monsters
+            .Where(m => MapLevelLadder.CrywolfMonsterNumbers.Contains(m.Number))
+            .ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(hammerScout[Stats.Level], Is.EqualTo(130));
+            Assert.That(crywolf.DropItemGroups.Count(g => MapLevelLadder.IsFenrirMaterialGroup(g)), Is.EqualTo(3));
+            Assert.That(swamp.DropItemGroups, Is.EquivalentTo(swampGroups));
+            Assert.That(swamp.ExpMultiplier, Is.EqualTo(swampExperience));
+            Assert.That(multipliers.Select(m => m.Number), Is.EquivalentTo(MapLevelLadder.CrywolfMonsterNumbers));
+            Assert.That(multipliers.Select(m => (m.Health, m.Damage, m.Defense, m.AttackRate, m.DefenseRate)), Is.All.EqualTo((swampMultipliers.Health, swampMultipliers.Damage, swampMultipliers.Defense, swampMultipliers.AttackRate, swampMultipliers.DefenseRate)));
         });
     }
 
@@ -153,9 +204,10 @@ internal class MapLevelLadderTest
                     Assert.That(socketGroups.SelectMany(g => g.PossibleItems).Select(i => i.MaximumSockets), Is.All.GreaterThan(0), name);
                     if (zone.Drops == MapLevelLadder.ZoneDrops.Jewels)
                     {
-                        Assert.That(map.DropItemGroups.Select(g => g.ItemType), Is.EquivalentTo(new[] { SpecialItemType.Money, SpecialItemType.Jewel }), name);
+                        // Crywolf keeps the materials of the Fenrir.
+                        Assert.That(map.DropItemGroups.Where(g => !MapLevelLadder.IsFenrirMaterialGroup(g)).Select(g => g.ItemType), Is.EquivalentTo(new[] { SpecialItemType.Money, SpecialItemType.Jewel }), name);
                         Assert.That(map.DropItemGroups.Single(g => g.ItemType == SpecialItemType.Jewel).PossibleItems.Select(i => (i.Group, i.Number)), Is.EquivalentTo(MapLevelLadder.ZoneJewels), name);
-                        Assert.That(map.ExpMultiplier, Is.EqualTo(MapLevelLadder.JewelZoneExperienceMultiplier), name);
+                        Assert.That(map.ExpMultiplier, Is.EqualTo(map.Number == CrywolfFortress.Number ? 1 : MapLevelLadder.JewelZoneExperienceMultiplier), name);
                     }
                 }
             }
@@ -187,6 +239,7 @@ internal class MapLevelLadderTest
 
             Assert.That(gameConfiguration.WarpList.Select(w => w.Costs), Is.All.EqualTo(0));
             Assert.That(gameConfiguration.WarpList.Single(w => w.Index == 33).LevelRequirement, Is.EqualTo(270), "Swamp of Calmness");
+            Assert.That(gameConfiguration.WarpList.Single(w => w.Index == MapLevelLadder.CrywolfWarpIndex).LevelRequirement, Is.EqualTo(270), "Crywolf");
             var devias = gameConfiguration.Maps.Single(m => m.Number == 2 && m.Discriminator == 0);
             Assert.That(devias.EnterGates.Single(g => g.TargetGate?.Map?.Number == 57).LevelRequirement, Is.EqualTo(280), "Devias to Raklion");
 
@@ -246,6 +299,33 @@ internal class MapLevelLadderTest
         }
 
         gameConfiguration.WarpList.ToList().ForEach(w => w.Costs = 2000);
+    }
+
+    private static async ValueTask SetInstalledVersionAsync(IContext context, MapLevelLadderUpdatePlugIn update, int? version)
+    {
+        var entries = (await context.GetAsync<ConfigurationUpdate>().ConfigureAwait(false)).Where(e => e.Key == update.Key).ToList();
+        foreach (var entry in entries)
+        {
+            if (version is { } installedVersion)
+            {
+                entry.Version = installedVersion;
+            }
+            else
+            {
+                await context.DeleteAsync(entry).ConfigureAwait(false);
+            }
+        }
+
+        if (version is { } newVersion && entries.Count == 0)
+        {
+            var entry = context.CreateNew<ConfigurationUpdate>();
+            entry.Key = update.Key;
+            entry.Version = newVersion;
+            entry.Name = update.Name;
+            entry.Description = update.Description;
+            entry.CreatedAt = update.CreatedAt;
+            entry.InstalledAt = DateTime.UtcNow;
+        }
     }
 
     private static List<MonsterDefinition> GetCopies(GameConfiguration gameConfiguration)

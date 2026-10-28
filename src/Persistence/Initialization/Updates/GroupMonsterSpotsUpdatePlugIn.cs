@@ -32,7 +32,7 @@ public class GroupMonsterSpotsUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "Rearranges the monsters of the hunting maps into spots of 5 monsters in an area of 4x4, about 20 coordinates apart, at most 80 per map. About every fifth spot is a hotspot with 7 monsters.";
+    internal const string PlugInDescription = "Rearranges the monsters of the hunting maps into spots of 5 monsters in an area of 4x4, about 20 coordinates apart, at most 80 per map. About every fifth spot is a hotspot with 7 monsters. Version 3: the monsters of Crywolf, too.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;
@@ -47,14 +47,17 @@ public class GroupMonsterSpotsUpdatePlugIn : UpdatePlugInBase
     public override bool IsMandatory => false;
 
     /// <inheritdoc />
-    /// <remarks>Version 2 limits the spots to <see cref="MonsterSpotGrouping.MaximumSpotsPerMap"/> per map.</remarks>
-    public override int Version => 2;
+    /// <remarks>
+    /// Version 2 limits the spots to <see cref="MonsterSpotGrouping.MaximumSpotsPerMap"/> per map,
+    /// version 3 groups the monsters of Crywolf, too. The maps which are already grouped stay as they are.
+    /// </remarks>
+    public override int Version => 3;
 
     /// <inheritdoc />
     public override DateTime CreatedAt => new(2026, 10, 15, 15, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
-    public override DateTime UpdatedAt => new(2026, 10, 15, 18, 30, 0, DateTimeKind.Utc);
+    public override DateTime UpdatedAt => new(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
     protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)

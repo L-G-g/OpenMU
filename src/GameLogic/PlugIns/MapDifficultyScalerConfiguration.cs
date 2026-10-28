@@ -39,6 +39,34 @@ public class MapDifficultyScalerConfiguration
     public ICollection<DifficultyMultipliers> Monsters { get; set; } = CreateDefaultMonsters();
 
     /// <summary>
+    /// Creates the default multipliers of the monsters.
+    /// </summary>
+    /// <returns>The default multipliers of the monsters.</returns>
+    public static List<DifficultyMultipliers> CreateDefaultMonsters() =>
+    [
+        new(43, 16.63f, 5.26f, 1.42f, 3.89f, 2.42f), // Golden Budge Dragon, Box of Kundun +1, 25 resets
+        new(78, 11.81f, 4.6f, 1.28f, 19.43f, 14.5f), // Golden Goblin, Box of Kundun +1, 25 resets
+        new(54, 8.43f, 4.44f, 1f, 3.89f, 2.42f), // Golden Soldier, Box of Kundun +1, 25 resets
+        new(53, 13.84f, 9.27f, 1f, 10f, 5.06f), // Golden Titan, Box of Kundun +2, 75 resets
+        new(81, 14.79f, 8.32f, 1f, 16.13f, 16.86f), // Golden Vepar, Box of Kundun +2, 75 resets
+        new(83, 12.24f, 7.26f, 1f, 20.75f, 14.25f), // Golden Wheel, Box of Kundun +3, 125 resets
+        new(79, 6.03f, 5.48f, 1f, 19.97f, 25.34f), // Golden Dragon, Box of Kundun +3, 125 resets
+        new(80, 12.38f, 6.33f, 1f, 26.34f, 20.07f), // Golden Lizard King, Box of Kundun +4, 175 resets
+        new(82, 10.72f, 8.07f, 1f, 30.86f, 20.23f), // Golden Tantallos, Box of Kundun +5, 225 resets
+
+        // The monsters of Crywolf have the stats of the ones of Swamp of Calmness, so they get its multipliers, too.
+        // The army of Balgass of the event keeps the multipliers of the map.
+        new(310, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Hammer Scout, like Swamp of Calmness, 252 resets
+        new(311, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Lance Scout, like Swamp of Calmness, 252 resets
+        new(312, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Bow Scout, like Swamp of Calmness, 252 resets
+        new(313, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Werewolf, like Swamp of Calmness, 252 resets
+        new(314, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Scout Hero, like Swamp of Calmness, 252 resets
+        new(315, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Werewolf Hero, like Swamp of Calmness, 252 resets
+        new(316, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Balram, like Swamp of Calmness, 252 resets
+        new(317, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Soram, like Swamp of Calmness, 252 resets
+    ];
+
+    /// <summary>
     /// Creates the default multipliers of the maps.
     /// </summary>
     /// <returns>The default multipliers of the maps.</returns>
@@ -82,23 +110,6 @@ public class MapDifficultyScalerConfiguration
         new(34, 2.53f, 3.79f, 1.57f, 11.28f, 7.58f), // Crywolf, 200 resets
         new(41, 4.33f, 6.75f, 2.84f, 10.34f, 8.81f), // Barracks of Balgass, 200 resets
         new(42, 3.18f, 1f, 1.91f, 10.24f, 10.27f), // Refuge of Balgass, 250 resets
-    ];
-
-    /// <summary>
-    /// Creates the default multipliers of the monsters.
-    /// </summary>
-    /// <returns>The default multipliers of the monsters.</returns>
-    internal static List<DifficultyMultipliers> CreateDefaultMonsters() =>
-    [
-        new(43, 16.63f, 5.26f, 1.42f, 3.89f, 2.42f), // Golden Budge Dragon, Box of Kundun +1, 25 resets
-        new(78, 11.81f, 4.6f, 1.28f, 19.43f, 14.5f), // Golden Goblin, Box of Kundun +1, 25 resets
-        new(54, 8.43f, 4.44f, 1f, 3.89f, 2.42f), // Golden Soldier, Box of Kundun +1, 25 resets
-        new(53, 13.84f, 9.27f, 1f, 10f, 5.06f), // Golden Titan, Box of Kundun +2, 75 resets
-        new(81, 14.79f, 8.32f, 1f, 16.13f, 16.86f), // Golden Vepar, Box of Kundun +2, 75 resets
-        new(83, 12.24f, 7.26f, 1f, 20.75f, 14.25f), // Golden Wheel, Box of Kundun +3, 125 resets
-        new(79, 6.03f, 5.48f, 1f, 19.97f, 25.34f), // Golden Dragon, Box of Kundun +3, 125 resets
-        new(80, 12.38f, 6.33f, 1f, 26.34f, 20.07f), // Golden Lizard King, Box of Kundun +4, 175 resets
-        new(82, 10.72f, 8.07f, 1f, 30.86f, 20.23f), // Golden Tantallos, Box of Kundun +5, 225 resets
     ];
 
     /// <summary>
