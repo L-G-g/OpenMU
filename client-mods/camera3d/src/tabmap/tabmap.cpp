@@ -34,7 +34,7 @@
 //   Size=0.9        ; tamano del mapa: parte del alto libre de la pantalla (0.3 a 1)
 //   Rotate=1        ; 1: girado como la camara; 0: derecho (cuadrado, mas grande)
 //   Opacity=0.92    ; opacidad de la imagen del mapa
-//   MarkerOpacity=0.7 ; opacidad de los puntos de NPC y spots
+//   MarkerOpacity=0.55 ; opacidad de los puntos de NPC y spots
 
 #include "../shared.h"
 
@@ -57,6 +57,7 @@ namespace
     constexpr DWORD MiniMapMouseFunction = 0x0082B5A0;   // bool __thiscall UpdateMouseEvent(): 0 si uso el mouse
     constexpr DWORD BindTextureFunction = 0x00635CF0;    // void __cdecl BindTexture(int): negativo = textura GL
     constexpr DWORD IsPressFunction = 0x00790F20;        // bool __cdecl(int tecla): recien apretada
+    constexpr DWORD IsRepeatFunction = 0x00790F40;       // bool __cdecl(int tecla): sostenida
     constexpr DWORD PlaySoundFunction = 0x006D6AD0;      // __cdecl(int sonido, OBJECT*, int)
     constexpr DWORD PathFindingFunction = 0x00542D20;    // bool __cdecl PathFinding2(sx, sy, tx, ty, PATH*, float, int)
     constexpr DWORD SendMoveFunction = 0x005A3C70;       // void __cdecl SendMove(CHARACTER*, OBJECT*): pedido de caminar
@@ -123,7 +124,7 @@ namespace
     float g_size = 0.9f;
     bool g_rotate = true;
     float g_opacity = 0.92f;
-    float g_markerOpacity = 0.7f;
+    float g_markerOpacity = 0.55f;
 
     // Copia violeta del punto de los NPC para los hotspots (como en el mapa original con camera3d.dll).
     GLuint g_hotspotTexture = 0;
@@ -144,6 +145,10 @@ namespace
     };
 
     Walk g_walk;
+
+    // Boton izquierdo visto en la llamada anterior del mouse del mapa (para tomar solo clicks nuevos).
+    bool g_leftWasDown = true;
+    DWORD g_lastMouseTick = 0;
 
     // --- Utilidades ---
     template <typename T>
@@ -914,7 +919,16 @@ namespace
             return true; // afuera del mapa: el mouse sigue al mundo y a las otras ventanas
         }
 
-        if (reinterpret_cast<IsPressType>(IsPressFunction)(VK_LBUTTON))
+        // Solo un click que empieza con el mapa abierto: al abrirlo (o si el mouse vuelve al mapa) se ignora
+        // el estado del boton que venia de antes.
+        const DWORD now = GetTickCount();
+        const bool fresh = now - g_lastMouseTick > 250;
+        g_lastMouseTick = now;
+        const bool leftDown = reinterpret_cast<IsPressType>(IsPressFunction)(VK_LBUTTON)
+            || reinterpret_cast<IsPressType>(IsRepeatFunction)(VK_LBUTTON);
+        const bool clicked = leftDown && !g_leftWasDown && !fresh;
+        g_leftWasDown = leftDown;
+        if (clicked)
         {
             StartWalk(static_cast<int>(x), static_cast<int>(y));
             reinterpret_cast<PlaySoundType>(PlaySoundFunction)(ClickSound, nullptr, 0);
@@ -964,7 +978,7 @@ extern "C" __declspec(dllexport) bool StartTabMap(const TabMapHost* host)
     g_size = ReadFloat(host->iniPath, "Size", 0.9f, 0.3f, 1.0f);
     g_rotate = GetPrivateProfileIntA("TabMap", "Rotate", 1, host->iniPath) != 0;
     g_opacity = ReadFloat(host->iniPath, "Opacity", 0.92f, 0.2f, 1.0f);
-    g_markerOpacity = ReadFloat(host->iniPath, "MarkerOpacity", 0.7f, 0.2f, 1.0f);
+    g_markerOpacity = ReadFloat(host->iniPath, "MarkerOpacity", 0.55f, 0.2f, 1.0f);
     if (!SetSlot(0, &RenderHook) || !SetSlot(2, &MouseHook))
     {
         g_log("Mapa del TAB: no se pudo instalar.");
