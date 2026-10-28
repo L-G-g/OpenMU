@@ -32,7 +32,7 @@ using MUnique.OpenMU.PlugIns;
 ///         with the stats of its own zone.</item>
 ///   <item>The sets and weapons of each character class are spread over the zones up to Karutan by rank, so each zone drops
 ///         its own sets (see <see cref="SpecialItemType.ZoneItem"/>).</item>
-///   <item>Swamp of Calmness and Crywolf drop no items but jewels, more often than other maps, and give more experience.
+///   <item>Swamp of Calmness and Crywolf drop no items but jewels, more often than other maps. Swamp of Calmness also gives more experience.
 ///         Crywolf keeps the materials of the Fenrir, which don't drop anywhere else.</item>
 ///   <item>Raklion drops socket items with up to two sockets, rarely, and Selupan always drops one with three sockets
 ///         (see <see cref="DropSocketCountPlugIn"/>).</item>
@@ -668,7 +668,7 @@ internal static class MapLevelLadder
                     map.DropItemGroups.Add(group);
                 }
 
-                if (zone.Drops == ZoneDrops.Jewels)
+                if (zone.Drops == ZoneDrops.Jewels && map.Number != CrywolfFortress.Number)
                 {
                     map.ExpMultiplier = JewelZoneExperienceMultiplier;
                 }

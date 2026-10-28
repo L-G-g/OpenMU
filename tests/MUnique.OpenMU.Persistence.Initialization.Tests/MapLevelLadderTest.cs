@@ -207,7 +207,7 @@ internal class MapLevelLadderTest
                         // Crywolf keeps the materials of the Fenrir.
                         Assert.That(map.DropItemGroups.Where(g => !MapLevelLadder.IsFenrirMaterialGroup(g)).Select(g => g.ItemType), Is.EquivalentTo(new[] { SpecialItemType.Money, SpecialItemType.Jewel }), name);
                         Assert.That(map.DropItemGroups.Single(g => g.ItemType == SpecialItemType.Jewel).PossibleItems.Select(i => (i.Group, i.Number)), Is.EquivalentTo(MapLevelLadder.ZoneJewels), name);
-                        Assert.That(map.ExpMultiplier, Is.EqualTo(MapLevelLadder.JewelZoneExperienceMultiplier), name);
+                        Assert.That(map.ExpMultiplier, Is.EqualTo(map.Number == CrywolfFortress.Number ? 1 : MapLevelLadder.JewelZoneExperienceMultiplier), name);
                     }
                 }
             }
