@@ -29,7 +29,8 @@ internal class CrywolfDataTest
         var contextProvider = new InMemoryPersistenceContextProvider();
         var gameConfiguration = await CreateConfigurationAsync(contextProvider).ConfigureAwait(false);
 
-        AssertEventData(gameConfiguration);
+        // PeroniaMU: Crywolf is on the map level ladder, in parallel to Swamp of Calmness (190 in the original game).
+        AssertEventData(gameConfiguration, 270);
     }
 
     /// <summary>
@@ -68,7 +69,8 @@ internal class CrywolfDataTest
         await update.ApplyUpdateAsync(contextProvider.CreateNewContext(), gameConfiguration).ConfigureAwait(false);
         await update.ApplyUpdateAsync(contextProvider.CreateNewContext(), gameConfiguration).ConfigureAwait(false);
 
-        AssertEventData(gameConfiguration);
+        // PeroniaMU: the update of the map level ladder raises it to 270 afterwards.
+        AssertEventData(gameConfiguration, 190);
     }
 
     private static async Task<GameConfiguration> CreateConfigurationAsync(InMemoryPersistenceContextProvider contextProvider)
@@ -84,7 +86,7 @@ internal class CrywolfDataTest
         return gameConfiguration.Maps.Single(map => map.Number == CrywolfNumber);
     }
 
-    private static void AssertEventData(GameConfiguration gameConfiguration)
+    private static void AssertEventData(GameConfiguration gameConfiguration, int warpLevelRequirement)
     {
         var definition = new CrywolfEventDefinition();
         var map = GetMap(gameConfiguration);
@@ -119,7 +121,7 @@ internal class CrywolfDataTest
 
         var warp = gameConfiguration.WarpList.Single(warp => warp.Index == 26);
         Assert.That(warp.Gate?.Map, Is.SameAs(map));
-        Assert.That(warp.LevelRequirement, Is.EqualTo(190));
+        Assert.That(warp.LevelRequirement, Is.EqualTo(warpLevelRequirement));
         Assert.That(warp.Name.SourceKey, Is.Not.Null);
 
         Assert.That(map.TerrainVariants.Select(variant => variant.Number), Is.EquivalentTo(new short[] { 0, 1, 2 }));

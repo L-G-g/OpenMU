@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.Persistence.Initialization.Updates;
 
 using System.Runtime.InteropServices;
+using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.PlugIns;
 
@@ -29,7 +30,7 @@ public class MapLevelLadderUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "Gives each hunting map a range of monster levels which doesn't overlap the others, from Lorencia, Noria and Elbeland (1 to 19) up to Raklion (140 to 148), and spreads the sets, weapons and shields of each class over the zones up to Karutan. Vulcanus stays as it is. Swamp of Calmness drops only jewels, more often, and gives double experience. Raklion drops only socket items with up to two sockets, and Selupan always drops one with three sockets. Monsters which also spawn in other maps (e.g. Devil Square) keep their original level there. The Symbol of Kundun and other level based drops are moved to the new levels. The items to enter Blood Castle, Devil Square, Illusion Temple, Doppelganger and Imperial Guardian don't drop anymore, Lumen the Barmaid sells them (adds Old Scroll +6, Illusion Sorcerer Covenant +6, Mirror of Dimensions and Gaion's Order). Warps are free and the warps and gates require the level of their map on the ladder.";
+    internal const string PlugInDescription = "Gives each hunting map a range of monster levels which doesn't overlap the others, from Lorencia, Noria and Elbeland (1 to 19) up to Raklion (140 to 148), and spreads the sets, weapons and shields of each class over the zones up to Karutan. Vulcanus stays as it is. Swamp of Calmness drops only jewels, more often, and gives double experience. Raklion drops only socket items with up to two sockets, and Selupan always drops one with three sockets. Monsters which also spawn in other maps (e.g. Devil Square) keep their original level there. The Symbol of Kundun and other level based drops are moved to the new levels. The items to enter Blood Castle, Devil Square, Illusion Temple, Doppelganger and Imperial Guardian don't drop anymore, Lumen the Barmaid sells them (adds Old Scroll +6, Illusion Sorcerer Covenant +6, Mirror of Dimensions and Gaion's Order). Warps are free and the warps and gates require the level of their map on the ladder. Version 2: Crywolf is a step in parallel to Swamp of Calmness, its monsters get levels 130 to 139 and the stats of the monsters there, it drops only jewels and the materials of the Fenrir, gives double experience, and the warp requires level 270.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;
@@ -51,10 +52,61 @@ public class MapLevelLadderUpdatePlugIn : UpdatePlugInBase
     public override DateTime CreatedAt => new(2026, 10, 18, 0, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
+    /// <remarks>Version 2 puts Crywolf on the ladder, in parallel to Swamp of Calmness.</remarks>
+    public override int Version => 2;
+
+    /// <inheritdoc />
+    public override DateTime UpdatedAt => new(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// From version 1 on, only Crywolf is changed, so that the other maps which the owner customized
+    /// after the first version stay as they are.
+    /// </remarks>
+    protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration, int? installedVersion)
+    {
+        if (installedVersion >= 1)
+        {
+            MapLevelLadder.ApplyCrywolf(context, gameConfiguration);
+            AddCrywolfDifficulty(gameConfiguration);
+            return ValueTask.CompletedTask;
+        }
+
+        return this.ApplyAsync(context, gameConfiguration);
+    }
+
+    /// <inheritdoc />
     protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
     {
         MapLevelLadder.Apply(context, gameConfiguration);
         EventEntryItemShop.Apply(context, gameConfiguration);
+        AddCrywolfDifficulty(gameConfiguration);
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Gives the monsters of Crywolf the multipliers of Swamp of Calmness in an existing configuration
+    /// of the <see cref="MapDifficultyScaler"/>, which keeps its other multipliers.
+    /// A new configuration already has them, see <see cref="MapDifficultyScalerConfiguration.CreateDefaultMonsters"/>.
+    /// </summary>
+    private static void AddCrywolfDifficulty(GameConfiguration gameConfiguration)
+    {
+        if (gameConfiguration.PlugInConfigurations.FirstOrDefault(c => c.TypeId == typeof(MapDifficultyScaler).GUID) is not { } plugInConfiguration
+            || plugInConfiguration.GetConfiguration<MapDifficultyScalerConfiguration>(new ConfigureNpcTalkPlugInsPlugInBase.IdReferenceHandler()) is not { } configuration)
+        {
+            return;
+        }
+
+        var defaults = MapDifficultyScalerConfiguration.CreateDefaultMonsters()
+            .Where(m => MapLevelLadder.CrywolfMonsterNumbers.Contains(m.Number))
+            .Where(m => configuration.Monsters.All(existing => existing.Number != m.Number))
+            .ToList();
+        if (defaults.Count == 0)
+        {
+            return;
+        }
+
+        defaults.ForEach(configuration.Monsters.Add);
+        plugInConfiguration.SetConfiguration(configuration, new ConfigureNpcTalkPlugInsPlugInBase.IdReferenceHandler());
     }
 }

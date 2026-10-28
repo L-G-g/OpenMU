@@ -95,7 +95,7 @@ internal static class MonsterSpotGrouping
 
     /// <summary>
     /// Gets the numbers of the hunting maps whose monsters are grouped into spots.
-    /// Event maps (e.g. Blood Castle, Kalima, Crywolf) and quest maps keep their spawns.
+    /// Event maps (e.g. Blood Castle, Kalima) and quest maps keep their spawns. Crywolf is a hunting map out of its event.
     /// </summary>
     internal static IReadOnlyCollection<byte> HuntingMapNumbers { get; } =
     [
@@ -109,6 +109,7 @@ internal static class MonsterSpotGrouping
         10, // Icarus
         31, // Land of Trials
         33, // Aida
+        34, // Crywolf
         37, // Kanturu Ruins
         38, // Kanturu Relics
         51, // Elvenland

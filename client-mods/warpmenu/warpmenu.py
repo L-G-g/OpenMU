@@ -1,6 +1,7 @@
 """Rewrites the warp menu (M) of the Season 6 1.04 client for the map level ladder of the server.
 
-- Orders the maps by the ladder (Lorencia, Noria, Elbeland, Devias, ..., Raklion, then Crywolf, Vulcanus and Arena).
+- Orders the maps by the ladder (Lorencia, Noria, Elbeland, Devias, ..., Swamp of Calmness and Crywolf, Raklion,
+  then Vulcanus and Arena).
 - Adds the entries which the server has but the client files don't (Crywolf). The files have room for 50 entries,
   and the client reads as many as the count at the start of the file says.
 - Sets the minimum levels of the maps which changed on the server.
@@ -27,21 +28,20 @@ TEXT_COST = 'Danger level'
 
 # The order of the entries by their index: Lorencia, Noria, Elbeland 1-3, Devias 1-4, Dungeon 1-3, Lost Tower 1-7,
 # Atlans 1-3, Tarkan 1-2, Aida 1-2, Icarus, Kanturu Ruins 1-3, Kanturu Relics, Karutan 1-2,
-# Swamp of Calmness, Raklion, then Crywolf and Vulcanus, which aren't on the ladder, and Arena.
+# Swamp of Calmness and Crywolf (in parallel), Raklion, then Vulcanus, which isn't on the ladder, and Arena.
 # Unknown entries keep their relative order after these.
 ORDER = [2, 3, 31, 32, 43, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 18, 19, 20, 11, 12, 13, 21, 22, 25, 27, 23,
-         28, 29, 45, 30, 46, 47, 33, 34, 26, 42, 1]
+         28, 29, 45, 30, 46, 47, 33, 26, 34, 42, 1]
 
 # The entries which are added when the file doesn't have them: index -> (name, map name, level, gate).
 # The level is the one of the server, the gate is the Crywolf spawn gate of the server.
-ADDED = {26: ('Crywolf', 'Crywolf_Fortress', 190, 118)}
+ADDED = {26: ('Crywolf', 'Crywolf_Fortress', 270, 118)}
 MAX_LEVEL = 400
 
 # The minimum levels which changed on the server, by index.
-LEVELS = {28: 180, 29: 180, 45: 180, 46: 240, 47: 250, 33: 270, 34: 280}
+LEVELS = {28: 180, 29: 180, 45: 180, 46: 240, 47: 250, 33: 270, 26: 270, 34: 280}
 
-# The danger level, by index. Entries which aren't listed (e.g. Arena, and Crywolf and Vulcanus, which aren't on
-# the ladder) get 0.
+# The danger level, by index. Entries which aren't listed (e.g. Arena and Vulcanus, which isn't on the ladder) get 0.
 DANGER = {}
 for danger, indexes in enumerate([
         [2, 3, 31, 32, 43],  # Lorencia, Noria, Elbeland
@@ -55,7 +55,7 @@ for danger, indexes in enumerate([
         [28, 29, 45],  # Kanturu Ruins
         [30],  # Kanturu Relics
         [46, 47],  # Karutan
-        [33],  # Swamp of Calmness
+        [33, 26],  # Swamp of Calmness and Crywolf
         [34],  # Raklion
 ], start=1):
     for index in indexes:

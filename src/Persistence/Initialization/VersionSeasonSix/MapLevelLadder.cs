@@ -24,6 +24,7 @@ using MUnique.OpenMU.PlugIns;
 /// <list type="bullet">
 ///   <item>Each zone of <see cref="Zones"/> has its own range of monster levels, from Lorencia, Noria and Elbeland (1 to 19)
 ///         up to Raklion (140 to 148). Vulcanus isn't on the ladder, because it's a map for player versus player.
+///         Crywolf is a step in parallel to Swamp of Calmness, because its monsters are about as strong as the ones there.
 ///         The monsters of <see cref="Monsters"/> keep their order of strength, and their stats are taken from the stats
 ///         of the original monsters of the same rank.</item>
 ///   <item>A monster which also spawns outside the zone of its entry (e.g. in Devil Square) spawns there as a copy
@@ -31,7 +32,8 @@ using MUnique.OpenMU.PlugIns;
 ///         with the stats of its own zone.</item>
 ///   <item>The sets and weapons of each character class are spread over the zones up to Karutan by rank, so each zone drops
 ///         its own sets (see <see cref="SpecialItemType.ZoneItem"/>).</item>
-///   <item>Swamp of Calmness drops no items but jewels, more often than other maps, and gives more experience.</item>
+///   <item>Swamp of Calmness and Crywolf drop no items but jewels, more often than other maps, and give more experience.
+///         Crywolf keeps the materials of the Fenrir, which don't drop anywhere else.</item>
 ///   <item>Raklion drops socket items with up to two sockets, rarely, and Selupan always drops one with three sockets
 ///         (see <see cref="DropSocketCountPlugIn"/>).</item>
 ///   <item>The drops which depend on the monster level (e.g. the Symbol of Kundun) are moved to the new levels.</item>
@@ -106,6 +108,11 @@ internal static class MapLevelLadder
     /// </summary>
     internal const byte MaximumZoneItemLevel = 3;
 
+    /// <summary>
+    /// The index of the warp to Crywolf.
+    /// </summary>
+    internal const int CrywolfWarpIndex = 26;
+
     private const short CommonRandomItemDropItemGroupNumber = 2;
     private const short CommonExcellentItemDropItemGroupNumber = 3;
 
@@ -145,6 +152,11 @@ internal static class MapLevelLadder
     ];
 
     /// <summary>
+    /// Gets the numbers of the monsters of Crywolf which are on the ladder.
+    /// </summary>
+    internal static IReadOnlyList<short> CrywolfMonsterNumbers { get; } = [310, 311, 312, 313, 314, 315, 316, 317];
+
+    /// <summary>
     /// Gets the zones of the ladder: the range of the monster levels, the numbers of the maps,
     /// and what they drop. The danger level of a zone is its index plus one.
     /// </summary>
@@ -161,7 +173,7 @@ internal static class MapLevelLadder
         (90, 99, [37], ZoneDrops.Equipment), // Kanturu Ruins
         (100, 109, [38], ZoneDrops.Equipment), // Kanturu Relics
         (110, 119, [80, 81], ZoneDrops.Equipment), // Karutan 1 and 2
-        (130, 139, [56], ZoneDrops.Jewels), // Swamp of Calmness
+        (130, 139, [56, CrywolfFortress.Number], ZoneDrops.Jewels), // Swamp of Calmness and Crywolf
         (140, 148, [57, 58], ZoneDrops.SocketItems), // Raklion and the hatchery of Selupan
     ];
 
@@ -316,6 +328,17 @@ internal static class MapLevelLadder
         new(12, 558, 138, 185500, 1441, 2017, 661, 1570, 877), // Ice Napin, level 135 before
         new(12, 559, 139, 198824, 1451, 2020, 672, 1580, 903), // Shadow Master, level 137 before
 
+        // Crywolf, in parallel to Swamp of Calmness. Its monsters take the stats of the monsters of Swamp of Calmness
+        // of the same rank. The three scouts are the same monster with another weapon.
+        new(12, 310, 130, 85988, 801, 836, 571, 1114, 447), // Hammer Scout, level 97 before
+        new(12, 311, 130, 85988, 801, 836, 571, 1114, 447), // Lance Scout, level 97 before
+        new(12, 312, 130, 85988, 801, 836, 571, 1114, 447), // Bow Scout, level 97 before
+        new(12, 313, 132, 88272, 919, 997, 611, 1207, 757), // Werewolf, level 118 before
+        new(12, 314, 133, 90512, 949, 1015, 615, 1252, 774), // Scout Hero, level 123 before
+        new(12, 315, 136, 98184, 1175, 1230, 631, 1370, 822), // Werewolf Hero, level 127 before
+        new(12, 316, 137, 134511, 1322, 1970, 651, 1558, 843), // Balram, level 132 before
+        new(12, 317, 139, 198824, 1451, 2020, 672, 1580, 903), // Soram, level 134 before
+
         // Raklion
         new(13, 454, 140, 203960, 1585, 2060, 701, 1659, 907), // Ice Walker, level 102 before
         new(13, 455, 141, 218028, 1594, 2062, 716, 1852, 922), // Giant Mammoth, level 112 before
@@ -354,6 +377,7 @@ internal static class MapLevelLadder
         { 46, 240 }, // Karutan 1
         { 47, 250 }, // Karutan 2
         { 33, 270 }, // Swamp of Calmness
+        { CrywolfWarpIndex, 270 }, // Crywolf, like Swamp of Calmness
     };
 
     private static IReadOnlyList<AttributeDefinition> MonsterStats { get; } =
@@ -384,6 +408,35 @@ internal static class MapLevelLadder
         MoveLevelDependentDrops(gameConfiguration);
         UpdateWarps(gameConfiguration);
         UpdateGates(gameConfiguration);
+    }
+
+    /// <summary>
+    /// Puts Crywolf on the ladder of a configuration which already has the rest of it,
+    /// without touching the other maps. It can be applied more than once.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    public static void ApplyCrywolf(IContext context, GameConfiguration gameConfiguration)
+    {
+        foreach (var entries in Monsters.Where(m => CrywolfMonsterNumbers.Contains(m.Number)).GroupBy(m => m.Number))
+        {
+            ApplyMonster(context, gameConfiguration, entries.ToList());
+        }
+
+        AddZoneDrops(context, gameConfiguration, [CrywolfFortress.Number]);
+        UpdateWarps(gameConfiguration);
+        UpdateGates(gameConfiguration);
+    }
+
+    /// <summary>
+    /// Determines whether the drop item group drops a material of the Fenrir on Crywolf, see <see cref="CrywolfFortress"/>.
+    /// </summary>
+    /// <param name="group">The drop item group.</param>
+    /// <returns><c>true</c>, if the group drops a material of the Fenrir.</returns>
+    internal static bool IsFenrirMaterialGroup(DropItemGroup group)
+    {
+        var id = group.GetId();
+        return Enumerable.Range(1, 3).Any(index => id == GuidHelper.CreateGuid<DropItemGroup>(CrywolfFortress.Number, (short)index));
     }
 
     /// <summary>
@@ -568,7 +621,10 @@ internal static class MapLevelLadder
     /// Replaces the common drop item groups for random and excellent items on the maps of each zone by the ones of the zone.
     /// The maps of a zone which drops only jewels lose all their item drops but the money and get the jewels of the zone.
     /// </summary>
-    private static void AddZoneDrops(IContext context, GameConfiguration gameConfiguration)
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    /// <param name="onlyMapNumbers">The numbers of the maps to change, or <c>null</c> to change all maps of the ladder.</param>
+    private static void AddZoneDrops(IContext context, GameConfiguration gameConfiguration, IReadOnlyCollection<byte>? onlyMapNumbers = null)
     {
         var commonGroupIds = new[] { CommonRandomItemDropItemGroupNumber, CommonExcellentItemDropItemGroupNumber }
             .Select(GuidHelper.CreateGuid<DropItemGroup>)
@@ -576,7 +632,14 @@ internal static class MapLevelLadder
         for (var i = 0; i < Zones.Count; i++)
         {
             var zone = Zones[i];
-            var maps = gameConfiguration.Maps.Where(map => zone.MapNumbers.Contains((byte)map.Number)).ToList();
+            var maps = gameConfiguration.Maps
+                .Where(map => zone.MapNumbers.Contains((byte)map.Number) && onlyMapNumbers?.Contains((byte)map.Number) is not false)
+                .ToList();
+            if (maps.Count == 0)
+            {
+                continue;
+            }
+
             var mapNames = string.Join(", ", maps.Where(map => map.Discriminator == 0).Select(map => map.Name.ValueInNeutralLanguage));
             List<DropItemGroup> groups = zone.Drops switch
             {
@@ -593,7 +656,7 @@ internal static class MapLevelLadder
             foreach (var map in maps)
             {
                 var removedGroups = zone.Drops == ZoneDrops.Jewels
-                    ? map.DropItemGroups.Where(g => g.ItemType != SpecialItemType.Money && !groups.Contains(g))
+                    ? map.DropItemGroups.Where(g => g.ItemType != SpecialItemType.Money && !groups.Contains(g) && !IsFenrirMaterialGroup(g))
                     : map.DropItemGroups.Where(g => commonGroupIds.Contains(g.GetId()));
                 foreach (var group in removedGroups.ToList())
                 {
@@ -612,8 +675,11 @@ internal static class MapLevelLadder
             }
         }
 
-        AddSelupanDrop(context, gameConfiguration);
-        ConfigureSocketCounts(context, gameConfiguration);
+        if (onlyMapNumbers is null)
+        {
+            AddSelupanDrop(context, gameConfiguration);
+            ConfigureSocketCounts(context, gameConfiguration);
+        }
     }
 
     private static DropItemGroup GetOrCreateSocketGroup(IContext context, GameConfiguration gameConfiguration, int zoneIndex, string mapNames)
