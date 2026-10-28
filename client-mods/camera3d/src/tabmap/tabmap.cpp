@@ -34,6 +34,7 @@
 //   Size=0.9        ; tamano del mapa: parte del alto libre de la pantalla (0.3 a 1)
 //   Rotate=1        ; 1: girado como la camara; 0: derecho (cuadrado, mas grande)
 //   Opacity=0.92    ; opacidad de la imagen del mapa
+//   MarkerOpacity=0.7 ; opacidad de los puntos de NPC y spots
 
 #include "../shared.h"
 
@@ -122,6 +123,7 @@ namespace
     float g_size = 0.9f;
     bool g_rotate = true;
     float g_opacity = 0.92f;
+    float g_markerOpacity = 0.7f;
 
     // Copia violeta del punto de los NPC para los hotspots (como en el mapa original con camera3d.dll).
     GLuint g_hotspotTexture = 0;
@@ -548,7 +550,7 @@ namespace
     float IconSize(int kind)
     {
         const float height = static_cast<float>(*WindowHeight);
-        return kind == 2 ? height * 22 / 480 : height * 12 / 480;
+        return kind == 2 ? height * 22 / 480 : height * 9.6f / 480; // spots y NPC: chicos, para no tapar al personaje
     }
 
     // Marcador bajo el mouse (indice en markers) o -1.
@@ -711,13 +713,13 @@ namespace
             g_hotspotFailed = !CreateHotspotTexture();
         }
 
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         for (const Marker& marker : markers)
         {
             float sx, sy;
             TileToScreen(layout, marker.x, marker.y, sx, sy);
             const int texture = marker.kind == 2 ? GateTexture
                 : marker.hotspot && g_hotspotTexture != 0 ? -static_cast<int>(g_hotspotTexture) : NpcTexture;
+            glColor4f(1.0f, 1.0f, 1.0f, marker.kind == 2 ? 1.0f : g_markerOpacity);
             Icon(texture, sx, sy, IconSize(marker.kind), IconUv);
         }
 
@@ -962,6 +964,7 @@ extern "C" __declspec(dllexport) bool StartTabMap(const TabMapHost* host)
     g_size = ReadFloat(host->iniPath, "Size", 0.9f, 0.3f, 1.0f);
     g_rotate = GetPrivateProfileIntA("TabMap", "Rotate", 1, host->iniPath) != 0;
     g_opacity = ReadFloat(host->iniPath, "Opacity", 0.92f, 0.2f, 1.0f);
+    g_markerOpacity = ReadFloat(host->iniPath, "MarkerOpacity", 0.7f, 0.2f, 1.0f);
     if (!SetSlot(0, &RenderHook) || !SetSlot(2, &MouseHook))
     {
         g_log("Mapa del TAB: no se pudo instalar.");

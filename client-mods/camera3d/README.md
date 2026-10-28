@@ -240,6 +240,7 @@ Enabled=1       ; 0: el mapa original
 Size=0.9        ; tamaño del mapa (parte del alto libre de la pantalla, 0.3 a 1)
 Rotate=1        ; 1: girado como la cámara; 0: derecho (cuadrado, más grande)
 Opacity=0.92    ; opacidad de la imagen del mapa
+MarkerOpacity=0.7 ; opacidad de los puntos de NPC y spots
 ```
 
 `src/tabmap/tabmap.cpp` reemplaza el dibujo (`[0]`, `0x0082AA50`) y el mouse (`[2]`, `0x0082B5A0`) de la
