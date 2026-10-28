@@ -239,8 +239,8 @@ mapa original. `camera3d.dll` la carga si está en la misma carpeta (`src/loadta
 Enabled=1       ; 0: el mapa original
 Size=0.9        ; tamaño del mapa (parte del alto libre de la pantalla, 0.3 a 1)
 Rotate=1        ; 1: girado como la cámara; 0: derecho (cuadrado, más grande)
-Opacity=0.92    ; opacidad de la imagen del mapa
-MarkerOpacity=0.55 ; opacidad de los puntos de NPC y spots
+Opacity=0.6     ; opacidad del mapa (se ve el juego por debajo)
+MarkerOpacity=0.8 ; opacidad de los puntos de NPC y spots
 ```
 
 `src/tabmap/tabmap.cpp` reemplaza el dibujo (`[0]`, `0x0082AA50`) y el mouse (`[2]`, `0x0082B5A0`) de la

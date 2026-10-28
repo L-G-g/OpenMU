@@ -33,8 +33,8 @@
 //   Enabled=1       ; 0: el mapa original
 //   Size=0.9        ; tamano del mapa: parte del alto libre de la pantalla (0.3 a 1)
 //   Rotate=1        ; 1: girado como la camara; 0: derecho (cuadrado, mas grande)
-//   Opacity=0.92    ; opacidad de la imagen del mapa
-//   MarkerOpacity=0.55 ; opacidad de los puntos de NPC y spots
+//   Opacity=0.6     ; opacidad del mapa (se ve el juego por debajo)
+//   MarkerOpacity=0.8 ; opacidad de los puntos de NPC y spots
 
 #include "../shared.h"
 
@@ -90,6 +90,7 @@ namespace
     int* const TargetY = reinterpret_cast<int*>(0x081C0388);
     int* const ClickTicks = reinterpret_cast<int*>(0x081C03B4); // pasos desde el ultimo click atendido
     int* const ClickDelay = reinterpret_cast<int*>(0x00E616D0); // pasos minimos entre clicks
+    int* const BoundTexture = reinterpret_cast<int*>(0x00E61E60); // ultima textura enlazada por BindTexture
     const WORD* const TerrainWall = reinterpret_cast<const WORD*>(0x082C6AA0); // 256x256, indice y * 256 + x
 
     // Ventana del mapa (CNewUIMiniMap).
@@ -123,8 +124,8 @@ namespace
     LogFunction g_log = nullptr;
     float g_size = 0.9f;
     bool g_rotate = true;
-    float g_opacity = 0.92f;
-    float g_markerOpacity = 0.55f;
+    float g_opacity = 0.6f;
+    float g_markerOpacity = 0.8f;
 
     // Copia violeta del punto de los NPC para los hotspots (como en el mapa original con camera3d.dll).
     GLuint g_hotspotTexture = 0;
@@ -693,7 +694,7 @@ namespace
         // Fondo y marco.
         const float frame = height * 6 / 480;
         glDisable(GL_TEXTURE_2D);
-        glColor4f(0.0f, 0.0f, 0.0f, 0.8f);
+        glColor4f(0.0f, 0.0f, 0.0f, 0.5f * g_opacity);
         glBegin(GL_QUADS);
         MapQuad(layout, frame, false);
         glEnd();
@@ -768,7 +769,7 @@ namespace
         glPopMatrix();
         glMatrixMode(GL_MODELVIEW);
         glPopMatrix();
-        Bind(MapTexture); // el juego vuelve a enlazar lo que necesite: que su "ultima textura" sea real
+        *BoundTexture = INT_MIN; // glPopAttrib devolvio la textura de antes: el juego tiene que volver a enlazar
     }
 
     void Outline(float left, float top, float right, float bottom)
@@ -977,8 +978,8 @@ extern "C" __declspec(dllexport) bool StartTabMap(const TabMapHost* host)
 
     g_size = ReadFloat(host->iniPath, "Size", 0.9f, 0.3f, 1.0f);
     g_rotate = GetPrivateProfileIntA("TabMap", "Rotate", 1, host->iniPath) != 0;
-    g_opacity = ReadFloat(host->iniPath, "Opacity", 0.92f, 0.2f, 1.0f);
-    g_markerOpacity = ReadFloat(host->iniPath, "MarkerOpacity", 0.55f, 0.2f, 1.0f);
+    g_opacity = ReadFloat(host->iniPath, "Opacity", 0.6f, 0.2f, 1.0f);
+    g_markerOpacity = ReadFloat(host->iniPath, "MarkerOpacity", 0.8f, 0.2f, 1.0f);
     if (!SetSlot(0, &RenderHook) || !SetSlot(2, &MouseHook))
     {
         g_log("Mapa del TAB: no se pudo instalar.");
