@@ -85,6 +85,14 @@ internal static class SpectreEquipment
         var slot = slots.FirstOrDefault(s => spectreInventory.GetItem(s) is null, slots[0]);
         var replaced = spectreInventory.GetItem(slot);
 
+        // The transfer context only updates items which are already in the database, so items which the
+        // owner just got (e.g. by a drop) have to be saved first.
+        await owner.PersistenceContext.SaveChangesAsync().ConfigureAwait(false);
+        if (replaced is not null)
+        {
+            await spectre.PersistenceContext.SaveChangesAsync().ConfigureAwait(false);
+        }
+
         using var transferContext = owner.GameContext.PersistenceContextProvider.CreateNewTradeContext();
         transferContext.Attach(item);
         if (replaced is not null)
@@ -118,7 +126,23 @@ internal static class SpectreEquipment
             spectre.PersistenceContext.Detach(replaced);
         }
 
-        await transferContext.SaveChangesAsync().ConfigureAwait(false);
+        try
+        {
+            await transferContext.SaveChangesAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            // Nothing was sent to the client yet, so it's enough to restore the state of the server.
+            await RollbackAsync(ownerInventory, ownerSlot, item, spectreInventory, slot, replaced).ConfigureAwait(false);
+            owner.PersistenceContext.Attach(item);
+            if (replaced is not null)
+            {
+                spectre.PersistenceContext.Attach(replaced);
+            }
+
+            throw;
+        }
+
         spectre.PersistenceContext.Attach(item);
         await owner.InvokeViewPlugInAsync<IItemRemovedPlugIn>(p => p.RemoveItemAsync(ownerSlot)).ConfigureAwait(false);
         if (replaced is not null)
@@ -155,6 +179,7 @@ internal static class SpectreEquipment
             return "No hay lugar en tu inventario.";
         }
 
+        await spectre.PersistenceContext.SaveChangesAsync().ConfigureAwait(false);
         using var transferContext = owner.GameContext.PersistenceContextProvider.CreateNewTradeContext();
         transferContext.Attach(item);
         await spectreInventory.RemoveItemAsync(item).ConfigureAwait(false);
@@ -166,7 +191,18 @@ internal static class SpectreEquipment
         }
 
         spectre.PersistenceContext.Detach(item);
-        await transferContext.SaveChangesAsync().ConfigureAwait(false);
+        try
+        {
+            await transferContext.SaveChangesAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            await ownerInventory.RemoveItemAsync(item).ConfigureAwait(false);
+            await spectreInventory.AddItemAsync(equipmentSlot, item).ConfigureAwait(false);
+            spectre.PersistenceContext.Attach(item);
+            throw;
+        }
+
         owner.PersistenceContext.Attach(item);
         await owner.InvokeViewPlugInAsync<IItemAppearPlugIn>(p => p.ItemAppearAsync(item)).ConfigureAwait(false);
         return $"Le quitaste {Describe(item)} a tu espectro {SpectreFeaturePlugIn.GetKindName(spectre.Kind)}.";
