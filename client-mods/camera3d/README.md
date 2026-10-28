@@ -225,6 +225,39 @@ pasa por el mismo chequeo (como antes con menos de 3): el pedido se manda, el se
 cliente deja de mostrar el item del inventario hasta volver a entrar. Sobre una poción del baúl el cliente
 no deja soltar.
 
+## Mapa del TAB completo (tabmap.dll)
+
+Con `tabmap.dll` el TAB muestra el mapa entero de la zona en el centro de la pantalla, girado como la
+cámara, con los NPC, las entradas, los spots de monstruos (hotspots en violeta) y el personaje. Al pasar el
+mouse se ve el nombre del marcador y las coordenadas. Un click en el mapa hace caminar al personaje hasta ese
+punto (la ruta y el destino se ven en el mapa) y sigue caminando aunque se cierre el mapa; click derecho en
+el mapa frena la caminata. Fuera del mapa el mouse funciona como siempre. Sin `tabmap.dll` el TAB abre el
+mapa original. `camera3d.dll` la carga si está en la misma carpeta (`src/loadtabmap.cpp`):
+
+```
+[TabMap]
+Enabled=1       ; 0: el mapa original
+Size=0.9        ; tamaño del mapa (parte del alto libre de la pantalla, 0.3 a 1)
+Rotate=1        ; 1: girado como la cámara; 0: derecho (cuadrado, más grande)
+Opacity=0.6     ; opacidad del mapa (se ve el juego por debajo)
+MarkerOpacity=0.8 ; opacidad de los puntos de NPC y spots
+```
+
+`src/tabmap/tabmap.cpp` reemplaza el dibujo (`[0]`, `0x0082AA50`) y el mouse (`[2]`, `0x0082B5A0`) de la
+vtable de la ventana del mapa (`CNewUIMiniMap`, `0x00D468B0`, ventana `0x48`); TAB y Esc la siguen abriendo
+y cerrando como siempre. Usa la imagen que ya cargó el juego para la zona (`Data\World<n>\mini_map.ozt`,
+textura `0x7EBF`; `+0x34BC` dice si se cargó) con la misma orientación que el dibujo original (`0x00638130`:
+u = baldosa Y / 256, v = baldosa X / 256) y el giro de la cámara actual. Los marcadores son los de
+`Minimap_<mapa>_<idioma>.bmd` que leyó el juego (100 de `0x74` bytes desde `+0x12C`).
+
+Para caminar hace lo mismo que el click en el suelo (`0x005B741A` y siguientes): pone la baldosa destino
+(`0x081C038C`, `0x081C0388`), busca el camino con `PathFinding2` (`0x00542D20`, en `+0x274` del personaje)
+y llama a `SendMove` (`0x005A3C70`), que manda el mismo pedido de caminar que un click. Ese camino llega
+hasta 15 baldosas, así que primero se busca la ruta entera sobre las paredes del mapa (`0x082C6AA0`: `0x04`
+no se camina, `0x08` sin suelo) y se manda por tramos de 10 baldosas, uno cada vez que el personaje se
+frena, en el paso de lógica (lo llama `camera3d.dll` después de actualizar las teclas). La caminata se corta
+al llegar, al cambiar de mapa, al morir o si el jugador mueve al personaje de otra forma.
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -452,6 +485,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loadstacks.cpp`: carga de `stacks.dll` si está junto a la DLL.
 - `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/loadespectros.cpp`: carga de `espectros.dll` si está junto a la DLL.
+- `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
@@ -460,6 +494,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/espectros/`: `espectros.dll`, ventana de espectros (Shift+S) y espectros transparentes.
+- `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -475,13 +510,14 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -493,7 +529,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `tabmap.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
