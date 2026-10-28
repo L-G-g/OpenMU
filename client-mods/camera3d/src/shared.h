@@ -184,3 +184,23 @@ struct EspectrosHost
 // bool StartEspectros(const EspectrosHost* host): se llama una vez, despues de StartLoot.
 using StartEspectrosFunction = bool (*)(const EspectrosHost* host);
 constexpr const char* StartEspectrosName = "StartEspectros";
+
+// --- Mapa del TAB completo (tabmap.dll) ---
+// camera3d.dll carga tabmap.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([TabMap]
+// Enabled=0), y llama a su funcion exportada StartTabMap, despues de espectros.dll. tabmap.dll reemplaza el
+// dibujo y el mouse de la ventana del mapa (TAB); el paso de logica lo recibe de camera3d.dll.
+
+constexpr int TabMapHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a tabmap.dll.
+struct TabMapHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [TabMap]
+    void (*setKeyTick)(KeyTickCallback callback);
+};
+
+// bool StartTabMap(const TabMapHost* host): se llama una vez, despues de StartEspectros.
+using StartTabMapFunction = bool (*)(const TabMapHost* host);
+constexpr const char* StartTabMapName = "StartTabMap";

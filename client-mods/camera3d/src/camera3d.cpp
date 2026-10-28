@@ -394,6 +394,7 @@ namespace
         LoadStacks(&Log);
         LoadLoot(&Log);
         LoadEspectros(&Log);
+        LoadTabMap(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())
