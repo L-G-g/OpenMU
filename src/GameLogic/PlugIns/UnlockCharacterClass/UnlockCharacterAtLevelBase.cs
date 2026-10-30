@@ -35,6 +35,7 @@ public abstract class UnlockCharacterAtLevelBase : ICharacterLevelUpPlugIn
         // time - both insert the same unlock row and the account's saves keep failing with a duplicate
         // key of "PK_AccountCharacterClass" until the next restart.
         if (player.Level >= this._minimumLevel
+            && player is not ISpectreCharacter
             && player.Account is { IsBot: false } account
             && account.UnlockedCharacterClasses.All(c => c.Number != this._classNumber))
         {
