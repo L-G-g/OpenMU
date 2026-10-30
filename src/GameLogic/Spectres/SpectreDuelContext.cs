@@ -66,6 +66,12 @@ public sealed class SpectreDuelContext : MiniGameContext
     /// <inheritdoc />
     protected override TimeSpan CountdownDuration => TimeSpan.FromSeconds(5);
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// The player counts only once its client loaded the map, which may take longer than the entering phase.
+    /// </remarks>
+    protected override int MinimumPlayerCount => 0;
+
     /// <summary>
     /// Prepares the duel of the player against the rival of a kind at a tier.
     /// </summary>
@@ -175,6 +181,13 @@ public sealed class SpectreDuelContext : MiniGameContext
         if (this._owner is not { } owner)
         {
             return;
+        }
+
+        // Without the result first, the client shows that the duel was canceled.
+        if (this._rival is { } rival && (DuelResult)this._result is DuelResult.Victory or DuelResult.Defeat)
+        {
+            var (winner, loser) = (DuelResult)this._result == DuelResult.Victory ? ((Player)owner, (Player)rival) : (rival, owner);
+            await owner.InvokeViewPlugInAsync<IDuelFinishedPlugIn>(p => p.DuelFinishedAsync(winner, loser)).ConfigureAwait(false);
         }
 
         await owner.InvokeViewPlugInAsync<IDuelEndedPlugIn>(p => p.DuelEndedAsync()).ConfigureAwait(false);

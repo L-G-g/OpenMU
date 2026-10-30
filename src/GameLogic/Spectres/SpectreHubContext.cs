@@ -38,7 +38,7 @@ public sealed class SpectreHubContext : MiniGameContext
 
     private static readonly TimeSpan ChallengeCooldown = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan AnyChallengeCooldown = TimeSpan.FromSeconds(8);
-    private static readonly TimeSpan IdleAnimationInterval = TimeSpan.FromSeconds(12);
+    private static readonly TimeSpan IdleAnimationInterval = TimeSpan.FromSeconds(4);
 
     private readonly ConcurrentDictionary<SpectreKind, RivalPlayer> _rivals = new();
     private readonly ConcurrentDictionary<SpectreKind, DateTime> _nextChallenges = new();
@@ -75,6 +75,12 @@ public sealed class SpectreHubContext : MiniGameContext
 
     /// <inheritdoc />
     protected override TimeSpan CountdownDuration => TimeSpan.FromSeconds(1);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The player counts only once its client loaded the map, which may take longer than the entering phase.
+    /// </remarks>
+    protected override int MinimumPlayerCount => 0;
 
     /// <summary>
     /// Handles the answer of the player to the challenge of a rival, or the challenge of a rival by the player.
