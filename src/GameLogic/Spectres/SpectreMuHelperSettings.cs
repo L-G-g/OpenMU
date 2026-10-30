@@ -11,10 +11,21 @@ using MUnique.OpenMU.GameLogic.MuHelper;
 /// A spectre can't be hurt, so it never uses potions and never defends itself; it doesn't pick up
 /// items either, because the drops of its kills belong to its owner. It buffs and heals itself, its owner
 /// and the other spectres of its owner (see <see cref="SpectrePlayer.GetSupportTargets"/>), and doesn't
-/// accept any party request.
+/// accept any party request. The raven of a lord attacks the monsters around it.
 /// </summary>
 internal sealed class SpectreMuHelperSettings : IMuHelperSettings
 {
+    private readonly Player _player;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SpectreMuHelperSettings"/> class.
+    /// </summary>
+    /// <param name="player">The spectre or rival which is driven by the settings.</param>
+    public SpectreMuHelperSettings(Player player)
+    {
+        this._player = player;
+    }
+
     /// <inheritdoc />
     public int BasicSkillId => 0;
 
@@ -112,10 +123,10 @@ internal sealed class SpectreMuHelperSettings : IMuHelperSettings
     public int HealPartyThresholdPercent => 70;
 
     /// <inheritdoc />
-    public bool UseDarkRaven => false;
+    public bool UseDarkRaven => this._player.Inventory?.GetItem(InventoryConstants.RightHandSlot)?.Definition is { Group: SpectreEvolution.PetGroup, Number: 5 };
 
     /// <inheritdoc />
-    public int DarkRavenMode => 0;
+    public int DarkRavenMode => 1;
 
     /// <inheritdoc />
     public int ObtainRange => 6;

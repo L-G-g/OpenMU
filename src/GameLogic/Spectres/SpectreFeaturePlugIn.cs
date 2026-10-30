@@ -20,10 +20,12 @@ using MUnique.OpenMU.Persistence;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// The spectre system: every character can summon spectres of a warrior, a mage and an elf. A spectre is
-/// a character of its own, which is stored in a hidden account of the owner's account (see <see cref="GetLoginName"/>);
-/// each character of the owner has its own spectres. A summoned spectre follows its owner, buffs the owner and
-/// hunts the monsters around the owner (see <see cref="SpectreIntelligence"/>); it can't be hurt and doesn't duel.
+/// The spectre system: every character can summon spectres of the seven character classes, after unlocking them in the
+/// spectre hub (see <see cref="SpectreProgress"/>). A spectre is a character of its own, which is stored in a hidden account
+/// of the owner's account (see <see cref="GetLoginName"/>); each character of the owner has its own spectres. A summoned spectre
+/// is in a party with its owner (see <see cref="SpectreParty"/>), follows its owner, buffs the party and hunts the monsters
+/// around the owner (see <see cref="SpectreIntelligence"/>); it can't be hurt and doesn't duel. Its skills come from the
+/// evolutions which the owner unlocked (see <see cref="SpectreEvolution"/>).
 /// Inside safezones, mini games and duels, the spectres of a player disappear until the player leaves them.
 /// The kills of a spectre count as kills of the owner; the spectres of a player share the experience which the
 /// player gets for a kill, and spend their level up points by the percentages which the player chose.
@@ -50,7 +52,7 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     /// <inheritdoc />
     public SpectreConfiguration? Configuration { get; set; }
 
-    private static AttributeDefinition[] StatAttributes { get; } = [Stats.BaseStrength, Stats.BaseAgility, Stats.BaseVitality, Stats.BaseEnergy];
+    private static AttributeDefinition[] StatAttributes => SpectreClasses.StatAttributes;
 
     /// <summary>
     /// Gets the summoned spectres of a player.
@@ -134,6 +136,14 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
                 else if (MustHide(owner))
                 {
                     await HideAsync(owner, state).ConfigureAwait(false);
+                }
+                else if (state.Spectres.Values.Any(spectre => spectre.Party is null || spectre.Party != owner.Party)
+                         || owner.Party?.PartyList.Any(member => member != owner && member is not SpectrePlayer) is true)
+                {
+                    // The owner left the party, kicked a spectre or is in a party with other players.
+                    await DismissAllAsync(owner).ConfigureAwait(false);
+                    await SendPanelAsync(owner).ConfigureAwait(false);
+                    await owner.ShowBlueMessageAsync("Tus espectros se fueron porque dejaron de estar en tu party.").ConfigureAwait(false);
                 }
                 else if (!state.HiddenKinds.IsEmpty && owner.CurrentMap is not null && owner.PlayerState.CurrentState == PlayerState.EnteredWorld)
                 {
@@ -251,12 +261,7 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     /// </summary>
     /// <param name="kind">The kind.</param>
     /// <returns>The name.</returns>
-    internal static string GetKindName(SpectreKind kind) => kind switch
-    {
-        SpectreKind.Warrior => "guerrero",
-        SpectreKind.Mage => "mago",
-        _ => "elfa",
-    };
+    internal static string GetKindName(SpectreKind kind) => SpectreClasses.GetName(kind);
 
     /// <summary>
     /// Gets the login name of the hidden account which holds the spectres of the characters of an account.
@@ -290,9 +295,14 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         }
 
         var spectres = Owners.TryGetValue(owner, out var state) ? state.Spectres : null;
-        var entries = Enum.GetValues<SpectreKind>()
-            .Select(kind => spectres?.TryGetValue(kind, out var spectre) == true ? CreatePanelEntry(spectre) : null)
-            .Select((entry, index) => entry ?? SpectrePanelEntry.NotSummoned((SpectreKind)index))
+        var character = owner.SelectedCharacter;
+        var entries = SpectreClasses.AllKinds
+            .Select(kind =>
+            {
+                var victories = character is null ? 0 : SpectreProgress.GetVictories(character, kind);
+                return (spectres?.TryGetValue(kind, out var spectre) == true ? CreatePanelEntry(spectre, victories) : null)
+                       ?? SpectrePanelEntry.NotSummoned(kind, victories);
+            })
             .ToList();
         await owner.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowSpectrePanelAsync(entries)).ConfigureAwait(false);
     }
@@ -333,6 +343,18 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         if (IsInMiniGameOrDuel(owner) || owner.CurrentMap is null)
         {
             await owner.ShowBlueMessageAsync("No podes invocar espectros aca.").ConfigureAwait(false);
+            return;
+        }
+
+        if (!SpectreProgress.IsUnlocked(owner.SelectedCharacter, kind))
+        {
+            await owner.ShowBlueMessageAsync($"Primero tenes que vencer al espectro {GetKindName(kind)} en el refugio de los espectros (Guardian en Lorencia).").ConfigureAwait(false);
+            return;
+        }
+
+        if (owner.GetPlayerParty() is not null)
+        {
+            await owner.ShowBlueMessageAsync("No podes invocar espectros estando en party con otros jugadores.").ConfigureAwait(false);
             return;
         }
 
@@ -401,10 +423,12 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         {
             var character = spectre.SelectedCharacter!;
             var percentages = GetStatPercentages(character, spectre.Kind);
+            var hasLeadership = SpectreClasses.HasLeadership(spectre.Kind);
             await owner.ShowBlueMessageAsync(
                 $"{GetKindName(spectre.Kind)} {spectre.Name}: nivel {spectre.Level} ({character.Experience} exp), resets {(int)(spectre.Attributes?[Stats.Resets] ?? 0)}, "
-                + $"FUE {Stat(Stats.BaseStrength)} AGI {Stat(Stats.BaseAgility)} VIT {Stat(Stats.BaseVitality)} ENE {Stat(Stats.BaseEnergy)}, "
-                + $"reparte FUE {percentages[0]}% AGI {percentages[1]}% VIT {percentages[2]}% ENE {percentages[3]}%").ConfigureAwait(false);
+                + $"FUE {Stat(Stats.BaseStrength)} AGI {Stat(Stats.BaseAgility)} VIT {Stat(Stats.BaseVitality)} ENE {Stat(Stats.BaseEnergy)}"
+                + (hasLeadership ? $" CMD {Stat(Stats.BaseLeadership)}" : string.Empty)
+                + $", reparte {FormatPercentages(spectre.Kind, percentages)}").ConfigureAwait(false);
 
             int Stat(AttributeDefinition attribute) => (int)(spectre.Attributes?[attribute] ?? 0);
         }
@@ -415,13 +439,17 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     /// </summary>
     /// <param name="owner">The owner.</param>
     /// <param name="kind">The kind of the spectre.</param>
-    /// <param name="percentages">The percentages of strength, agility, vitality and energy.</param>
+    /// <param name="percentages">The percentages of strength, agility, vitality, energy and (only for the lord) leadership.</param>
     /// <returns>The task.</returns>
     internal async ValueTask SetStatPercentagesAsync(Player owner, SpectreKind kind, IReadOnlyList<int> percentages)
     {
-        if (percentages.Count != StatAttributes.Length || percentages.Any(p => p < 0) || percentages.Sum() != 100)
+        var hasLeadership = SpectreClasses.HasLeadership(kind);
+        var values = percentages.Count == StatAttributes.Length - 1 ? [.. percentages, 0] : percentages.ToList();
+        if (values.Count != StatAttributes.Length || values.Any(p => p < 0) || values.Sum() != 100 || (!hasLeadership && values[^1] != 0))
         {
-            await owner.ShowBlueMessageAsync("Los porcentajes de FUE, AGI, VIT y ENE tienen que sumar 100.").ConfigureAwait(false);
+            await owner.ShowBlueMessageAsync(hasLeadership
+                ? "Los porcentajes de FUE, AGI, VIT, ENE y CMD tienen que sumar 100."
+                : "Los porcentajes de FUE, AGI, VIT y ENE tienen que sumar 100.").ConfigureAwait(false);
             return;
         }
 
@@ -435,13 +463,13 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         {
             if (spectre.SelectedCharacter is { } character)
             {
-                character.KeyConfiguration = [StatPercentagesMarker, .. percentages.Select(p => (byte)p)];
+                character.KeyConfiguration = [StatPercentagesMarker, .. values.Select(p => (byte)p)];
                 await SpendStatPointsAsync(spectre).ConfigureAwait(false);
                 await SendPanelAsync(owner).ConfigureAwait(false);
             }
         });
 
-        await owner.ShowBlueMessageAsync($"Tu espectro {GetKindName(kind)} reparte sus puntos: FUE {percentages[0]}% AGI {percentages[1]}% VIT {percentages[2]}% ENE {percentages[3]}%.").ConfigureAwait(false);
+        await owner.ShowBlueMessageAsync($"Tu espectro {GetKindName(kind)} reparte sus puntos: {FormatPercentages(kind, values.Select(p => (byte)p).ToArray())}.").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -519,7 +547,11 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
                && state != PlayerState.Initial;
     }
 
-    private static SpectrePanelEntry? CreatePanelEntry(SpectrePlayer spectre)
+    private static string FormatPercentages(SpectreKind kind, IReadOnlyList<byte> percentages)
+        => $"FUE {percentages[0]}% AGI {percentages[1]}% VIT {percentages[2]}% ENE {percentages[3]}%"
+           + (SpectreClasses.HasLeadership(kind) ? $" CMD {percentages[4]}%" : string.Empty);
+
+    private static SpectrePanelEntry? CreatePanelEntry(SpectrePlayer spectre, int victories)
     {
         if (spectre.SelectedCharacter is not { } character || spectre.Attributes is not { } attributes || spectre.Inventory is not { } inventory)
         {
@@ -529,6 +561,7 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         var equipment = Enumerable.Range(0, SpectrePanelEntry.EquipmentSlots).Select(slot => inventory.GetItem((byte)slot)).ToArray();
         return new SpectrePanelEntry(
             spectre.Kind,
+            victories,
             true,
             spectre.Name,
             (int)attributes[Stats.Level],
@@ -575,29 +608,16 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
 
     private static bool MustHide(Player owner) => IsInMiniGameOrDuel(owner) || owner.IsAtSafezone();
 
-    private static byte[] GetDefaultStatPercentages(SpectreKind kind) => kind switch
-    {
-        SpectreKind.Warrior => [60, 25, 15, 0],
-        SpectreKind.Mage => [0, 20, 10, 70],
-        _ => [15, 45, 10, 30],
-    };
-
     private static byte[] GetStatPercentages(Character character, SpectreKind kind)
     {
-        if (character.KeyConfiguration is { Length: 5 } data && data[0] == StatPercentagesMarker)
+        // The first version of the spectres stored four percentages, without leadership.
+        if (character.KeyConfiguration is { Length: 5 or 6 } data && data[0] == StatPercentagesMarker)
         {
-            return data[1..];
+            return data.Length == 6 ? data[1..] : [.. data[1..], 0];
         }
 
-        return GetDefaultStatPercentages(kind);
+        return SpectreClasses.GetDefaultStatPercentages(kind);
     }
-
-    private static byte GetClassNumber(SpectreKind kind) => kind switch
-    {
-        SpectreKind.Warrior => BotClassNumbers.DarkKnightNumber,
-        SpectreKind.Mage => BotClassNumbers.DarkWizardNumber,
-        _ => BotClassNumbers.FairyElfNumber,
-    };
 
     private static async ValueTask HideAsync(Player owner, OwnerState state)
     {
@@ -635,6 +655,7 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     {
         try
         {
+            await SpectreParty.LeaveAsync(spectre).ConfigureAwait(false);
             await spectre.StopAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -674,7 +695,15 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
             return null;
         }
 
-        // Points and skills which were earned while the spectre wasn't summoned, e.g. after a change of the percentages.
+        if (!await SpectreParty.JoinOwnerAsync(spectre).ConfigureAwait(false))
+        {
+            state.Spectres.TryRemove(kind, out _);
+            await StopAsync(spectre).ConfigureAwait(false);
+            await owner.ShowBlueMessageAsync("Tu espectro no pudo entrar a tu party.").ConfigureAwait(false);
+            return null;
+        }
+
+        // Points which were earned while the spectre wasn't summoned, e.g. after a change of the percentages.
         BotSkillProgressionPlugIn.CatchUpPendingProgress(spectre);
         return spectre;
     }
@@ -685,7 +714,8 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         var ownerAccount = owner.Account!;
         var ownerCharacter = owner.SelectedCharacter!;
         var loginName = GetLoginName(ownerAccount);
-        var slot = (byte)((ownerCharacter.CharacterSlot * 3) + (byte)kind);
+        var slot = SpectreClasses.GetCharacterSlot(ownerCharacter.CharacterSlot, kind);
+        var highestTier = SpectreProgress.GetVictories(ownerCharacter, kind) - 1;
 
         using var context = gameContext.PersistenceContextProvider.CreateNewPlayerContext(gameContext.Configuration);
         var account = await context.GetAccountByLoginNameAsync(loginName).ConfigureAwait(false);
@@ -704,14 +734,15 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         }
         else if (account.Characters.FirstOrDefault(c => c.CharacterSlot == slot) is { } existing)
         {
-            return existing.Name;
+            await GrowAsync(owner, context, existing, kind, highestTier).ConfigureAwait(false);
+            return await context.SaveChangesAsync().ConfigureAwait(false) ? existing.Name : null;
         }
         else
         {
             // The spectre is created below.
         }
 
-        var characterClass = gameContext.Configuration.CharacterClasses.FirstOrDefault(c => c.Number == GetClassNumber(kind));
+        var characterClass = gameContext.Configuration.CharacterClasses.FirstOrDefault(c => c.Number == SpectreClasses.GetClassNumber(kind));
         if (characterClass is null)
         {
             owner.Logger.LogError("The character class of the spectre {Kind} doesn't exist.", kind);
@@ -722,7 +753,8 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         var generator = new BotGenerator(gameContext, owner.Logger);
         var character = generator.CreateCharacter(context, account, name, characterClass, 1, slot, gameContext.ExperienceTable, 0, 0, false, null);
         character.Inventory!.Money = 0;
-        character.KeyConfiguration = [StatPercentagesMarker, .. GetDefaultStatPercentages(kind)];
+        character.KeyConfiguration = [StatPercentagesMarker, .. SpectreClasses.GetDefaultStatPercentages(kind)];
+        await GrowAsync(owner, context, character, kind, highestTier).ConfigureAwait(false);
         if (!await context.SaveChangesAsync().ConfigureAwait(false))
         {
             return null;
@@ -732,14 +764,24 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
         return name;
     }
 
+    private static async ValueTask GrowAsync(Player owner, IPlayerContext context, Character character, SpectreKind kind, int highestTier)
+    {
+        var blocked = await SpectreGrowth.ApplyAsync(context, owner.GameContext.Configuration, character, kind, highestTier).ConfigureAwait(false);
+        foreach (var pet in Enum.GetValues<SpectreGrantedPet>().Where(pet => pet != SpectreGrantedPet.None && blocked.HasFlag(pet)))
+        {
+            var petName = pet switch
+            {
+                SpectreGrantedPet.DarkRaven => "el Dark Raven (quitale lo que tiene en la otra mano)",
+                SpectreGrantedPet.DarkHorse => "el Dark Horse (quitale la mascota)",
+                _ => "el Dinorant (quitale la mascota)",
+            };
+            await owner.ShowBlueMessageAsync($"Tu espectro {GetKindName(kind)} no pudo recibir {petName}.").ConfigureAwait(false);
+        }
+    }
+
     private static async ValueTask<string> GenerateNameAsync(IPlayerContext context, string ownerName, SpectreKind kind)
     {
-        var suffix = kind switch
-        {
-            SpectreKind.Warrior => "G",
-            SpectreKind.Mage => "M",
-            _ => "E",
-        };
+        var suffix = SpectreClasses.GetLetter(kind);
 
         var baseName = ownerName.Length > 7 ? ownerName[..7] : ownerName;
         for (var i = 0; ; i++)

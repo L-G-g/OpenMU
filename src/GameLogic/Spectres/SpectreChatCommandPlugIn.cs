@@ -10,9 +10,9 @@ using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// The chat command which handles the spectres of a player (see <see cref="SpectreFeaturePlugIn"/>):
-/// <c>/espectro guerrero|mago|elfa</c> summons or dismisses a spectre, <c>/espectro fuera</c> dismisses all,
+/// <c>/espectro guerrero|mago|elfa|gladiador|lord|invocadora|peleador</c> summons or dismisses a spectre, <c>/espectro fuera</c> dismisses all,
 /// <c>/espectro info</c> shows them, <c>/espectro reset &lt;kind&gt;</c> resets one, and
-/// <c>/espectro puntos &lt;kind&gt; &lt;str&gt; &lt;agi&gt; &lt;vit&gt; &lt;ene&gt;</c> sets the percentages by which it spends its points,
+/// <c>/espectro puntos &lt;kind&gt; &lt;str&gt; &lt;agi&gt; &lt;vit&gt; &lt;ene&gt; [&lt;cmd&gt;]</c> sets the percentages by which it spends its points,
 /// <c>/espectro equipar &lt;kind&gt; &lt;inventory slot&gt;</c> equips an item of the inventory on it,
 /// <c>/espectro quitar &lt;kind&gt; &lt;equipment slot&gt;</c> takes an item off, and <c>/espectro panel</c>
 /// sends the state of the spectres to the spectre window of the client.
@@ -25,7 +25,7 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
 {
     private const string Command = "/espectro";
 
-    private const string Usage = "Uso: /espectro guerrero|mago|elfa, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene>, /espectro equipar <clase> <lugar>, /espectro quitar <clase> <lugar>";
+    private const string Usage = "Uso: /espectro guerrero|mago|elfa|gladiador|lord|invocadora|peleador, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene> [<cmd>], /espectro equipar <clase> <lugar>, /espectro quitar <clase> <lugar>";
 
     /// <inheritdoc />
     public string Key => Command;
@@ -66,7 +66,7 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
             case "quitar" when arguments.Count == 3 && TryParseKind(arguments[1], out var kind) && byte.TryParse(arguments[2], out var slot):
                 await feature.UnequipAsync(player, kind, slot).ConfigureAwait(false);
                 return;
-            case "puntos" when arguments.Count == 6 && TryParseKind(arguments[1], out var kind):
+            case "puntos" when arguments.Count is 6 or 7 && TryParseKind(arguments[1], out var kind):
                 var percentages = arguments.Skip(2).Select(a => int.TryParse(a, out var value) ? value : -1).ToList();
                 await feature.SetStatPercentagesAsync(player, kind, percentages).ConfigureAwait(false);
                 return;
@@ -79,22 +79,5 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
         }
     }
 
-    private static bool TryParseKind(string text, out SpectreKind kind)
-    {
-        switch (text.ToLowerInvariant())
-        {
-            case "guerrero" or "g":
-                kind = SpectreKind.Warrior;
-                return true;
-            case "mago" or "m":
-                kind = SpectreKind.Mage;
-                return true;
-            case "elfa" or "e":
-                kind = SpectreKind.Elf;
-                return true;
-            default:
-                kind = default;
-                return false;
-        }
-    }
+    private static bool TryParseKind(string text, out SpectreKind kind) => SpectreClasses.TryParse(text, out kind);
 }

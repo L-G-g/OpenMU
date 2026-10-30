@@ -164,7 +164,7 @@ public sealed class BuffHandler
     /// </summary>
     /// <param name="skill">The skill to cast.</param>
     private bool CanCast(Skill skill)
-        => BotProgression.MeetsRequirements(skill, attribute => this._player.Attributes?[attribute]);
+        => this._player is Spectres.ISpectreCharacter || BotProgression.MeetsRequirements(skill, attribute => this._player.Attributes?[attribute]);
 
     /// <summary>
     /// Attempts to apply the buff to self and, if applicable, to party members.

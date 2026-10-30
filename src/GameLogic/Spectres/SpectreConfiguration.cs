@@ -13,8 +13,8 @@ public class SpectreConfiguration
     /// Gets or sets the maximum number of spectres which a player can have summoned at the same time.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_MaximumActiveSpectres_Name), Description = nameof(PlugInResources.SpectreConfiguration_MaximumActiveSpectres_Description))]
-    [Range(1, 3)]
-    public int MaximumActiveSpectres { get; set; } = 3;
+    [Range(1, 4)]
+    public int MaximumActiveSpectres { get; set; } = 4;
 
     /// <summary>
     /// Gets or sets the experience which the summoned spectres of a player share, in percent of the experience

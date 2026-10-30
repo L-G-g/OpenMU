@@ -1194,6 +1194,12 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     /// <returns><c>true</c>, if the player complies with the requirements; Otherwise, <c>false</c>.</returns>
     public bool CompliesRequirements(Skill skill)
     {
+        if (this is Spectres.ISpectreCharacter)
+        {
+            // Spectres and their rivals got their skills from their evolutions.
+            return true;
+        }
+
         // Characters which did a reset may keep using their skills below the required level, if the reset feature allows it.
         var ignoresLevelRequirement = this.Attributes![Stats.Resets] > 0
             && this.GameContext.FeaturePlugIns.GetPlugIn<ResetFeaturePlugIn>()?.Configuration is { IgnoreSkillLevelRequirements: true };

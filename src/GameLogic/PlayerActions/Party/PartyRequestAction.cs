@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic.PlayerActions.Party;
 using System.ComponentModel;
 using MUnique.OpenMU.GameLogic.MuHelper;
 using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.GameLogic.Views.Party;
 
 /// <summary>
@@ -33,14 +34,20 @@ public class PartyRequestAction
             return;
         }
 
-        if (toRequest.Party != null || toRequest.LastPartyRequester != null)
+        if (toRequest is SpectrePlayer)
+        {
+            await player.ShowLocalizedBlueMessageAsync(nameof(PlayerMessage.PlayerIsAlreadyInParty), toRequest.Name).ConfigureAwait(false);
+            return;
+        }
+
+        if (toRequest.GetPlayerParty() != null || toRequest.LastPartyRequester != null)
         {
             // A server-side bot is asked as well when it is a plain member of its (bot) party: a living
             // player takes precedence over the bot's own company, so it leaves that party and joins the
             // inviter (see BotPartyHandler). Everyone else keeps the original rule - only the master of a
             // party can answer an invitation.
             var isBot = toRequest.Account?.IsBot == true;
-            if (toRequest.Party != null && (isBot || Equals(toRequest.Party.PartyMaster, toRequest)))
+            if (toRequest.GetPlayerParty() != null && (isBot || Equals(toRequest.Party!.PartyMaster, toRequest)))
             {
                 if (await PartyRequestHandler.TryAutoAcceptPartyRequestAsync(toRequest, player).ConfigureAwait(false))
                 {

@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.GameLogic.PlayerActions.Guild;
 
 using System.ComponentModel;
 using MUnique.OpenMU.GameLogic.GuildWar;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.GameLogic.Views.Guild;
 
 /// <summary>
@@ -174,7 +175,7 @@ public class GuildWarAnswerAction
 
     private ICollection<Player> GetTeamPlayers(Player guildMaster)
     {
-        if (guildMaster.Party is { } party)
+        if (guildMaster.GetPlayerParty() is { } party)
         {
             return party.PartyList.OfType<Player>().Where(p => p.GuildStatus?.GuildId == guildMaster.GuildStatus?.GuildId).ToList();
         }

@@ -43,6 +43,7 @@ internal sealed class SpectreIntelligence : AsyncDisposable
     private readonly HealingHandler _healingHandler;
     private readonly MovementHandler _movementHandler;
     private readonly CombatHandler _combatHandler;
+    private readonly PetHandler _petHandler;
     private readonly CancellationTokenSource _cts = new();
     private readonly PeriodicTimer _timer = new(TimeSpan.FromMilliseconds(500));
 
@@ -66,6 +67,7 @@ internal sealed class SpectreIntelligence : AsyncDisposable
         this._healingHandler = new HealingHandler(spectre, settings);
         this._movementHandler = new MovementHandler(spectre, settings);
         this._combatHandler = new CombatHandler(spectre, settings, this._movementHandler);
+        this._petHandler = new PetHandler(spectre, settings);
     }
 
     /// <summary>
@@ -113,6 +115,8 @@ internal sealed class SpectreIntelligence : AsyncDisposable
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
+        // The raven of a lord hunts on its own, beside the spectre.
+        await this._petHandler.InitializeAsync().ConfigureAwait(false);
         while (await this._timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {
             try
