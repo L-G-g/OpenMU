@@ -55,8 +55,19 @@ public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
     /// <inheritdoc />
     public override string DisplayName => SpectreHub.GetRivalName(this.Kind);
 
+    /// <summary>
+    /// Gets the name of the rival as the client of the PeroniaMU shows it, e.g. "Guerrero Olvidado".
+    /// </summary>
+    public string Title => SpectreEvolution.GetTitle(this.Kind, this.Tier);
+
     /// <inheritdoc />
     public override bool RespawnAndContinue => true;
+
+    /// <summary>
+    /// Shows the <see cref="Title"/> to the players which see the rival.
+    /// </summary>
+    /// <returns>The task.</returns>
+    public ValueTask ShowTitleAsync() => this.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(this, this.Title), false);
 
     /// <summary>
     /// Determines whether an attacker can hurt this rival: only its owner (or the pets of the owner), during the duel.

@@ -12,9 +12,9 @@ namespace MUnique.OpenMU.GameLogic.Spectres;
 /// The tier 0 is the rival which unlocks the spectre; the tiers 1 to <see cref="EvolutionCount"/> are the evolutions.
 /// When the owner beats the rival of a tier, the spectre learns the skills of that tier, and the rival of the hub becomes
 /// the one of the next tier. The rival of a tier already knows the skills of its tier.
-/// The first tiers give single target skills, the middle ones buffs (and the pets of the lord), the last ones the best area skills.
+/// The first tiers give single target skills, the middle ones area skills (and the pets of the lord), the last ones the buffs.
 /// The armor sets and weapons of the rivals follow the zones of the map ladder (Lorencia, Devias, Lost Tower, Atlans, Aida,
-/// Icarus, Kanturu Relics and Karutan); the rival of tier 0 has no equipment.
+/// Icarus, Kanturu Relics and Karutan), excellent from tier 4, with wings; the rival of tier 0 has no equipment.
 /// </remarks>
 public static class SpectreEvolution
 {
@@ -32,31 +32,55 @@ public static class SpectreEvolution
     private const byte BootsGroup = 11;
 
     /// <summary>
-    /// The skills which a spectre learns at each tier, by kind. Index 0 is the unlock.
+    /// The skills which a spectre learns at each tier, by kind. Index 0 is the unlock. The buffs come in the last tiers.
     /// </summary>
     private static readonly short[][][] Skills =
     [
 
-        // Warrior: Cyclone, Death Stab, Fire Breath (with the Dinorant), Swell Life, combo, Twisting Slash, Rageful Blow, Strike of Destruction.
-        [[], [22], [43], [49], [48], [], [41], [42], [232]],
+        // Warrior: Cyclone, Twisting Slash, Fire Breath (with the Dinorant), Rageful Blow, combo, Strike of Destruction, -, Swell Life.
+        [[], [22], [41], [49], [42], [], [232], [], [48]],
 
-        // Mage: Energy Ball, Lightning, Meteorite, Ice, Soul Barrier, Expansion of Wizardry, Evil Spirit, Hellfire and Inferno, Ice Storm and Decay.
-        [[17], [3], [2], [7], [16], [233], [9], [10, 14], [39, 38]],
+        // Mage: Energy Ball, Lightning, Meteorite, Ice, Evil Spirit, Hellfire and Inferno, Ice Storm and Decay, Soul Barrier, Expansion of Wizardry.
+        [[17], [3], [2], [7], [9], [10, 14], [39, 38], [16], [233]],
 
-        // Elf: Ice Arrow, Heal, Greater Defense, Greater Damage, Infinity Arrow and Recovery, Triple Shot, Penetration, Multi-Shot.
-        [[], [51], [26], [27], [28], [77, 234], [24], [52], [235]],
+        // Elf: Ice Arrow, Triple Shot, Penetration, Multi-Shot, Heal, Greater Defense, Greater Damage, Infinity Arrow and Recovery.
+        [[], [51], [24], [52], [235], [26], [27], [28], [77, 234]],
 
         // Gladiator: Cyclone, Lightning, Ice, Power Slash, Twisting Slash, Fire Slash, Flame Strike, Gigantic Storm.
         [[], [22], [3], [7], [56], [41], [55], [236], [237]],
 
-        // Lord: Force Wave, Fire Burst, (Dark Raven), Increase Critical Damage, Earthshake (with the Dark Horse), Fire Scream, Electric Spike, Chaotic Diseier.
-        [[], [66], [61], [], [64], [62], [78], [65], [238]],
+        // Lord: Force Wave, Fire Burst, (Dark Raven), Fire Scream, Earthshake (with the Dark Horse), Electric Spike, Chaotic Diseier, Increase Critical Damage.
+        [[], [66], [61], [], [78], [62], [65], [238], [64]],
 
-        // Summoner: Fire Ball, Meteorite, Drain Life, Chain Lightning, Damage Reflection, Berserker, Explosion, Requiem and Pollution, Lightning Shock.
-        [[4], [2], [214], [215], [217], [218], [223], [224, 225], [230]],
+        // Summoner: Fire Ball, Meteorite, Drain Life, Chain Lightning, Explosion, Requiem and Pollution, Lightning Shock, Damage Reflection, Berserker.
+        [[4], [2], [214], [215], [223], [224, 225], [230], [217], [218]],
 
-        // Fighter: Killing Blow, Beast Uppercut, Chain Drive, Increase Health and Block, Ignore Defense, Dragon Roar, Dark Side, Phoenix Shot.
-        [[], [260], [261], [262], [267, 268], [266], [264], [263], [270]],
+        // Fighter: Killing Blow, Beast Uppercut, Chain Drive, Dragon Roar, Dark Side, Phoenix Shot, Increase Health and Block, Ignore Defense.
+        [[], [260], [261], [262], [264], [263], [270], [267, 268], [266]],
+    ];
+
+    /// <summary>
+    /// The wings of the rivals (group and number), by kind and generation (first, second and third wings);
+    /// a group of 0 means that the kind has no wings of that generation.
+    /// </summary>
+    private static readonly (byte Group, short Number)[][] Wings =
+    [
+        [(12, 2), (12, 5), (12, 36)], // Satan, Dragon, Storm
+        [(12, 1), (12, 4), (12, 37)], // Heaven, Soul, Eternal
+        [(12, 0), (12, 3), (12, 38)], // Elf, Spirits, Illusion
+        [(12, 2), (12, 6), (12, 39)], // Satan, Darkness, Ruin
+        [(0, 0), (13, 30), (12, 40)], // -, Cape of Lord, Cape of Emperor
+        [(12, 41), (12, 42), (12, 43)], // Curse, Despair, Dimension
+        [(0, 0), (12, 49), (12, 50)], // -, Cape of Fighter, Cape of Overrule
+    ];
+
+    /// <summary>
+    /// The names of the evolutions, as they follow the name of the kind, for the male and the female kinds.
+    /// </summary>
+    private static readonly string[][] EvolutionNames =
+    [
+        ["Olvidado", "Abandonado", "Debilitado", "Convaleciente", "Recuperado", "Fuerte", "Poderoso", "Epico", "Legendario"],
+        ["Olvidada", "Abandonada", "Debilitada", "Convaleciente", "Recuperada", "Fuerte", "Poderosa", "Epica", "Legendaria"],
     ];
 
     /// <summary>
@@ -204,9 +228,58 @@ public static class SpectreEvolution
     }
 
     /// <summary>
+    /// Gets the wings of the rival at a tier: the first wings from tier 1, the second from tier 4 and the third from tier 7.
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="tier">The tier.</param>
+    /// <returns>The group and number of the wings, or <c>null</c> if the rival has no wings at this tier.</returns>
+    public static (byte Group, short Number)? GetRivalWings(SpectreKind kind, int tier)
+    {
+        if (tier < 1 || tier > EvolutionCount)
+        {
+            return null;
+        }
+
+        var wings = Wings[(int)kind][(tier - 1) / 3];
+        return wings.Group == 0 ? null : wings;
+    }
+
+    /// <summary>
+    /// Determines whether the armor set and the weapon of the rival at a tier are excellent.
+    /// </summary>
+    /// <param name="tier">The tier.</param>
+    /// <returns><c>true</c>, if they are excellent.</returns>
+    public static bool IsRivalEquipmentExcellent(int tier) => tier >= 4;
+
+    /// <summary>
+    /// Gets the name of a spectre of a kind at a tier, e.g. "Invocadora Recuperada".
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="tier">The tier.</param>
+    /// <returns>The name.</returns>
+    public static string GetTitle(SpectreKind kind, int tier)
+        => $"{SpectreHub.GetRivalName(kind)} {EvolutionNames[IsFemale(kind) ? 1 : 0][Math.Clamp(tier, 0, EvolutionCount)]}";
+
+    /// <summary>
+    /// Gets the name of a spectre of a kind at a tier with its article, e.g. "la Elfa Olvidada".
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <param name="tier">The tier.</param>
+    /// <returns>The name with its article.</returns>
+    public static string GetTitleWithArticle(SpectreKind kind, int tier) => (IsFemale(kind) ? "la " : "el ") + GetTitle(kind, tier);
+
+    /// <summary>
     /// Gets the item level of the equipment of the rival at a tier.
     /// </summary>
     /// <param name="tier">The tier.</param>
     /// <returns>The item level.</returns>
-    public static byte GetRivalItemLevel(int tier) => (byte)Math.Clamp(tier, 0, 15);
+    public static byte GetRivalItemLevel(int tier) => tier switch
+    {
+        <= 3 => (byte)Math.Max(tier, 0),
+        <= 6 => 9,
+        7 => 13,
+        _ => 15,
+    };
+
+    private static bool IsFemale(SpectreKind kind) => kind is SpectreKind.Elf or SpectreKind.Summoner;
 }

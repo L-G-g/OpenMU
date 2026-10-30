@@ -30,9 +30,12 @@ using MUnique.OpenMU.PlugIns;
 ///         the 12 equipment slots of <see cref="SlotLength"/> bytes: present (0 or 1), item type (2 bytes, group * 512 + number),
 ///         item level, excellent options, ancient options, the item as the client knows it (12 bytes), and its
 ///         description (40 bytes text). The numbers of the entries are little endian.</item>
-/// </list>
 ///   <item><c>C2 [length, 2 bytes big endian] FD 02</c> and the story of the guardian of the spectres, as text with lines separated by
 ///         <c>\n</c> (Latin-1, ends with 0): the client shows it in a window with a button which sends <c>/espectro refugio</c>.</item>
+///   <item><c>C1 [length] FD 03 [object id, 2 bytes big endian]</c> and a name (Latin-1, ends with 0, up to <see cref="MaximumTitleLength"/>
+///         characters): the client shows the object with this name instead of the name of at most 10 characters of the original protocol.
+///         It's repeated every few seconds while the object is in view.</item>
+/// </list>
 /// The window answers with the chat command /espectro.
 /// </remarks>
 [PlugIn]
@@ -44,6 +47,8 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
     private const byte PanelSubCode = 0x00;
     private const byte SpectreSubCode = 0x01;
     private const byte StorySubCode = 0x02;
+    private const byte TitleSubCode = 0x03;
+    private const int MaximumTitleLength = 30;
     private const int MaximumStoryLength = 2000;
     private const int SpectreLength = 6;
     private const int PanelHeaderLength = 5;
@@ -141,6 +146,34 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
             span[3] = Code;
             span[4] = StorySubCode;
             textBytes.CopyTo(span[PanelHeaderLength..]);
+            span[^1] = 0;
+            return length;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ShowTitleAsync(IIdentifiable obj, string title)
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        var id = obj.GetId(this._player);
+        var titleBytes = Encoding.Latin1.GetBytes(title.Length > MaximumTitleLength ? title[..MaximumTitleLength] : title);
+        var length = SpectreLength + titleBytes.Length + 1;
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(length)[..length];
+            span[0] = 0xC1;
+            span[1] = (byte)length;
+            span[2] = Code;
+            span[3] = TitleSubCode;
+            BinaryPrimitives.WriteUInt16BigEndian(span[4..], id);
+            titleBytes.CopyTo(span[SpectreLength..]);
             span[^1] = 0;
             return length;
         }

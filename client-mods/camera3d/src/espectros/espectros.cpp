@@ -89,13 +89,14 @@ namespace
 
     constexpr int CharacterCount = 400;
     constexpr DWORD CharacterSize = 0x598;
-    constexpr DWORD CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
+    constexpr DWORD CharName = 0x38, CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
+    constexpr size_t NameSize = 32; // lugar del nombre en el personaje; el protocolo manda 10 caracteres
     constexpr DWORD ObjAlpha = 0x98;
     constexpr WORD IdMask = 0x7FFF;
 
     // --- Paquetes ---
     constexpr int CodeSpectres = 0xFD;
-    constexpr BYTE SubCodePanel = 0x00, SubCodeSpectre = 0x01, SubCodeStory = 0x02;
+    constexpr BYTE SubCodePanel = 0x00, SubCodeSpectre = 0x01, SubCodeStory = 0x02, SubCodeTitle = 0x03;
     constexpr int KindCount = 7;
     constexpr int StatCount = 5; // fuerza, agilidad, vitalidad, energia y comando (solo el lord)
     constexpr int EvolutionCount = 8;
@@ -110,6 +111,7 @@ namespace
     constexpr int EntryHeaderLength = VictoriesOffset + 2;
     constexpr int EntryLength = EntryHeaderLength + SlotCount * SlotLength;
     constexpr DWORD MarkDuration = 5000; // la marca se repite cada 2 segundos
+    constexpr DWORD TitleDuration = 10000; // el nombre largo se repite cada pocos segundos; despues el numero puede ser de otro
 
     using DispatchType = int(__cdecl*)(int, BYTE*, int, int);
     using DrawType = void(__cdecl*)();
@@ -166,6 +168,15 @@ namespace
     int g_edit[KindCount][StatCount] = {}; // porcentajes que el jugador esta cambiando
     bool g_editing[KindCount] = {};  // los cambio y todavia no los aplico
     DWORD g_marked[IdMask + 1] = {}; // GetTickCount de la ultima marca de espectro de cada objeto
+
+    // El nombre largo de cada objeto (p. ej. "Invocadora Recuperada") y cuando llego.
+    struct Title
+    {
+        DWORD time;
+        char name[NameSize];
+    };
+
+    Title g_titles[IdMask + 1] = {};
     float g_alpha = 0.5f;            // [Espectros] Alpha
     float g_left = 10.0f;            // [Espectros] Left, Top
     float g_top = 40.0f;
@@ -558,6 +569,17 @@ namespace
             return;
         }
 
+        if (packet[0] == 0xC1 && size >= 7 && packet[3] == SubCodeTitle)
+        {
+            Title& title = g_titles[((packet[4] << 8) | packet[5]) & IdMask];
+            const size_t room = static_cast<size_t>(size - 6) < NameSize - 1 ? static_cast<size_t>(size - 6) : NameSize - 1;
+            const size_t length = strnlen(reinterpret_cast<const char*>(packet + 6), room);
+            memcpy(title.name, packet + 6, length);
+            title.name[length] = 0;
+            title.time = GetTickCount();
+            return;
+        }
+
         if (packet[0] == 0xC2 && size >= 5 && packet[4] == SubCodeStory)
         {
             ReadStory(packet + 5, size - 5);
@@ -634,12 +656,36 @@ namespace
         }
     }
 
+    // Pone el nombre largo a los objetos que lo tienen; el cliente lo vuelve a poner corto cuando el objeto entra a la vista.
+    void ApplyTitles()
+    {
+        BYTE* characters = Characters();
+        if (characters == nullptr)
+        {
+            return;
+        }
+
+        const DWORD now = GetTickCount();
+        for (int i = 0; i < CharacterCount; i++)
+        {
+            BYTE* character = characters + i * CharacterSize;
+            const Title& title = g_titles[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask];
+            char* name = reinterpret_cast<char*>(character + CharName);
+            if (character[CharLive] && title.time != 0 && now - title.time <= TitleDuration && title.name[0] != 0
+                && strncmp(name, title.name, NameSize) != 0)
+            {
+                memcpy(name, title.name, NameSize);
+            }
+        }
+    }
+
     // Sin objetos con destructor: puede usar __try.
     void __cdecl BeforeRender()
     {
         __try
         {
             ApplyAlpha();
+            ApplyTitles();
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {

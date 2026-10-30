@@ -31,4 +31,12 @@ public interface IShowSpectresPlugIn : IViewPlugIn
     /// <param name="lines">The lines of the story.</param>
     /// <returns>The task.</returns>
     ValueTask ShowGuardianStoryAsync(IReadOnlyList<string> lines);
+
+    /// <summary>
+    /// Shows an object with a name which may be longer than the names of the characters, e.g. "Invocadora Recuperada".
+    /// </summary>
+    /// <param name="obj">The object, a spectre or a rival.</param>
+    /// <param name="title">The name.</param>
+    /// <returns>The task.</returns>
+    ValueTask ShowTitleAsync(IIdentifiable obj, string title);
 }

@@ -217,6 +217,11 @@ internal sealed class SpectreIntelligence : AsyncDisposable
         }
 
         await spectre.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowSpectreAsync(spectre), false).ConfigureAwait(false);
+        if (spectre.Owner.SelectedCharacter is { } ownerCharacter && SpectreProgress.GetVictories(ownerCharacter, spectre.Kind) is > 0 and var victories)
+        {
+            var title = SpectreEvolution.GetTitle(spectre.Kind, victories - 1);
+            await spectre.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(spectre, title), false).ConfigureAwait(false);
+        }
 
         // The window of the owner shows the level and resets of the spectre.
         var progress = (spectre.Level, (int)(spectre.Attributes?[Stats.Resets] ?? 0));

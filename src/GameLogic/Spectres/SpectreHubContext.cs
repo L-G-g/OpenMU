@@ -325,6 +325,7 @@ public sealed class SpectreHubContext : MiniGameContext
             if (showIdleAnimations)
             {
                 await this.ShowIdleAnimationAsync(rival).ConfigureAwait(false);
+                await rival.ShowTitleAsync().ConfigureAwait(false);
             }
 
             if (rival.GetDistanceTo(owner) <= ChallengeDistance

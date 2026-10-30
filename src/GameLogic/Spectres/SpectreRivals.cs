@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.GameLogic.Spectres;
 
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic.Bots;
 using MUnique.OpenMU.Persistence;
@@ -13,7 +14,7 @@ using MUnique.OpenMU.Persistence;
 /// <summary>
 /// The characters of the rivals of the spectre hub. Each owner character has its own rivals, one per kind, in a hidden
 /// account per owner account (like the spectres, see <see cref="SpectreFeaturePlugIn.GetLoginName"/>). A rival is created
-/// for its tier: level 400, the points of two resets per tier, the equipment of the tier (<see cref="SpectreEvolution.GetRivalEquipment"/>)
+/// for its tier: level 400, the points of seven resets per tier, the equipment of the tier (<see cref="SpectreEvolution.GetRivalEquipment"/>)
 /// and the skills of the tier. When the tier changes, the character is created again.
 /// </summary>
 internal static class SpectreRivals
@@ -31,7 +32,7 @@ internal static class SpectreRivals
     /// <summary>
     /// The number of resets whose points a rival gets per tier.
     /// </summary>
-    internal const int ResetsPerTier = 2;
+    internal const int ResetsPerTier = 7;
 
     /// <summary>
     /// The marker in the key configuration of a rival character, followed by its tier.
@@ -153,32 +154,59 @@ internal static class SpectreRivals
     {
         var inventory = character.Inventory!;
         var level = SpectreEvolution.GetRivalItemLevel(tier);
-        var equipment = SpectreEvolution.GetRivalEquipment(kind, tier).ToList();
-        if (equipment.Any(e => e.Group == ElfWeaponGroup) && kind == SpectreKind.Elf)
+        var excellent = SpectreEvolution.IsRivalEquipmentExcellent(tier);
+        foreach (var (group, number) in SpectreEvolution.GetRivalEquipment(kind, tier))
         {
-            equipment.Add((ArrowsGroup, ArrowsNumber));
+            if (configuration.Items.FirstOrDefault(i => i.Group == group && i.Number == number) is { } definition
+                && definition.QualifiedCharacters.Contains(character.CharacterClass!)
+                && AddToFreeSlot(context, inventory, definition, level) is { } item
+                && excellent)
+            {
+                AddAllExcellentOptions(context, item);
+            }
+
+            if (kind == SpectreKind.Elf && group == ElfWeaponGroup)
+            {
+                AddToFreeSlot(context, inventory, configuration.Items.FirstOrDefault(i => i.Group == ArrowsGroup && i.Number == ArrowsNumber), 0);
+            }
         }
 
-        foreach (var (group, number) in equipment)
+        // The wings even when the class doesn't qualify for them yet, e.g. the third wings before the master class.
+        if (SpectreEvolution.GetRivalWings(kind, tier) is var (wingsGroup, wingsNumber))
         {
-            if (configuration.Items.FirstOrDefault(i => i.Group == group && i.Number == number) is not { } definition
-                || definition.ItemSlot?.ItemSlots is not { Count: > 0 } slots
-                || !definition.QualifiedCharacters.Contains(character.CharacterClass!))
-            {
-                // E.g. the gladiator has no helm.
-                continue;
-            }
+            AddToFreeSlot(context, inventory, configuration.Items.FirstOrDefault(i => i.Group == wingsGroup && i.Number == wingsNumber), level);
+        }
+    }
 
-            var freeSlots = slots.Select(s => (byte)s).Where(s => inventory.Items.All(i => i.ItemSlot != s)).ToList();
-            if (freeSlots.Count == 0)
-            {
-                continue;
-            }
+    private static Item? AddToFreeSlot(IContext context, ItemStorage inventory, ItemDefinition? definition, byte level)
+    {
+        // E.g. the gladiator has no helm.
+        if (definition?.ItemSlot?.ItemSlots is not { Count: > 0 } slots)
+        {
+            return null;
+        }
 
-            var slot = freeSlots[0];
+        var slot = slots.Select(s => (byte)s).FirstOrDefault(s => inventory.Items.All(i => i.ItemSlot != s), byte.MaxValue);
+        if (slot == byte.MaxValue)
+        {
+            return null;
+        }
 
-            var itemLevel = (byte)(group == ArrowsGroup && number == ArrowsNumber ? 0 : level);
-            inventory.Items.Add(SpectreGrowth.CreateItem(context, definition, itemLevel, slot));
+        var item = SpectreGrowth.CreateItem(context, definition, level, slot);
+        inventory.Items.Add(item);
+        return item;
+    }
+
+    private static void AddAllExcellentOptions(IContext context, Item item)
+    {
+        var options = item.Definition?.PossibleItemOptions
+            .SelectMany(o => o.PossibleOptions)
+            .Where(o => object.Equals(o.OptionType, ItemOptionTypes.Excellent)) ?? [];
+        foreach (var option in options)
+        {
+            var link = context.CreateNew<ItemOptionLink>();
+            link.ItemOption = option;
+            item.ItemOptions.Add(link);
         }
     }
 

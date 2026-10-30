@@ -171,6 +171,7 @@ public sealed class SpectreDuelContext : MiniGameContext
 
         // The client of the player treats the rival as its opponent of a duel, so it can attack it like any target.
         await owner.InvokeViewPlugInAsync<IShowDuelRequestResultPlugIn>(p => p.ShowDuelRequestResultAsync(DuelStartResult.Success, rival)).ConfigureAwait(false);
+        await rival.ShowTitleAsync().ConfigureAwait(false);
         await owner.ShowGoldenMessageAsync("A pelear!").ConfigureAwait(false);
     }
 
@@ -191,14 +192,14 @@ public sealed class SpectreDuelContext : MiniGameContext
         }
 
         await owner.InvokeViewPlugInAsync<IDuelEndedPlugIn>(p => p.DuelEndedAsync()).ConfigureAwait(false);
-        var rivalName = SpectreHub.GetRivalName(this._kind);
+        var rivalName = SpectreEvolution.GetTitleWithArticle(this._kind, this._tier);
         switch ((DuelResult)this._result)
         {
             case DuelResult.Victory:
                 await this.WinAsync(owner, rivalName).ConfigureAwait(false);
                 break;
             case DuelResult.Defeat:
-                await owner.ShowGoldenMessageAsync($"El {rivalName} te vencio").ConfigureAwait(false);
+                await owner.ShowGoldenMessageAsync($"{char.ToUpperInvariant(rivalName[0])}{rivalName[1..]} te vencio").ConfigureAwait(false);
                 await owner.ShowBlueMessageAsync("Podes volver a desafiarlo cuando quieras.").ConfigureAwait(false);
                 break;
             default:
@@ -230,6 +231,7 @@ public sealed class SpectreDuelContext : MiniGameContext
 
     private async ValueTask WinAsync(Player owner, string rivalName)
     {
+        var defeated = rivalName.StartsWith("el ", StringComparison.Ordinal) ? "al " + rivalName[3..] : "a " + rivalName;
         if (owner.SelectedCharacter is not { } character)
         {
             return;
@@ -238,20 +240,20 @@ public sealed class SpectreDuelContext : MiniGameContext
         var victories = SpectreProgress.GetVictories(character, this._kind);
         if (victories != this._tier || !SpectreProgress.SetVictories(owner, this._kind, victories + 1))
         {
-            await owner.ShowGoldenMessageAsync($"Venciste al {rivalName}").ConfigureAwait(false);
+            await owner.ShowGoldenMessageAsync($"Venciste {defeated}").ConfigureAwait(false);
             return;
         }
 
         var kindName = SpectreClasses.GetName(this._kind);
         if (this._tier == 0)
         {
-            await owner.ShowGoldenMessageAsync($"Venciste al {rivalName}! Ahora te sigue").ConfigureAwait(false);
+            await owner.ShowGoldenMessageAsync($"Venciste {defeated}! Ahora te sigue").ConfigureAwait(false);
             await owner.ShowBlueMessageAsync($"Desbloqueaste al espectro {kindName}. Invocalo desde la ventana de espectros.").ConfigureAwait(false);
         }
         else
         {
-            await owner.ShowGoldenMessageAsync($"Venciste al {rivalName}! Tu espectro evoluciona").ConfigureAwait(false);
-            await owner.ShowBlueMessageAsync($"Tu espectro {kindName} llego a la evolucion {this._tier} de {SpectreEvolution.EvolutionCount}.").ConfigureAwait(false);
+            await owner.ShowGoldenMessageAsync($"Venciste {defeated}! Tu espectro evoluciona").ConfigureAwait(false);
+            await owner.ShowBlueMessageAsync($"Tu espectro {kindName} ahora es {SpectreEvolution.GetTitleWithArticle(this._kind, this._tier)} (evolucion {this._tier} de {SpectreEvolution.EvolutionCount}).").ConfigureAwait(false);
         }
 
         var skillNames = SpectreEvolution.GetSkillsOfTier(this._kind, this._tier)
@@ -310,13 +312,14 @@ public sealed class SpectreDuelContext : MiniGameContext
             }
 
             rival.Rotation = rival.GetDirectionTo(owner);
+            await rival.ShowTitleAsync().ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested)
             {
                 await this.StopRivalAsync().ConfigureAwait(false);
                 return;
             }
 
-            await owner.ShowGoldenMessageAsync($"Duelo contra el {SpectreHub.GetRivalName(this._kind)}").ConfigureAwait(false);
+            await owner.ShowGoldenMessageAsync($"Duelo contra {SpectreEvolution.GetTitleWithArticle(this._kind, this._tier)}").ConfigureAwait(false);
             await owner.ShowBlueMessageAsync("Pierde el primero que se queda sin vida. Nadie muere.").ConfigureAwait(false);
         }
         catch (OperationCanceledException)
