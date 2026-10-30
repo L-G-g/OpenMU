@@ -27,7 +27,7 @@ public class SpectreHubUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "Adds the spectre hub: the Guardian of the spectres in Lorencia lets a player enter its own hub (the world of the character selection), where a rival of each class waits. Beating a rival in a duel in the Duel Arena unlocks its spectre, and beating it again makes the spectre evolve. Requires the plugin of the spectres and the PeroniaMU client.";
+    internal const string PlugInDescription = "Adds the spectre hub: the Guardian of the spectres in Lorencia lets a player enter its own hub (a room of the Duel Arena), where a rival of each class waits. Beating a rival in a duel in another room unlocks its spectre, and beating it again makes the spectre evolve. Requires the plugin of the spectres and the PeroniaMU client.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;

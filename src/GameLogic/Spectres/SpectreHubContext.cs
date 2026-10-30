@@ -24,11 +24,11 @@ public sealed class SpectreHubContext : MiniGameContext
     private const int ChallengeDistance = 3;
 
     /// <summary>
-    /// The spots of the rivals on the platform of the character selection, by kind.
+    /// The spots of the rivals in the room of the Duel Arena, by kind, around the entry.
     /// </summary>
     private static readonly Point[] RivalSpots =
     [
-        new(76, 191), new(78, 188), new(81, 188), new(84, 188), new(86, 191), new(75, 195), new(86, 196),
+        new(147, 70), new(150, 74), new(153, 75), new(156, 74), new(160, 70), new(145, 66), new(162, 66),
     ];
 
     /// <summary>

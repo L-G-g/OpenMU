@@ -895,7 +895,11 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
 
         foreach (var player in players)
         {
-            await player.WarpToSafezoneAsync().ConfigureAwait(false);
+            // A player which already left the game world (e.g. it disconnected) has no map to leave.
+            if (player.CurrentMap is not null || player.SelectedCharacter?.CurrentMap is not null)
+            {
+                await player.WarpToSafezoneAsync().ConfigureAwait(false);
+            }
 
             if (player.CurrentMiniGame == this)
             {

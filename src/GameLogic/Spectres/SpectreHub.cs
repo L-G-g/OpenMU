@@ -10,13 +10,13 @@ using MUnique.OpenMU.GameLogic.PlayerActions.MiniGames;
 using MUnique.OpenMU.Pathfinding;
 
 /// <summary>
-/// The spectre hub: a private place for each player, the world of the character selection, where the characters which
+/// The spectre hub: a private place for each player, a room of the Duel Arena, where the characters which
 /// players abandoned wait, one of each class. Beating one of them in a duel unlocks it as spectre, and beating it again
 /// makes the spectre evolve (see <see cref="SpectreProgress"/> and <see cref="SpectreEvolution"/>).
 /// </summary>
 /// <remarks>
 /// The hub and the duel are two levels of the mini game <see cref="MiniGameType.SpectreHub"/> with one instance per player:
-/// the hub (<see cref="SpectreHubContext"/>) and a room of the Duel Arena (<see cref="SpectreDuelContext"/>).
+/// the hub (<see cref="SpectreHubContext"/>) and the duel (<see cref="SpectreDuelContext"/>), in two rooms of the Duel Arena.
 /// The players enter the hub at the guardian of the spectres in Lorencia (<see cref="SpectreGuardianTalkPlugIn"/>).
 /// </remarks>
 public static class SpectreHub
@@ -37,9 +37,9 @@ public static class SpectreHub
     public const byte DuelGameLevel = 2;
 
     /// <summary>
-    /// The number of the map of the hub, the world of the character selection.
+    /// The number of the map of the hub, the Duel Arena. The client crashes in the world of the character selection (74).
     /// </summary>
-    public const short HubMapNumber = 74;
+    public const short HubMapNumber = 64;
 
     /// <summary>
     /// The number of the map of the duel, the Duel Arena.
@@ -56,7 +56,7 @@ public static class SpectreHub
     /// <summary>
     /// Gets where the player enters the hub.
     /// </summary>
-    public static Point HubEntry { get; } = new(80, 197);
+    public static Point HubEntry { get; } = new(153, 64);
 
     /// <summary>
     /// Gets where the player starts the duel.

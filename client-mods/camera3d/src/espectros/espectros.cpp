@@ -1130,7 +1130,12 @@ namespace
         float top = 30.0f;
         for (const std::string& line : g_story)
         {
-            Text(line.c_str(), 12, top, StoryWidth - 24, SortLeft, Color(225, 220, 235), false);
+            // Una linea vacia separa los parrafos; el texto vacio dibuja basura del cliente.
+            if (!line.empty())
+            {
+                Text(line.c_str(), 12, top, StoryWidth - 24, SortLeft, Color(225, 220, 235), false);
+            }
+
             top += StoryLineHeight;
         }
 

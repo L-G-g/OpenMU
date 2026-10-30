@@ -14,9 +14,8 @@ using MUnique.OpenMU.GameLogic.Spectres;
 /// <remarks>
 /// <list type="bullet">
 ///   <item>The attributes of the victories against the rivals and of the pets of the spectres (<see cref="SpectreProgress"/>).</item>
-///   <item>The map of the hub: the world of the character selection (<see cref="SpectreHub.HubMapNumber"/>), with Lorencia as safezone.</item>
 ///   <item>The mini game <see cref="MiniGameType.SpectreHub"/> with one instance per player: the hub (30 minutes) and the duel
-///         in a room of the Duel Arena (3 minutes).</item>
+///         (3 minutes), in two rooms of the Duel Arena (<see cref="SpectreHub.HubMapNumber"/>).</item>
 ///   <item>The guardian of the spectres in Lorencia, a copy of the Mirage (385) of the Illusion Temple, which is recognized
 ///         by its designation <see cref="SpectreHub.GuardianDesignation"/>.</item>
 /// </list>
@@ -56,14 +55,12 @@ internal static class SpectreHubSetup
         }
 
         var lorencia = gameConfiguration.Maps.FirstOrDefault(m => m.Number == LorenciaNumber);
-        var hubMap = GetOrCreateHubMap(context, gameConfiguration, lorencia);
-        var hubEntrance = GetOrCreateGate(context, hubMap, (byte)SpectreHub.HubEntry.X, (byte)SpectreHub.HubEntry.Y);
-        var duelMap = gameConfiguration.Maps.FirstOrDefault(m => m.Number == SpectreHub.DuelMapNumber);
-        var duelEntrance = duelMap is null ? null : GetOrCreateGate(context, duelMap, (byte)SpectreHub.DuelOwnerStart.X, (byte)SpectreHub.DuelOwnerStart.Y);
-
-        AddMiniGameDefinition(context, gameConfiguration, SpectreHub.HubGameLevel, "Refugio de los espectros", "The spectre hub of a player, where the rivals wait.", hubEntrance, TimeSpan.FromMinutes(30));
-        if (duelEntrance is not null)
+        if (gameConfiguration.Maps.FirstOrDefault(m => m.Number == SpectreHub.HubMapNumber) is { } hubMap
+            && gameConfiguration.Maps.FirstOrDefault(m => m.Number == SpectreHub.DuelMapNumber) is { } duelMap)
         {
+            var hubEntrance = GetOrCreateGate(context, hubMap, (byte)SpectreHub.HubEntry.X, (byte)SpectreHub.HubEntry.Y);
+            var duelEntrance = GetOrCreateGate(context, duelMap, (byte)SpectreHub.DuelOwnerStart.X, (byte)SpectreHub.DuelOwnerStart.Y);
+            AddMiniGameDefinition(context, gameConfiguration, SpectreHub.HubGameLevel, "Refugio de los espectros", "The spectre hub of a player, where the rivals wait.", hubEntrance, TimeSpan.FromMinutes(30));
             AddMiniGameDefinition(context, gameConfiguration, SpectreHub.DuelGameLevel, "Duelo de espectros", "The duel of a player against a rival of its spectre hub.", duelEntrance, TimeSpan.FromMinutes(3));
         }
 
@@ -73,25 +70,6 @@ internal static class SpectreHubSetup
             var guardian = GetOrCreateGuardian(context, gameConfiguration, look);
             AddGuardianSpawn(context, lorencia, guardian);
         }
-    }
-
-    private static GameMapDefinition GetOrCreateHubMap(IContext context, GameConfiguration gameConfiguration, GameMapDefinition? lorencia)
-    {
-        if (gameConfiguration.Maps.FirstOrDefault(m => m.Number == SpectreHub.HubMapNumber && m.Discriminator == 0) is { } existing)
-        {
-            return existing;
-        }
-
-        var map = context.CreateNew<GameMapDefinition>();
-        map.SetGuid(SpectreHub.HubMapNumber, 0);
-        map.Number = SpectreHub.HubMapNumber;
-        map.Name = "Refugio de los espectros";
-        map.Discriminator = 0;
-        map.UpdateTerrainFromResources();
-        map.ExpMultiplier = 1;
-        map.SafezoneMap = lorencia;
-        gameConfiguration.Maps.Add(map);
-        return map;
     }
 
     private static ExitGate GetOrCreateGate(IContext context, GameMapDefinition map, byte x, byte y)
