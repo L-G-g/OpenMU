@@ -70,6 +70,13 @@ public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
     public ValueTask ShowTitleAsync() => this.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(this, this.Title), false);
 
     /// <summary>
+    /// Shows the <see cref="DisplayName"/> instead of the <see cref="Title"/> to the players which see the rival: the client
+    /// lets a player hit its duel opponent only when the opponent has the name of the duel, and the duel has the short name.
+    /// </summary>
+    /// <returns>The task.</returns>
+    public ValueTask ShowDuelNameAsync() => this.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(this, this.DisplayName), false);
+
+    /// <summary>
     /// Determines whether an attacker can hurt this rival: only its owner (or the pets of the owner), during the duel.
     /// </summary>
     /// <param name="attacker">The attacker.</param>

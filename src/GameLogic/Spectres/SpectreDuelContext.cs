@@ -171,7 +171,7 @@ public sealed class SpectreDuelContext : MiniGameContext
 
         // The client of the player treats the rival as its opponent of a duel, so it can attack it like any target.
         await owner.InvokeViewPlugInAsync<IShowDuelRequestResultPlugIn>(p => p.ShowDuelRequestResultAsync(DuelStartResult.Success, rival)).ConfigureAwait(false);
-        await rival.ShowTitleAsync().ConfigureAwait(false);
+        await rival.ShowDuelNameAsync().ConfigureAwait(false);
         await owner.ShowGoldenMessageAsync("A pelear!").ConfigureAwait(false);
     }
 
@@ -312,7 +312,7 @@ public sealed class SpectreDuelContext : MiniGameContext
             }
 
             rival.Rotation = rival.GetDirectionTo(owner);
-            await rival.ShowTitleAsync().ConfigureAwait(false);
+            await rival.ShowDuelNameAsync().ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested)
             {
                 await this.StopRivalAsync().ConfigureAwait(false);
