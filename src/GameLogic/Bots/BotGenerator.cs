@@ -249,8 +249,9 @@ internal sealed class BotGenerator
     /// <param name="starterItemLevel">The level of the starter items.</param>
     /// <param name="equipStarterArmor">If set to <c>true</c>, the character gets a starter armor set.</param>
     /// <param name="resetConfiguration">The reset configuration.</param>
+    /// <param name="capVitality">If set to <c>false</c>, the vitality isn't capped at the personal target of the bot on reset servers.</param>
     /// <returns>The created character.</returns>
-    public Character CreateCharacter(IPlayerContext context, Account account, string name, CharacterClass characterClass, int level, byte slot, long[] experienceTable, int seededResets, byte starterItemLevel, bool equipStarterArmor, ResetConfiguration? resetConfiguration)
+    public Character CreateCharacter(IPlayerContext context, Account account, string name, CharacterClass characterClass, int level, byte slot, long[] experienceTable, int seededResets, byte starterItemLevel, bool equipStarterArmor, ResetConfiguration? resetConfiguration, bool capVitality = true)
     {
         // A character generated beyond the class evolution level was created as its second-generation
         // class right away - like a player who completed the class quest long ago. Everything downstream
@@ -283,7 +284,7 @@ internal sealed class BotGenerator
         character.Experience = experienceTable[Math.Min(level, experienceTable.Length - 1)];
         character.LevelUpPoints = CalculateLevelUpPoints(characterClass, level, seededResets, resetConfiguration);
         character.InventoryExtensions = BotInventoryExtensions;
-        DistributeStatPoints(character, characterClass, resetConfiguration is not null);
+        DistributeStatPoints(character, characterClass, capVitality && resetConfiguration is not null);
 
         // Skills survive resets, so a seeded veteran knows everything the highest level of its past
         // cycles unlocked; level-gated skills are checked against that level, not the current one.
