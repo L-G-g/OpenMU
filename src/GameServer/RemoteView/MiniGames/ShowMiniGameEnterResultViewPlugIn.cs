@@ -56,7 +56,8 @@ public class ShowMiniGameEnterResultViewPlugIn : IShowMiniGameEnterResultPlugIn
                 await this._player.Connection.SendKanturuEnterResultAsync(enterResult.ToKanturuEnterResult()).ConfigureAwait(false);
                 break;
             case MiniGameType.Dungeon:
-                // The client has no dialog for it; the dungeon shows its own messages.
+            case MiniGameType.SpectreHub:
+                // The client has no dialog for it; the game shows its own messages.
                 break;
             case MiniGameType.Undefined:
                 throw new ArgumentException("undefined game type", nameof(miniGameType));

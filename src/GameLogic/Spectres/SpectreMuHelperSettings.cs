@@ -4,6 +4,7 @@
 
 namespace MUnique.OpenMU.GameLogic.Spectres;
 
+using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.MuHelper;
 
 /// <summary>
@@ -16,14 +17,20 @@ using MUnique.OpenMU.GameLogic.MuHelper;
 internal sealed class SpectreMuHelperSettings : IMuHelperSettings
 {
     private readonly Player _player;
+    private readonly int _huntingRange;
+    private readonly int _darkRavenMode;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpectreMuHelperSettings"/> class.
     /// </summary>
     /// <param name="player">The spectre or rival which is driven by the settings.</param>
-    public SpectreMuHelperSettings(Player player)
+    /// <param name="huntingRange">The hunting range.</param>
+    /// <param name="darkRavenMode">The mode of the dark raven, see <see cref="IMuHelperSettings.DarkRavenMode"/>.</param>
+    public SpectreMuHelperSettings(Player player, int huntingRange = SpectreIntelligence.HuntingRange, int darkRavenMode = 1)
     {
         this._player = player;
+        this._huntingRange = huntingRange;
+        this._darkRavenMode = darkRavenMode;
     }
 
     /// <inheritdoc />
@@ -66,10 +73,10 @@ internal sealed class SpectreMuHelperSettings : IMuHelperSettings
     public int Skill2SubCondition => 0;
 
     /// <inheritdoc />
-    public bool UseCombo => false;
+    public bool UseCombo => this._player.Attributes?[Stats.IsSkillComboAvailable] > 0;
 
     /// <inheritdoc />
-    public int HuntingRange => SpectreIntelligence.HuntingRange;
+    public int HuntingRange => this._huntingRange;
 
     /// <inheritdoc />
     public int MaxSecondsAway => 2;
@@ -126,7 +133,7 @@ internal sealed class SpectreMuHelperSettings : IMuHelperSettings
     public bool UseDarkRaven => this._player.Inventory?.GetItem(InventoryConstants.RightHandSlot)?.Definition is { Group: SpectreEvolution.PetGroup, Number: 5 };
 
     /// <inheritdoc />
-    public int DarkRavenMode => 1;
+    public int DarkRavenMode => this._darkRavenMode;
 
     /// <inheritdoc />
     public int ObtainRange => 6;

@@ -24,4 +24,11 @@ public interface IShowSpectresPlugIn : IViewPlugIn
     /// <param name="entries">The spectres, one for each kind.</param>
     /// <returns>The task.</returns>
     ValueTask ShowSpectrePanelAsync(IReadOnlyList<SpectrePanelEntry> entries);
+
+    /// <summary>
+    /// Shows the story which the guardian of the spectres tells, with the option to enter the spectre hub.
+    /// </summary>
+    /// <param name="lines">The lines of the story.</param>
+    /// <returns>The task.</returns>
+    ValueTask ShowGuardianStoryAsync(IReadOnlyList<string> lines);
 }

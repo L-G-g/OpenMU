@@ -2084,4 +2084,16 @@
   <data name="DiscordIntegrationFeaturePlugIn_Description" xml:space="preserve">
     <value>Tells game clients which ask for it how the server is connected to Discord (invite link, Rich Presence application, account link, mirrored chats), lets players link their account from the client, and sends them messages written in Discord as such.</value>
   </data>
+  <data name="SpectreConfiguration_GuardianDesignation_Name" xml:space="preserve">
+    <value>Guardian designation</value>
+  </data>
+  <data name="SpectreConfiguration_GuardianDesignation_Description" xml:space="preserve">
+    <value>The designation of the NPC which tells the story of the spectres and lets the players enter the spectre hub, where they unlock and evolve their spectres in duels.</value>
+  </data>
+  <data name="SpectreGuardianTalkPlugIn_Name" xml:space="preserve">
+    <value>Spectre guardian talk</value>
+  </data>
+  <data name="SpectreGuardianTalkPlugIn_Description" xml:space="preserve">
+    <value>Shows the story of the spectres when a player talks to their guardian, and lets the player enter the spectre hub with /espectro refugio.</value>
+  </data>
 </root>

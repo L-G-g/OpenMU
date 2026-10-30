@@ -36,4 +36,10 @@ public class SpectreConfiguration
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_UnlimitedMana_Name), Description = nameof(PlugInResources.SpectreConfiguration_UnlimitedMana_Description))]
     public bool UnlimitedMana { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the designation of the NPC which tells the story of the spectres and lets the players enter the spectre hub.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_GuardianDesignation_Name), Description = nameof(PlugInResources.SpectreConfiguration_GuardianDesignation_Description))]
+    public string GuardianDesignation { get; set; } = SpectreHub.GuardianDesignation;
 }

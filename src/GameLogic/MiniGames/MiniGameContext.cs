@@ -369,6 +369,15 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
     internal virtual Point? GetEntrySpawnPosition(Player player) => null;
 
     /// <summary>
+    /// Determines whether a player of this game, whose health just dropped to zero, doesn't die.
+    /// It's consulted before the death. If the death is prevented, the player keeps 1 point of health.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="attacker">The attacker which caused the last hit.</param>
+    /// <returns><c>true</c>, if the player doesn't die.</returns>
+    internal virtual bool PreventsDeath(Player player, IAttacker attacker) => false;
+
+    /// <summary>
     /// Starts the game loop, unless it was started before. It can't start in the
     /// constructor: the loop reads overridden members which aren't ready until the
     /// derived constructor body ran.
