@@ -37,6 +37,7 @@ public sealed class SpectreHubContext : MiniGameContext
     private static readonly byte[] IdleAnimations = [0x80, 0x89, 0x8F, 0x80, 0x8B, 0x89, 0x80];
 
     private static readonly TimeSpan ChallengeCooldown = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan AnyChallengeCooldown = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan IdleAnimationInterval = TimeSpan.FromSeconds(12);
 
     private readonly ConcurrentDictionary<SpectreKind, RivalPlayer> _rivals = new();
@@ -46,6 +47,7 @@ public sealed class SpectreHubContext : MiniGameContext
     private int _duelStarting;
     private int _closing;
     private DateTime _nextIdleAnimation = DateTime.UtcNow;
+    private DateTime _nextAnyChallenge = DateTime.UtcNow;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpectreHubContext"/> class.
@@ -114,6 +116,26 @@ public sealed class SpectreHubContext : MiniGameContext
         {
             Interlocked.Exchange(ref this._duelStarting, 0);
         }
+    }
+
+    /// <summary>
+    /// Lets the player challenge the nearest rival, e.g. when it closed the request of the rival.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <returns>The task.</returns>
+    internal async ValueTask ChallengeNearestRivalAsync(Player player)
+    {
+        var rival = this._rivals.Values
+            .Where(r => r.CurrentMap == this.Map)
+            .OrderBy(r => r.GetDistanceTo(player))
+            .FirstOrDefault();
+        if (rival is null || rival.GetDistanceTo(player) > ChallengeDistance + 2)
+        {
+            await player.ShowBlueMessageAsync("Acercate a un espectro para desafiarlo.").ConfigureAwait(false);
+            return;
+        }
+
+        await this.AnswerChallengeAsync(player, rival, true).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -286,6 +308,7 @@ public sealed class SpectreHubContext : MiniGameContext
             this._nextIdleAnimation = now + IdleAnimationInterval;
         }
 
+        RivalPlayer? challenger = null;
         foreach (var rival in this._rivals.Values)
         {
             if (rival.CurrentMap != this.Map)
@@ -298,13 +321,20 @@ public sealed class SpectreHubContext : MiniGameContext
                 await this.ShowIdleAnimationAsync(rival).ConfigureAwait(false);
             }
 
-            if (this._duelStarting == 0
-                && rival.GetDistanceTo(owner) <= ChallengeDistance
+            if (rival.GetDistanceTo(owner) <= ChallengeDistance
+                && (challenger is null || rival.GetDistanceTo(owner) < challenger.GetDistanceTo(owner))
                 && (!this._nextChallenges.TryGetValue(rival.Kind, out var nextChallenge) || now >= nextChallenge))
             {
-                this._nextChallenges[rival.Kind] = now + ChallengeCooldown;
-                await this.ChallengeAsync(owner, rival).ConfigureAwait(false);
+                challenger = rival;
             }
+        }
+
+        // One challenge at a time: the client shows one duel request.
+        if (challenger is not null && this._duelStarting == 0 && now >= this._nextAnyChallenge)
+        {
+            this._nextChallenges[challenger.Kind] = now + ChallengeCooldown;
+            this._nextAnyChallenge = now + AnyChallengeCooldown;
+            await this.ChallengeAsync(owner, challenger).ConfigureAwait(false);
         }
     }
 

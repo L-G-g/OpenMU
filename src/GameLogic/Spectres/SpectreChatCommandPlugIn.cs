@@ -16,7 +16,8 @@ using MUnique.OpenMU.PlugIns;
 /// <c>/espectro equipar &lt;kind&gt; &lt;inventory slot&gt;</c> equips an item of the inventory on it,
 /// <c>/espectro quitar &lt;kind&gt; &lt;equipment slot&gt;</c> takes an item off, <c>/espectro panel</c>
 /// sends the state of the spectres to the spectre window of the client, <c>/espectro refugio</c> enters the spectre hub
-/// after talking to its guardian (see <see cref="SpectreHub"/>), and <c>/espectro salir</c> leaves it.
+/// after talking to its guardian (see <see cref="SpectreHub"/>; game masters don't need to), <c>/espectro duelo</c>
+/// challenges the nearest rival there, and <c>/espectro salir</c> leaves it.
 /// </summary>
 [Guid("8E2F4A6C-1B3D-4C5E-8F7A-9B0C1D2E3F40")]
 [PlugIn]
@@ -26,7 +27,7 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
 {
     private const string Command = "/espectro";
 
-    private const string Usage = "Uso: /espectro guerrero|mago|elfa|gladiador|lord|invocadora|peleador, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene> [<cmd>], /espectro equipar <clase> <lugar>, /espectro quitar <clase> <lugar>, /espectro refugio, /espectro salir";
+    private const string Usage = "Uso: /espectro guerrero|mago|elfa|gladiador|lord|invocadora|peleador, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene> [<cmd>], /espectro equipar <clase> <lugar>, /espectro quitar <clase> <lugar>, /espectro refugio, /espectro duelo, /espectro salir";
 
     /// <inheritdoc />
     public string Key => Command;
@@ -64,6 +65,13 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
             case "refugio":
                 await EnterHubAsync(player).ConfigureAwait(false);
                 return;
+            case "duelo":
+                if (player.CurrentMiniGame is SpectreHubContext hub)
+                {
+                    await hub.ChallengeNearestRivalAsync(player).ConfigureAwait(false);
+                }
+
+                return;
             case "salir":
                 if (player.CurrentMiniGame is SpectreHubContext or SpectreDuelContext)
                 {
@@ -98,7 +106,7 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
             return;
         }
 
-        if (!SpectreHub.HasVisitedGuardian(player))
+        if (!SpectreHub.HasVisitedGuardian(player) && player.SelectedCharacter?.CharacterStatus != CharacterStatus.GameMaster)
         {
             await player.ShowBlueMessageAsync("Primero habla con el Guardian de los espectros en Lorencia.").ConfigureAwait(false);
             return;
