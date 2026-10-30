@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.GameLogic.PlugIns.UnlockCharacterClass;
 
+using MUnique.OpenMU.GameLogic.Spectres;
+
 /// <summary>
 /// Unlocks the a character class as soon as the first character of an account reaches a certain level.
 /// </summary>
