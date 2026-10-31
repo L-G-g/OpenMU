@@ -13,8 +13,8 @@ public class SpectreConfiguration
     /// Gets or sets the maximum number of spectres which a player can have summoned at the same time.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_MaximumActiveSpectres_Name), Description = nameof(PlugInResources.SpectreConfiguration_MaximumActiveSpectres_Description))]
-    [Range(1, 3)]
-    public int MaximumActiveSpectres { get; set; } = 3;
+    [Range(1, 4)]
+    public int MaximumActiveSpectres { get; set; } = 4;
 
     /// <summary>
     /// Gets or sets the experience which the summoned spectres of a player share, in percent of the experience
@@ -36,4 +36,10 @@ public class SpectreConfiguration
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_UnlimitedMana_Name), Description = nameof(PlugInResources.SpectreConfiguration_UnlimitedMana_Description))]
     public bool UnlimitedMana { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the designation of the NPC which tells the story of the spectres and lets the players enter the spectre hub.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_GuardianDesignation_Name), Description = nameof(PlugInResources.SpectreConfiguration_GuardianDesignation_Description))]
+    public string GuardianDesignation { get; set; } = SpectreHub.GuardianDesignation;
 }

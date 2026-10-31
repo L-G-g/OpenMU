@@ -22,13 +22,19 @@ using MUnique.OpenMU.PlugIns;
 /// <list type="bullet">
 ///   <item><c>C1 05 FD 01 [object id, 2 bytes big endian]</c>: the object is a spectre; the client draws it transparent.
 ///         It's repeated every few seconds while the spectre is in view.</item>
-///   <item><c>C2 [length, 2 bytes big endian] FD 00</c> and an entry for each kind of spectre (warrior, mage, elf): the
-///         state of the spectres of the player, for the spectre window. An entry has <see cref="EntryLength"/> bytes:
+///   <item><c>C2 [length, 2 bytes big endian] FD 00</c> and an entry for each kind of spectre (warrior, mage, elf, gladiator,
+///         lord, summoner, fighter): the state of the spectres of the player, for the spectre window. An entry has <see cref="EntryLength"/> bytes:
 ///         kind, summoned (0 or 1), name (11 bytes text), level (2 bytes), resets (2 bytes), level up points (4 bytes),
-///         strength, agility, vitality and energy (4 bytes each), the four percentages (1 byte each), and then
+///         strength, agility, vitality, energy and leadership (4 bytes each), the five percentages (1 byte each),
+///         the victories against the rival of the kind (0 = locked, 1 = unlocked, 2 to 9 = evolutions 1 to 8), a reserved byte, and then
 ///         the 12 equipment slots of <see cref="SlotLength"/> bytes: present (0 or 1), item type (2 bytes, group * 512 + number),
 ///         item level, excellent options, ancient options, the item as the client knows it (12 bytes), and its
 ///         description (40 bytes text). The numbers of the entries are little endian.</item>
+///   <item><c>C2 [length, 2 bytes big endian] FD 02</c> and the story of the guardian of the spectres, as text with lines separated by
+///         <c>\n</c> (Latin-1, ends with 0): the client shows it in a window with a button which sends <c>/espectro refugio</c>.</item>
+///   <item><c>C1 [length] FD 03 [object id, 2 bytes big endian]</c> and a name (Latin-1, ends with 0, up to <see cref="MaximumTitleLength"/>
+///         characters): the client shows the object with this name instead of the name of at most 10 characters of the original protocol.
+///         It's repeated every few seconds while the object is in view.</item>
 /// </list>
 /// The window answers with the chat command /espectro.
 /// </remarks>
@@ -40,13 +46,21 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
     private const byte Code = 0xFD;
     private const byte PanelSubCode = 0x00;
     private const byte SpectreSubCode = 0x01;
+    private const byte StorySubCode = 0x02;
+    private const byte TitleSubCode = 0x03;
+    private const int MaximumTitleLength = 30;
+    private const int MaximumStoryLength = 2000;
     private const int SpectreLength = 6;
     private const int PanelHeaderLength = 5;
     private const int NameLength = 11;
     private const int ItemDataLength = 12;
     private const int DescriptionLength = 40;
     private const int SlotLength = 6 + ItemDataLength + DescriptionLength;
-    private const int EntryHeaderLength = 41;
+    private const int StatCount = 5;
+    private const int StatsOffset = 21;
+    private const int PercentagesOffset = StatsOffset + (StatCount * 4);
+    private const int VictoriesOffset = PercentagesOffset + StatCount;
+    private const int EntryHeaderLength = VictoriesOffset + 2;
     private const int EntryLength = EntryHeaderLength + (SpectrePanelEntry.EquipmentSlots * SlotLength);
 
     private readonly RemotePlayer _player;
@@ -112,6 +126,61 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
         await connection.SendAsync(Write).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async ValueTask ShowGuardianStoryAsync(IReadOnlyList<string> lines)
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        var text = string.Join('\n', lines);
+        var textBytes = Encoding.Latin1.GetBytes(text.Length > MaximumStoryLength ? text[..MaximumStoryLength] : text);
+        var length = PanelHeaderLength + textBytes.Length + 1;
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(length)[..length];
+            span[0] = 0xC2;
+            BinaryPrimitives.WriteUInt16BigEndian(span[1..], (ushort)length);
+            span[3] = Code;
+            span[4] = StorySubCode;
+            textBytes.CopyTo(span[PanelHeaderLength..]);
+            span[^1] = 0;
+            return length;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ShowTitleAsync(IIdentifiable obj, string title)
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        var id = obj.GetId(this._player);
+        var titleBytes = Encoding.Latin1.GetBytes(title.Length > MaximumTitleLength ? title[..MaximumTitleLength] : title);
+        var length = SpectreLength + titleBytes.Length + 1;
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(length)[..length];
+            span[0] = 0xC1;
+            span[1] = (byte)length;
+            span[2] = Code;
+            span[3] = TitleSubCode;
+            BinaryPrimitives.WriteUInt16BigEndian(span[4..], id);
+            titleBytes.CopyTo(span[SpectreLength..]);
+            span[^1] = 0;
+            return length;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
     private static void WriteEntry(Span<byte> span, SpectrePanelEntry entry, IItemSerializer serializer, byte[] itemData)
     {
         span[0] = (byte)entry.Kind;
@@ -120,11 +189,13 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
         BinaryPrimitives.WriteUInt16LittleEndian(span[13..], (ushort)Math.Clamp(entry.Level, 0, ushort.MaxValue));
         BinaryPrimitives.WriteUInt16LittleEndian(span[15..], (ushort)Math.Clamp(entry.Resets, 0, ushort.MaxValue));
         BinaryPrimitives.WriteInt32LittleEndian(span[17..], entry.LevelUpPoints);
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < StatCount; i++)
         {
-            BinaryPrimitives.WriteInt32LittleEndian(span[(21 + (i * 4))..], entry.Stats[i]);
-            span[37 + i] = entry.Percentages[i];
+            BinaryPrimitives.WriteInt32LittleEndian(span[(StatsOffset + (i * 4))..], i < entry.Stats.Count ? entry.Stats[i] : 0);
+            span[PercentagesOffset + i] = i < entry.Percentages.Count ? entry.Percentages[i] : (byte)0;
         }
+
+        span[VictoriesOffset] = (byte)Math.Clamp(entry.Victories, 0, byte.MaxValue);
 
         for (var slot = 0; slot < SpectrePanelEntry.EquipmentSlots; slot++)
         {

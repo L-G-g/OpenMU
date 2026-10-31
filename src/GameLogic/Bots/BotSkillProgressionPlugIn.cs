@@ -72,17 +72,16 @@ public class BotSkillProgressionPlugIn : ICharacterLevelUpPlugIn
     {
         try
         {
-            this.EvolveClassIfDue(player);
             if (player is Spectres.SpectrePlayer spectre)
             {
-                // The owner of a spectre chooses how it spends its points.
+                // The owner of a spectre chooses how it spends its points. Its class and skills come from the
+                // evolutions which the owner unlocked (see SpectreEvolution), not from its level.
                 await Spectres.SpectreFeaturePlugIn.SpendStatPointsAsync(spectre).ConfigureAwait(false);
-            }
-            else
-            {
-                await this.SpendStatPointsAsync(player).ConfigureAwait(false);
+                return;
             }
 
+            this.EvolveClassIfDue(player);
+            await this.SpendStatPointsAsync(player).ConfigureAwait(false);
             await this.LearnNewSkillsAsync(player).ConfigureAwait(false);
         }
         catch (Exception ex)

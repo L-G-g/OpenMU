@@ -10,6 +10,7 @@ using MUnique.OpenMU.GameLogic.MiniGames.Doppelganger;
 using MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
 using MUnique.OpenMU.GameLogic.MiniGames.ImperialGuardian;
 using MUnique.OpenMU.GameLogic.MiniGames.Kanturu;
+using MUnique.OpenMU.GameLogic.Spectres;
 using Nito.AsyncEx;
 
 /// <summary>
@@ -94,6 +95,12 @@ public sealed class MiniGameManager : IMiniGameManager
                     break;
                 case MiniGameType.Dungeon:
                     miniGameContext = new DungeonContext(miniGameKey, miniGameDefinition, this._gameContext, this._mapInitializer);
+                    break;
+                case MiniGameType.SpectreHub when miniGameDefinition.GameLevel == SpectreHub.DuelGameLevel:
+                    miniGameContext = new SpectreDuelContext(miniGameKey, miniGameDefinition, this._gameContext, this._mapInitializer);
+                    break;
+                case MiniGameType.SpectreHub:
+                    miniGameContext = new SpectreHubContext(miniGameKey, miniGameDefinition, this._gameContext, this._mapInitializer);
                     break;
                 default:
                     miniGameContext = new MiniGameContext(miniGameKey, miniGameDefinition, this._gameContext, this._mapInitializer);

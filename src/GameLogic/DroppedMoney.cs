@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.GameLogic;
 
 using System.Diagnostics;
 using System.Threading;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.Pathfinding;
 using Nito.AsyncEx;
 
@@ -137,7 +138,7 @@ public sealed class DroppedMoney : AsyncDisposable, ILocateable
     /// <returns><c>True</c>, if at least one player received money; Otherwise, <c>false</c>.</returns>
     private bool TryGiveMoneyTo(Player player)
     {
-        if (player.Party is not { } party)
+        if (player.GetPlayerParty() is not { } party)
         {
             if (!MoneyDistribution.TryPay(player, this.Amount))
             {

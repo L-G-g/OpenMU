@@ -430,4 +430,10 @@
   <data name="FixSeedSphereMaximumItemLevelUpdatePlugIn_Description" xml:space="preserve"><value>This update sets the maximum item level of the seed spheres to the highest option number of their element. The item level of a seed sphere defines its option, so seed spheres with other options than the first one could not be created, e.g. with the item chat command.</value></data>
   <data name="AddItemPriceDefinitionsPlugIn_Name" xml:space="preserve"><value>Add item price definitions</value></data>
   <data name="AddItemPriceDefinitionsPlugIn_Description" xml:space="preserve"><value>This update adds the price definitions of special items like jewels, potions and event tickets, which were hard-coded before. Without it, these items are priced like usual equipment.</value></data>
+  <data name="SpectreHubUpdatePlugIn_Name" xml:space="preserve">
+    <value>Spectre Hub</value>
+  </data>
+  <data name="SpectreHubUpdatePlugIn_Description" xml:space="preserve">
+    <value>Adds the spectre hub: the Guardian of the spectres in Lorencia lets a player enter its own hub, where a rival of each class waits. Beating a rival in a duel unlocks its spectre, and beating it again makes the spectre evolve.</value>
+  </data>
 </root>

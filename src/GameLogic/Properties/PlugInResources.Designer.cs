@@ -4444,6 +4444,18 @@ namespace MUnique.OpenMU.GameLogic.Properties {
                 return ResourceManager.GetString("CastleSiegeLifeStoneConsumeHandlerPlugIn_Name", resourceCulture);
             }
         }
+        /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Description text.</summary>
+        public static string SpectreGuardianTalkPlugIn_Description => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Name text.</summary>
+        public static string SpectreGuardianTalkPlugIn_Name => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_GuardianDesignation_Description text.</summary>
+        public static string SpectreConfiguration_GuardianDesignation_Description => ResourceManager.GetString("SpectreConfiguration_GuardianDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_GuardianDesignation_Name text.</summary>
+        public static string SpectreConfiguration_GuardianDesignation_Name => ResourceManager.GetString("SpectreConfiguration_GuardianDesignation_Name", resourceCulture)!;
+
         /// <summary>Gets the localized BotConfiguration_Enabled_Name text.</summary>
         public static string BotConfiguration_Enabled_Name => ResourceManager.GetString("BotConfiguration_Enabled_Name", resourceCulture)!;
 

@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.GameLogic.PlayerActions;
 
 using MUnique.OpenMU.GameLogic.PlayerActions.Quests;
+using MUnique.OpenMU.GameLogic.Spectres;
 
 /// <summary>
 /// Abstract base class for actions to enter maps which are only available when
@@ -90,7 +91,7 @@ public abstract class EnterQuestMapAction
             return;
         }
 
-        var partyPlayers = player.Party?.PartyList.Where(p => p.IsInRange(player.Position, 10)).OfType<Player>().ToList();
+        var partyPlayers = player.GetPlayerParty()?.PartyList.Where(p => p.IsInRange(player.Position, 10)).OfType<Player>().ToList();
         if (partyPlayers is null)
         {
             await player.WarpToAsync(targetGate).ConfigureAwait(false);

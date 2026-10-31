@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Spectres;
 using Nito.AsyncEx;
 
 /// <summary>
@@ -124,7 +125,7 @@ public class DefaultDropGenerator : IDropGenerator
         else
         {
             var questItemGroups = (await GetQuestItemGroupsAsync(player).ConfigureAwait(false) ?? []).ToList();
-            var soloQuestItemGroups = player.Party is null ? character.GetQuestDropItemGroups().ToList() : [];
+            var soloQuestItemGroups = player.GetPlayerParty() is null ? character.GetQuestDropItemGroups().ToList() : [];
             this.PartitionDropGroups(monster.DropItemGroups?.Where(group => IsDropOfNeededQuestItemsOrOther(group, soloQuestItemGroups)) ?? []);
             this.PartitionDropGroups(character.DropItemGroups ?? [], monster);
             this.PartitionDropGroups(map.DropItemGroups ?? [], monster);
@@ -356,7 +357,7 @@ public class DefaultDropGenerator : IDropGenerator
             return [];
         }
 
-        if (player.Party is { } party)
+        if (player.GetPlayerParty() is { } party)
         {
             return await party.GetQuestDropItemGroupsAsync(player).ConfigureAwait(false);
         }

@@ -10,12 +10,14 @@ using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// The chat command which handles the spectres of a player (see <see cref="SpectreFeaturePlugIn"/>):
-/// <c>/espectro guerrero|mago|elfa</c> summons or dismisses a spectre, <c>/espectro fuera</c> dismisses all,
+/// <c>/espectro guerrero|mago|elfa|gladiador|lord|invocadora|peleador</c> summons or dismisses a spectre, <c>/espectro fuera</c> dismisses all,
 /// <c>/espectro info</c> shows them, <c>/espectro reset &lt;kind&gt;</c> resets one, and
-/// <c>/espectro puntos &lt;kind&gt; &lt;str&gt; &lt;agi&gt; &lt;vit&gt; &lt;ene&gt;</c> sets the percentages by which it spends its points,
+/// <c>/espectro puntos &lt;kind&gt; &lt;str&gt; &lt;agi&gt; &lt;vit&gt; &lt;ene&gt; [&lt;cmd&gt;]</c> sets the percentages by which it spends its points,
 /// <c>/espectro equipar &lt;kind&gt; &lt;inventory slot&gt;</c> equips an item of the inventory on it,
-/// <c>/espectro quitar &lt;kind&gt; &lt;equipment slot&gt;</c> takes an item off, and <c>/espectro panel</c>
-/// sends the state of the spectres to the spectre window of the client.
+/// <c>/espectro quitar &lt;kind&gt; &lt;equipment slot&gt;</c> takes an item off, <c>/espectro panel</c>
+/// sends the state of the spectres to the spectre window of the client, <c>/espectro refugio</c> enters the spectre hub
+/// after talking to its guardian (see <see cref="SpectreHub"/>; game masters don't need to), <c>/espectro duelo</c>
+/// challenges the nearest rival there, and <c>/espectro salir</c> leaves it.
 /// </summary>
 [Guid("8E2F4A6C-1B3D-4C5E-8F7A-9B0C1D2E3F40")]
 [PlugIn]
@@ -25,7 +27,7 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
 {
     private const string Command = "/espectro";
 
-    private const string Usage = "Uso: /espectro guerrero|mago|elfa, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene>, /espectro equipar <clase> <lugar>, /espectro quitar <clase> <lugar>";
+    private const string Usage = "Uso: /espectro guerrero|mago|elfa|gladiador|lord|invocadora|peleador, /espectro fuera, /espectro info, /espectro reset <clase>, /espectro puntos <clase> <fue> <agi> <vit> <ene> [<cmd>], /espectro equipar <clase> <lugar>, /espectro quitar <clase> <lugar>, /espectro refugio, /espectro duelo, /espectro salir";
 
     /// <inheritdoc />
     public string Key => Command;
@@ -60,13 +62,30 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
             case "panel":
                 await SpectreFeaturePlugIn.SendPanelAsync(player).ConfigureAwait(false);
                 return;
+            case "refugio":
+                await EnterHubAsync(player).ConfigureAwait(false);
+                return;
+            case "duelo":
+                if (player.CurrentMiniGame is SpectreHubContext hub)
+                {
+                    await hub.ChallengeNearestRivalAsync(player).ConfigureAwait(false);
+                }
+
+                return;
+            case "salir":
+                if (player.CurrentMiniGame is SpectreHubContext or SpectreDuelContext)
+                {
+                    await player.WarpToSafezoneAsync().ConfigureAwait(false);
+                }
+
+                return;
             case "equipar" when arguments.Count == 3 && TryParseKind(arguments[1], out var kind) && byte.TryParse(arguments[2], out var slot):
                 await feature.EquipAsync(player, kind, slot).ConfigureAwait(false);
                 return;
             case "quitar" when arguments.Count == 3 && TryParseKind(arguments[1], out var kind) && byte.TryParse(arguments[2], out var slot):
                 await feature.UnequipAsync(player, kind, slot).ConfigureAwait(false);
                 return;
-            case "puntos" when arguments.Count == 6 && TryParseKind(arguments[1], out var kind):
+            case "puntos" when arguments.Count is 6 or 7 && TryParseKind(arguments[1], out var kind):
                 var percentages = arguments.Skip(2).Select(a => int.TryParse(a, out var value) ? value : -1).ToList();
                 await feature.SetStatPercentagesAsync(player, kind, percentages).ConfigureAwait(false);
                 return;
@@ -79,22 +98,27 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
         }
     }
 
-    private static bool TryParseKind(string text, out SpectreKind kind)
+    private static async ValueTask EnterHubAsync(Player player)
     {
-        switch (text.ToLowerInvariant())
+        if (player.CurrentMiniGame is not null || player.DuelRoom is not null)
         {
-            case "guerrero" or "g":
-                kind = SpectreKind.Warrior;
-                return true;
-            case "mago" or "m":
-                kind = SpectreKind.Mage;
-                return true;
-            case "elfa" or "e":
-                kind = SpectreKind.Elf;
-                return true;
-            default:
-                kind = default;
-                return false;
+            await player.ShowBlueMessageAsync("No podes entrar al refugio de los espectros desde un evento o un duelo.").ConfigureAwait(false);
+            return;
         }
+
+        if (!SpectreHub.HasVisitedGuardian(player) && player.SelectedCharacter?.CharacterStatus != CharacterStatus.GameMaster)
+        {
+            await player.ShowBlueMessageAsync("Primero habla con el Guardian de los espectros en Lorencia.").ConfigureAwait(false);
+            return;
+        }
+
+        if (!player.IsAlive || player.PlayerState.CurrentState != PlayerState.EnteredWorld)
+        {
+            return;
+        }
+
+        await SpectreHub.EnterHubAsync(player).ConfigureAwait(false);
     }
+
+    private static bool TryParseKind(string text, out SpectreKind kind) => SpectreClasses.TryParse(text, out kind);
 }

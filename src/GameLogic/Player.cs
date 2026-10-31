@@ -270,6 +270,12 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     /// <inheritdoc cref="IPartyMember" />
     public string Name => this.SelectedCharacter?.Name ?? string.Empty;
 
+    /// <summary>
+    /// Gets the name which the game clients show for this player. It's the name of the character,
+    /// except for characters which are shown under another name, e.g. the rivals of the spectre hub.
+    /// </summary>
+    public virtual string DisplayName => this.Name;
+
     /// <inheritdoc/>
     public int Level => (int)(this.Attributes?[Stats.Level] ?? 0);
 
@@ -792,6 +798,12 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
             return null;
         }
 
+        if (this is Spectres.RivalPlayer rival && !rival.CanBeAttackedBy(attacker))
+        {
+            // A rival of the spectre hub can only be hurt by its challenger, during the duel.
+            return null;
+        }
+
         if (!this.GameContext.PvpEnabled && this.CurrentMap?.Definition.BattleZone == null &&
             this.CurrentMiniGame?.AllowPlayerKilling is false)
         {
@@ -1194,6 +1206,12 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     /// <returns><c>true</c>, if the player complies with the requirements; Otherwise, <c>false</c>.</returns>
     public bool CompliesRequirements(Skill skill)
     {
+        if (this is Spectres.ISpectreCharacter)
+        {
+            // Spectres and their rivals got their skills from their evolutions.
+            return true;
+        }
+
         // Characters which did a reset may keep using their skills below the required level, if the reset feature allows it.
         var ignoresLevelRequirement = this.Attributes![Stats.Resets] > 0
             && this.GameContext.FeaturePlugIns.GetPlugIn<ResetFeaturePlugIn>()?.Configuration is { IgnoreSkillLevelRequirements: true };
@@ -1744,8 +1762,16 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
 
         if (this.Attributes[Stats.CurrentHealth] < 1)
         {
-            this.LastDeath = new DeathInformation(attacker.Id, attacker.GetName(), hitInfo, skill?.Number ?? 0);
-            await this.OnDeathAsync(attacker).ConfigureAwait(false);
+            if (this.CurrentMiniGame?.PreventsDeath(this, attacker) is true)
+            {
+                // E.g. the duel against a rival of the spectre hub, which ends with the first fall.
+                this.Attributes[Stats.CurrentHealth] = 1;
+            }
+            else
+            {
+                this.LastDeath = new DeathInformation(attacker.Id, attacker.GetName(), hitInfo, skill?.Number ?? 0);
+                await this.OnDeathAsync(attacker).ConfigureAwait(false);
+            }
         }
 
         if (hitInfo.Attributes.HasFlag(DamageAttributes.Poison))

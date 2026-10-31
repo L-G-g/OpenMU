@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.GameLogic.PlugIns.UnlockCharacterClass;
 
 using System.Runtime.InteropServices;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
@@ -21,8 +22,9 @@ public class UnlockAllCharacterClassesPlugIn : IPlayerStateChangedPlugIn, IDisab
     {
         // The character list, including the unlock flags, is sent right after advancing to the character selection.
         // The authenticated state doesn't work here, because the account isn't set yet when it's reached at login.
-        // Bots are excluded for the same reason as in UnlockCharacterAtLevelBase.
-        if (currentState != PlayerState.CharacterSelection || player.Account is not { IsBot: false } account)
+        // Bots, spectres and rivals are excluded for the same reason as in UnlockCharacterAtLevelBase:
+        // several of them share an account and log in at the same time.
+        if (currentState != PlayerState.CharacterSelection || player is ISpectreCharacter || player.Account is not { IsBot: false } account)
         {
             return ValueTask.CompletedTask;
         }

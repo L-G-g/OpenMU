@@ -249,8 +249,10 @@ internal sealed class BotGenerator
     /// <param name="starterItemLevel">The level of the starter items.</param>
     /// <param name="equipStarterArmor">If set to <c>true</c>, the character gets a starter armor set.</param>
     /// <param name="resetConfiguration">The reset configuration.</param>
+    /// <param name="capVitality">If set to <c>false</c>, the vitality isn't capped at the personal target of the bot on reset servers.</param>
+    /// <param name="buildVariant">The build variant of the stats instead of the one of the name, see <see cref="BotProgression.GetStatWeights"/>.</param>
     /// <returns>The created character.</returns>
-    public Character CreateCharacter(IPlayerContext context, Account account, string name, CharacterClass characterClass, int level, byte slot, long[] experienceTable, int seededResets, byte starterItemLevel, bool equipStarterArmor, ResetConfiguration? resetConfiguration)
+    public Character CreateCharacter(IPlayerContext context, Account account, string name, CharacterClass characterClass, int level, byte slot, long[] experienceTable, int seededResets, byte starterItemLevel, bool equipStarterArmor, ResetConfiguration? resetConfiguration, bool capVitality = true, int? buildVariant = null)
     {
         // A character generated beyond the class evolution level was created as its second-generation
         // class right away - like a player who completed the class quest long ago. Everything downstream
@@ -283,7 +285,7 @@ internal sealed class BotGenerator
         character.Experience = experienceTable[Math.Min(level, experienceTable.Length - 1)];
         character.LevelUpPoints = CalculateLevelUpPoints(characterClass, level, seededResets, resetConfiguration);
         character.InventoryExtensions = BotInventoryExtensions;
-        DistributeStatPoints(character, characterClass, resetConfiguration is not null);
+        DistributeStatPoints(character, characterClass, capVitality && resetConfiguration is not null, buildVariant);
 
         // Skills survive resets, so a seeded veteran knows everything the highest level of its past
         // cycles unlocked; level-gated skills are checked against that level, not the current one.
@@ -383,7 +385,7 @@ internal sealed class BotGenerator
     /// - the same split the bot keeps using for points it earns at runtime - and respects each stat's
     /// configured maximum (fun servers) as well as the bot's personal vitality target on reset-meta servers.
     /// </summary>
-    private static void DistributeStatPoints(Character character, CharacterClass characterClass, bool resetMeta)
+    private static void DistributeStatPoints(Character character, CharacterClass characterClass, bool resetMeta, int? buildVariant)
     {
         var points = character.LevelUpPoints;
         if (points <= 0)
@@ -391,7 +393,7 @@ internal sealed class BotGenerator
             return;
         }
 
-        var weights = BotProgression.GetStatWeights(characterClass, character.Name);
+        var weights = BotProgression.GetStatWeights(characterClass, character.Name, buildVariant);
         var vitalityTarget = resetMeta ? BotProgression.GetVitalityTarget(character.Name) : (int?)null;
 
         long CapacityOf(AttributeDefinition stat)
