@@ -4444,6 +4444,12 @@ namespace MUnique.OpenMU.GameLogic.Properties {
                 return ResourceManager.GetString("CastleSiegeLifeStoneConsumeHandlerPlugIn_Name", resourceCulture);
             }
         }
+        /// <summary>Gets the localized SpectreConfiguration_RivalHealthMultiplier_Description text.</summary>
+        public static string SpectreConfiguration_RivalHealthMultiplier_Description => ResourceManager.GetString("SpectreConfiguration_RivalHealthMultiplier_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_RivalHealthMultiplier_Name text.</summary>
+        public static string SpectreConfiguration_RivalHealthMultiplier_Name => ResourceManager.GetString("SpectreConfiguration_RivalHealthMultiplier_Name", resourceCulture)!;
+
         /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Description text.</summary>
         public static string SpectreGuardianTalkPlugIn_Description => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Description", resourceCulture)!;
 

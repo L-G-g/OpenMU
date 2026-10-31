@@ -42,4 +42,10 @@ public class SpectreConfiguration
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_GuardianDesignation_Name), Description = nameof(PlugInResources.SpectreConfiguration_GuardianDesignation_Description))]
     public string GuardianDesignation { get; set; } = SpectreHub.GuardianDesignation;
+
+    /// <summary>
+    /// Gets or sets the multiplier of the maximum health and shield of the rivals of the spectre hub.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_RivalHealthMultiplier_Name), Description = nameof(PlugInResources.SpectreConfiguration_RivalHealthMultiplier_Description))]
+    public float RivalHealthMultiplier { get; set; } = 3;
 }

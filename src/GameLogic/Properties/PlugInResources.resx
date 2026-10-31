@@ -2096,4 +2096,10 @@
   <data name="SpectreGuardianTalkPlugIn_Description" xml:space="preserve">
     <value>Shows the story of the spectres when a player talks to their guardian, and lets the player enter the spectre hub with /espectro refugio.</value>
   </data>
+  <data name="SpectreConfiguration_RivalHealthMultiplier_Name" xml:space="preserve">
+    <value>Rival health multiplier</value>
+  </data>
+  <data name="SpectreConfiguration_RivalHealthMultiplier_Description" xml:space="preserve">
+    <value>The multiplier of the maximum health and shield of the rivals of the spectre hub, e.g. 3 for three times as much.</value>
+  </data>
 </root>

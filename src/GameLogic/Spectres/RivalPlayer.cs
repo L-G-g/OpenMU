@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.GameLogic.Spectres;
 
+using MUnique.OpenMU.AttributeSystem;
+using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.Offline;
 using MUnique.OpenMU.Pathfinding;
 
@@ -102,6 +104,7 @@ public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
     /// <inheritdoc />
     protected override void StartIntelligence()
     {
+        this.MultiplyHealth();
         this._intelligence = new RivalIntelligence(this);
         this._intelligence.Start();
     }
@@ -120,5 +123,19 @@ public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
             this._intelligence = null;
             await intelligence.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    private void MultiplyHealth()
+    {
+        var multiplier = this.GameContext.FeaturePlugIns.GetPlugIn<SpectreFeaturePlugIn>()?.Configuration?.RivalHealthMultiplier ?? 1;
+        if (this.Attributes is not { } attributes || multiplier <= 0 || Math.Abs(multiplier - 1) < 0.001f)
+        {
+            return;
+        }
+
+        attributes.AddElement(new SimpleElement(multiplier, AggregateType.Multiplicate), Stats.MaximumHealth);
+        attributes.AddElement(new SimpleElement(multiplier, AggregateType.Multiplicate), Stats.MaximumShield);
+        attributes[Stats.CurrentHealth] = attributes[Stats.MaximumHealth];
+        attributes[Stats.CurrentShield] = attributes[Stats.MaximumShield];
     }
 }
