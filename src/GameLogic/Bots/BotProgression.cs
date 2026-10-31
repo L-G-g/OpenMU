@@ -127,9 +127,10 @@ internal static class BotProgression
     /// </summary>
     /// <param name="characterClass">The character class.</param>
     /// <param name="characterName">The character name; decides the build variant for two-build classes.</param>
-    public static IReadOnlyList<(AttributeDefinition Stat, int Weight)> GetStatWeights(CharacterClass characterClass, string characterName)
+    /// <param name="forcedVariant">The build variant to use instead of the one of the name, e.g. 0 for the damage build.</param>
+    public static IReadOnlyList<(AttributeDefinition Stat, int Weight)> GetStatWeights(CharacterClass characterClass, string characterName, int? forcedVariant = null)
     {
-        var variant = BotBuild.GetVariant(characterName);
+        var variant = forcedVariant ?? BotBuild.GetVariant(characterName);
         var vit = Stats.BaseVitality;
         var str = Stats.BaseStrength;
         var agi = Stats.BaseAgility;

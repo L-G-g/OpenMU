@@ -14,7 +14,7 @@ using MUnique.OpenMU.Persistence;
 /// <summary>
 /// The characters of the rivals of the spectre hub. Each owner character has its own rivals, one per kind, in a hidden
 /// account per owner account (like the spectres, see <see cref="SpectreFeaturePlugIn.GetLoginName"/>). A rival is created
-/// for its tier: level 400, the points of seven resets per tier (spent like the bots do, but without their cap of the vitality), the equipment of the tier (<see cref="SpectreEvolution.GetRivalEquipment"/>)
+/// for its tier: level 400, the points of seven resets per tier (spent like the damage builds of the bots, but without their cap of the vitality), the equipment of the tier (<see cref="SpectreEvolution.GetRivalEquipment"/>)
 /// and the skills of the tier. When the tier changes, the character is created again.
 /// </summary>
 internal static class SpectreRivals
@@ -42,7 +42,12 @@ internal static class SpectreRivals
     /// <summary>
     /// The version of the rules which created the rivals, after the tier. Rivals of older rules are created again.
     /// </summary>
-    private const byte RulesVersion = 2;
+    private const byte RulesVersion = 3;
+
+    /// <summary>
+    /// The build variant of the stats of the rivals: the damage build, e.g. the archer elf instead of the support elf.
+    /// </summary>
+    private const int DamageBuildVariant = 0;
 
     private const byte ArrowsGroup = 4;
     private const short ArrowsNumber = 15;
@@ -125,7 +130,8 @@ internal static class SpectreRivals
             0,
             false,
             BotResetHandler.GetResetConfiguration(gameContext),
-            capVitality: false);
+            capVitality: false,
+            buildVariant: DamageBuildVariant);
         character.Inventory!.Money = 0;
         character.KeyConfiguration = [TierMarker, (byte)tier, RulesVersion];
         await ClearInventoryAsync(context, character).ConfigureAwait(false);
