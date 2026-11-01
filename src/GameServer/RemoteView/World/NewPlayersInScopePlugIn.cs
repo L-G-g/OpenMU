@@ -109,7 +109,7 @@ public class NewPlayersInScopePlugIn : INewPlayersInScopePlugIn
             playerBlock.CurrentPositionY = newPlayer.Position.Y;
 
             appearanceSerializer.WriteAppearanceData(playerBlock.Appearance, newPlayer.AppearanceData, true); // 4 ... 21
-            playerBlock.Name = selectedCharacter.Name;
+            playerBlock.Name = newPlayer.DisplayName;
             if (newPlayer.IsWalking)
             {
                 playerBlock.TargetPositionX = newPlayer.WalkTarget.X;
@@ -185,7 +185,7 @@ public class NewPlayersInScopePlugIn : INewPlayersInScopePlugIn
             playerBlock.CurrentPositionY = newPlayer.Position.Y;
 
             appearanceSerializer.WriteAppearanceData(playerBlock.Appearance, newPlayer.AppearanceData, true); // 4 ... 21
-            playerBlock.Name = selectedCharacter.Name;
+            playerBlock.Name = newPlayer.DisplayName;
             if (newPlayer.IsWalking)
             {
                 playerBlock.TargetPositionX = newPlayer.WalkTarget.X;

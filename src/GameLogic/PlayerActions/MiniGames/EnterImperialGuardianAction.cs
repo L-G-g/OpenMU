@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.GameLogic.PlayerActions.MiniGames;
 
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.MiniGames.ImperialGuardian;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.GameLogic.Views.Inventory;
 
 /// <summary>
@@ -59,7 +60,7 @@ public class EnterImperialGuardianAction
             return;
         }
 
-        if (eventDefinition.IsPartyRequired && player.Party is null)
+        if (eventDefinition.IsPartyRequired && player.GetPlayerParty() is null)
         {
             await ShowResultAsync(player, ImperialGuardianEnterResult.PartyRequired, day).ConfigureAwait(false);
             return;

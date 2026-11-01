@@ -12,7 +12,7 @@ using MUnique.OpenMU.GameLogic.Offline;
 /// and doesn't duel. Its kills count as kills of the owner (see <see cref="IPlayerSurrogate"/>), and it gets
 /// a share of the owner's experience instead (see <see cref="SpectreFeaturePlugIn.ShareExperienceAsync"/>).
 /// </summary>
-public sealed class SpectrePlayer : OfflinePlayer, IPlayerSurrogate
+public sealed class SpectrePlayer : OfflinePlayer, IPlayerSurrogate, ISpectreCharacter
 {
     private SpectreIntelligence? _intelligence;
 
@@ -29,7 +29,7 @@ public sealed class SpectrePlayer : OfflinePlayer, IPlayerSurrogate
         this.Owner = owner;
         this.Kind = kind;
         this.Configuration = configuration;
-        this.MuHelperSettings = new SpectreMuHelperSettings();
+        this.MuHelperSettings = new SpectreMuHelperSettings(this);
     }
 
     /// <summary>

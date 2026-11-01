@@ -102,6 +102,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         ZenByMonsterLevel.Apply(this.Context, this.GameConfiguration);
         PotionStacks.Apply(this.Context, this.GameConfiguration);
         IceQueenDungeon.Apply(this.Context, this.GameConfiguration);
+        SpectreHubSetup.Apply(this.Context, this.GameConfiguration);
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 

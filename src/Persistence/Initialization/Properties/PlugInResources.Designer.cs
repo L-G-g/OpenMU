@@ -347,6 +347,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
                 return ResourceManager.GetString("DataInitialization095d_Name", resourceCulture);
             }
         }
+        /// <summary>Gets the localized SpectreHubUpdatePlugIn_Description text.</summary>
+        public static string SpectreHubUpdatePlugIn_Description => ResourceManager.GetString("SpectreHubUpdatePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreHubUpdatePlugIn_Name text.</summary>
+        public static string SpectreHubUpdatePlugIn_Name => ResourceManager.GetString("SpectreHubUpdatePlugIn_Name", resourceCulture)!;
+
         /// <summary>Gets the localized AddCrescentMoonSlashForDarkKnight_Name text.</summary>
         public static string AddCrescentMoonSlashForDarkKnight_Name => ResourceManager.GetString("AddCrescentMoonSlashForDarkKnight_Name", resourceCulture)!;
 

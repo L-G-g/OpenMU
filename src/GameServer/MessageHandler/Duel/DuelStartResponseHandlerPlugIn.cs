@@ -51,7 +51,7 @@ internal class DuelStartResponseHandlerPlugIn : ISubPacketHandlerPlugIn
             return;
         }
 
-        if (target.Name != targetName)
+        if (target.Name != targetName && target.DisplayName != targetName)
         {
             player.Logger.LogWarning($"Player {player.Name} sent duel response for player {target.Name} with id {targetId}, but the names didn't match.");
             return;
