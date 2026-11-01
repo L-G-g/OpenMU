@@ -23,6 +23,12 @@
 //   - Montura y mascotas: son "bugs" aparte (10 OBJECT en 0x08791550), que copian la posicion del dueno
 //     (+0x1D8, el OBJECT del personaje, +0x308) en el paso de logica (0x00501790), no al dibujar
 //     (0x00503770). Se suben y se devuelven igual que el personaje.
+//   - Alas: el paso del bug (0x00501790) elige las acciones de vuelo del Dinorant (bug 0x143: 1, 3, 5, 7
+//     en vez de 0, 2, 4, 6) cuando el mundo ([0x00E61E18]) es 8 (Tarkan) o 10 (Icarus). Si el dueno vuela,
+//     durante esa llamada el mundo es 10 y despues vuelve a ser el de antes.
+//   - Linea recta: volando, el camino se arma en linea recta (pasos de 8 direcciones, hasta 15 puntos con
+//     el de inicio, como lo escribe 0x00542D20) en vez del A* del juego, que zigzaguea. Si la linea pasa
+//     por una baldosa sin suelo (0x08) se usa el A* con pared 8.
 //   - Tecla: [Flight] Key (Shift + V por defecto) manda /volar por el chat, solo con el foco en la ventana
 //     del juego (no escribiendo en el chat).
 
@@ -40,6 +46,12 @@ namespace
     constexpr DWORD PathFunction = 0x00542D20;      // bool __cdecl (sx, sy, tx, ty, PATH*, float, int pared)
     const BYTE SpeedPrologue[] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10 }; // PUSH EBP, MOV EBP,ESP, SUB ESP,0x10
     const BYTE PathPrologue[] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x1C };  // PUSH EBP, MOV EBP,ESP, SUB ESP,0x1C
+    constexpr DWORD BugMoveFunction = 0x00501790;   // char __cdecl (OBJECT* bug, char)
+    const BYTE BugMovePrologue[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x8C, 0x01, 0x00, 0x00 }; // ... SUB ESP,0x18C
+    int* const World = reinterpret_cast<int*>(0x00E61E18);
+    constexpr int IcarusWorld = 10;
+    const WORD* const TerrainAttributes = reinterpret_cast<const WORD*>(0x082C6AA0); // 256x256, y * 256 + x
+    constexpr WORD NoGround = 0x08;
     constexpr DWORD SendChatFunction = 0x005BDE40;  // void __cdecl (const char* texto)
     int* const ChatWait = reinterpret_cast<int*>(0x08793728);
     constexpr int ChatReady = 0x32;                 // el chat sale si la espera es como mucho esto
@@ -51,6 +63,10 @@ namespace
     // --- Personajes (CHARACTER, 0x598 bytes) ---
     constexpr int CharacterCount = 400;
     constexpr DWORD CharacterSize = 0x598;
+    // --- Camino (PATH: +2 cantidad de puntos, +3 las x, +0x12 las y) ---
+    constexpr int PathMaxPoints = 15;
+    constexpr DWORD PathCount = 2, PathX = 3, PathY = 0x12;
+
     constexpr DWORD CharKey = 0x7E, CharPath = 0x274, CharObject = 0x308, CharLive = 0x30C, CharPosition = 0x404;
 
     // --- Montura y mascotas (bugs, OBJECT de 0x288 bytes) ---
@@ -67,6 +83,7 @@ namespace
     using DispatchType = int(__cdecl*)(int, BYTE*, int, int);
     using SpeedType = float(__cdecl*)(BYTE*);
     using PathType = bool(__cdecl*)(int, int, int, int, BYTE*, float, int);
+    using BugMoveType = char(__cdecl*)(BYTE*, char);
     using SendChatType = void(__cdecl*)(const char*);
 
     LogFunction g_log = nullptr;
@@ -194,6 +211,63 @@ namespace
 
     PathType volatile g_pathOriginal = &PathOriginal;
 
+    // Camino en linea recta de (sx, sy) a (tx, ty), con el punto de inicio, cortado a PathMaxPoints. Falso si
+    // no hay donde ir o la linea pasa por una baldosa sin suelo.
+    bool StraightPath(int sx, int sy, int tx, int ty, BYTE* path)
+    {
+        if ((sx == tx && sy == ty) || sx < 0 || sy < 0 || tx < 0 || ty < 0 || sx > 255 || sy > 255 || tx > 255 || ty > 255)
+        {
+            return false;
+        }
+
+        BYTE xs[PathMaxPoints];
+        BYTE ys[PathMaxPoints];
+        int count = 0;
+        int x = sx;
+        int y = sy;
+        xs[count] = static_cast<BYTE>(x);
+        ys[count] = static_cast<BYTE>(y);
+        count++;
+
+        // Bresenham: en cada paso se avanza en x, en y o en las dos (diagonal), asi los puntos quedan pegados.
+        const int dx = abs(tx - sx);
+        const int dy = abs(ty - sy);
+        const int stepX = sx < tx ? 1 : -1;
+        const int stepY = sy < ty ? 1 : -1;
+        int error = dx - dy;
+        while ((x != tx || y != ty) && count < PathMaxPoints)
+        {
+            const int doubled = 2 * error;
+            if (doubled > -dy)
+            {
+                error -= dy;
+                x += stepX;
+            }
+
+            if (doubled < dx)
+            {
+                error += dx;
+                y += stepY;
+            }
+
+            if (TerrainAttributes[y * 256 + x] & NoGround)
+            {
+                return false;
+            }
+
+            xs[count] = static_cast<BYTE>(x);
+            ys[count] = static_cast<BYTE>(y);
+            count++;
+        }
+
+        path[0] = 0;
+        path[1] = 0;
+        path[PathCount] = static_cast<BYTE>(count);
+        memcpy(path + PathX, xs, count);
+        memcpy(path + PathY, ys, count);
+        return true;
+    }
+
     bool __cdecl PathHook(int sx, int sy, int tx, int ty, BYTE* path, float distance, int wall)
     {
         if (path != nullptr && wall < FlyingWall)
@@ -201,11 +275,49 @@ namespace
             BYTE* character = path - CharPath;
             if (CharacterIndex(character) >= 0 && IsFlying(character))
             {
+                if (StraightPath(sx, sy, tx, ty, path))
+                {
+                    return true;
+                }
+
                 wall = FlyingWall;
             }
         }
 
         return g_pathOriginal(sx, sy, tx, ty, path, distance, wall);
+    }
+
+    // --- Alas del Dinorant ---
+    // Los primeros 9 bytes de 0x00501790 y un salto al resto.
+    __declspec(naked) char __cdecl BugMoveOriginal(BYTE*, char)
+    {
+        __asm
+        {
+            push ebp
+            mov ebp, esp
+            sub esp, 0x18C
+            push 0x00501799 // BugMoveFunction + 9
+            ret
+        }
+    }
+
+    BugMoveType volatile g_bugMoveOriginal = &BugMoveOriginal;
+
+    char __cdecl BugMoveHook(BYTE* bug, char flag)
+    {
+        const BYTE* owner = bug != nullptr && bug[BugLive] ? *reinterpret_cast<BYTE* const*>(bug + BugOwner) : nullptr;
+        BYTE* character = owner != nullptr ? const_cast<BYTE*>(owner) - CharObject : nullptr;
+        if (character == nullptr || CharacterIndex(character) < 0 || !IsFlying(character))
+        {
+            return g_bugMoveOriginal(bug, flag);
+        }
+
+        // Como en Icarus: el Dinorant abre las alas y usa sus acciones de vuelo.
+        const int world = *World;
+        *World = IcarusWorld;
+        const char result = g_bugMoveOriginal(bug, flag);
+        *World = world;
+        return result;
     }
 
     // --- Altura (solo para dibujar) ---
@@ -371,12 +483,13 @@ namespace
         return memcmp(reinterpret_cast<const void*>(address), expected, size) == 0;
     }
 
-    // Reemplaza el prologo de 6 bytes de la funcion por un salto al gancho (y un NOP).
-    bool JumpAtStart(DWORD function, const void* target)
+    // Reemplaza el prologo de la funcion (6 bytes o mas) por un salto al gancho y NOPs.
+    bool JumpAtStart(DWORD function, const void* target, size_t prologueSize = 6)
     {
-        BYTE jump[6] = { 0xE9, 0, 0, 0, 0, 0x90 };
+        BYTE jump[16] = { 0xE9 };
+        memset(jump + 5, 0x90, sizeof(jump) - 5);
         *reinterpret_cast<DWORD*>(jump + 1) = reinterpret_cast<DWORD>(target) - (function + 5);
-        return WriteCode(function, jump, sizeof(jump));
+        return WriteCode(function, jump, prologueSize);
     }
 
     float ReadFloat(const char* iniPath, const char* name, float fallback, float minimum, float maximum)
@@ -430,7 +543,8 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
     const DWORD dispatch = CallTarget(DispatchCallSite);
     if (dispatch == 0
         || !Matches(SpeedFunction, SpeedPrologue, sizeof(SpeedPrologue))
-        || !Matches(PathFunction, PathPrologue, sizeof(PathPrologue)))
+        || !Matches(PathFunction, PathPrologue, sizeof(PathPrologue))
+        || !Matches(BugMoveFunction, BugMovePrologue, sizeof(BugMovePrologue)))
     {
         g_log("Flight: el main.exe no coincide; desactivado.");
         return false;
@@ -439,6 +553,7 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
     g_nextDispatch = reinterpret_cast<DispatchType>(dispatch);
     if (!JumpAtStart(SpeedFunction, &SpeedHook)
         || !JumpAtStart(PathFunction, &PathHook)
+        || !JumpAtStart(BugMoveFunction, &BugMoveHook, sizeof(BugMovePrologue))
         || !RedirectCall(DispatchCallSite, &PacketHook))
     {
         g_log("Flight: no se pudo instalar.");

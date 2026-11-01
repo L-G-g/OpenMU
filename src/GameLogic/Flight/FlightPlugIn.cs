@@ -18,7 +18,8 @@ using MUnique.OpenMU.PlugIns;
 /// Lets players fly on their Dinorant (<c>/volar</c>, or the key of the flight.dll client mod):
 /// a flying player walks over blocked tiles (walls, trees, houses), but not over tiles without ground,
 /// and moves faster by <see cref="FlightConfiguration.SpeedFactor"/>. Flying is movement only: no attacks
-/// and no skills, and monsters don't attack a flying player. It can't be started in combat, and only on the allowed regular maps, never in a mini game.
+/// and no skills, and monsters don't attack a flying player. It can't be started in combat or in a safezone
+/// (entering one lands the player), and only on the allowed regular maps, never in a mini game.
 /// A player lands only on a walkable tile; when the flight is ended by force (the Dinorant is taken off or
 /// breaks), the player is put on the nearest walkable tile.
 /// </summary>
@@ -28,6 +29,7 @@ using MUnique.OpenMU.PlugIns;
 public sealed class FlightPlugIn : IFeaturePlugIn,
     IAttackableGotHitPlugIn,
     IAttackableGotKilledPlugIn,
+    IAttackableMovedPlugIn,
     IObjectRemovedFromMapPlugIn,
     IItemMovedPlugIn,
     IItemDestroyedPlugIn,
@@ -47,6 +49,8 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
     private readonly ConditionalWeakTable<Player, StrongBox<long>> _lastCombatTicks = new();
 
     private readonly ConcurrentDictionary<Player, IElement> _speedElements = new();
+
+    private readonly ConcurrentDictionary<Player, bool> _safezoneLandings = new();
 
     /// <inheritdoc />
     public FlightConfiguration? Configuration { get; set; }
@@ -105,6 +109,18 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
         {
             // The player respawns in a town, so there's no need to look for a landing tile.
             await this.EndFlightAsync(player, notifyObservers: true).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public void AttackableMoved(IAttackable attackable)
+    {
+        if (attackable is Player { IsFlying: true } player
+            && player.IsAtSafezone()
+            && this._safezoneLandings.TryAdd(player, true))
+        {
+            // Called by the walker while it moves the player, so the landing (which stops the walk) runs apart.
+            _ = Task.Run(() => this.LandInSafezoneSafeAsync(player));
         }
     }
 
@@ -232,6 +248,12 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
             return;
         }
 
+        if (player.IsAtSafezone())
+        {
+            await player.ShowBlueMessageAsync("En la zona segura no se puede volar.").ConfigureAwait(false);
+            return;
+        }
+
         if (this.IsInCombat(player, configuration))
         {
             await player.ShowBlueMessageAsync("No podes volar en combate. Espera unos segundos.").ConfigureAwait(false);
@@ -270,6 +292,28 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
 
         await this.EndFlightAsync(player, notifyObservers: true).ConfigureAwait(false);
         await player.ShowBlueMessageAsync("Aterrizaste.").ConfigureAwait(false);
+    }
+
+    private async Task LandInSafezoneSafeAsync(Player player)
+    {
+        try
+        {
+            if (player.IsFlying)
+            {
+                // Safezone tiles are walkable, so the player lands right there.
+                await player.StopWalkingAsync().ConfigureAwait(false);
+                await this.EndFlightAsync(player, notifyObservers: true).ConfigureAwait(false);
+                await player.ShowBlueMessageAsync("Aterrizaste en la zona segura.").ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            player.Logger.LogError(ex, "Error during the safezone landing of {Player}", player);
+        }
+        finally
+        {
+            this._safezoneLandings.TryRemove(player, out _);
+        }
     }
 
     private async Task ForceLandingSafeAsync(Player player)
