@@ -46,11 +46,13 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
 
     private const byte DinorantNumber = 3;
 
-    private readonly ConditionalWeakTable<Player, StrongBox<long>> _lastCombatTicks = new();
+    // The plugin manager creates an instance for each plugin point (hits, map removal, moves...) besides the
+    // feature instance of /volar, so the state of the players is shared by all of them.
+    private static readonly ConditionalWeakTable<Player, StrongBox<long>> LastCombatTicks = new();
 
-    private readonly ConcurrentDictionary<Player, IElement> _speedElements = new();
+    private static readonly ConcurrentDictionary<Player, IElement> SpeedElements = new();
 
-    private readonly ConcurrentDictionary<Player, bool> _safezoneLandings = new();
+    private static readonly ConcurrentDictionary<Player, bool> SafezoneLandings = new();
 
     /// <inheritdoc />
     public FlightConfiguration? Configuration { get; set; }
@@ -77,6 +79,14 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
     /// <param name="player">The player.</param>
     public async ValueTask ToggleAsync(Player player)
     {
+        player.Logger.LogInformation(
+            "Flight toggle by {Player}: flying {IsFlying}, alive {IsAlive}, map {Map}, position {Position}, safezone {Safezone}",
+            player,
+            player.IsFlying,
+            player.IsAlive,
+            player.CurrentMap?.MapId,
+            player.Position,
+            player.CurrentMap is not null && player.IsAtSafezone());
         if (player.IsFlying)
         {
             await this.LandAsync(player).ConfigureAwait(false);
@@ -93,12 +103,12 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
         var now = Environment.TickCount64;
         if (attackable is Player victim)
         {
-            this._lastCombatTicks.AddOrUpdate(victim, new StrongBox<long>(now));
+            LastCombatTicks.AddOrUpdate(victim, new StrongBox<long>(now));
         }
 
         if (attacker is Player attackerPlayer)
         {
-            this._lastCombatTicks.AddOrUpdate(attackerPlayer, new StrongBox<long>(now));
+            LastCombatTicks.AddOrUpdate(attackerPlayer, new StrongBox<long>(now));
         }
     }
 
@@ -117,7 +127,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
     {
         if (attackable is Player { IsFlying: true } player
             && player.IsAtSafezone()
-            && this._safezoneLandings.TryAdd(player, true))
+            && SafezoneLandings.TryAdd(player, true))
         {
             // Called by the walker while it moves the player, so the landing (which stops the walk) runs apart.
             _ = Task.Run(() => this.LandInSafezoneSafeAsync(player));
@@ -153,7 +163,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
             return;
         }
 
-        foreach (var player in this._speedElements.Keys)
+        foreach (var player in SpeedElements.Keys)
         {
             if (!HasDinorant(player))
             {
@@ -222,9 +232,9 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
         return terrain.AnyWalkableCoordinate;
     }
 
-    private bool IsInCombat(Player player, FlightConfiguration configuration)
+    private static bool IsInCombat(Player player, FlightConfiguration configuration)
     {
-        return this._lastCombatTicks.TryGetValue(player, out var lastCombat)
+        return LastCombatTicks.TryGetValue(player, out var lastCombat)
                && Environment.TickCount64 - lastCombat.Value < configuration.CombatCooldownSeconds * 1000L;
     }
 
@@ -233,6 +243,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
         var configuration = this.CurrentConfiguration;
         if (!player.IsAlive || player.CurrentMap is not { } map || player.Attributes is not { } attributes)
         {
+            await player.ShowBlueMessageAsync("Ahora no podes volar. Proba de nuevo en unos segundos.").ConfigureAwait(false);
             return;
         }
 
@@ -254,17 +265,21 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
             return;
         }
 
-        if (this.IsInCombat(player, configuration))
+        if (IsInCombat(player, configuration))
         {
             await player.ShowBlueMessageAsync("No podes volar en combate. Espera unos segundos.").ConfigureAwait(false);
             return;
         }
 
-        var speedElement = new ConstantElement(configuration.SpeedFactor > 0 ? configuration.SpeedFactor : 1, AggregateType.Multiplicate);
-        if (!this._speedElements.TryAdd(player, speedElement))
+        if (SpeedElements.TryRemove(player, out var staleElement))
         {
-            return;
+            // Left over by a flight which didn't end cleanly; it must not block the new one.
+            player.Logger.LogWarning("Removing a stale flight speed element of {Player}", player);
+            attributes.RemoveElement(staleElement, Stats.MovementSpeedFactor);
         }
+
+        var speedElement = new ConstantElement(configuration.SpeedFactor > 0 ? configuration.SpeedFactor : 1, AggregateType.Multiplicate);
+        SpeedElements[player] = speedElement;
 
         attributes.AddElement(speedElement, Stats.MovementSpeedFactor);
         player.IsFlying = true;
@@ -312,7 +327,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
         }
         finally
         {
-            this._safezoneLandings.TryRemove(player, out _);
+            SafezoneLandings.TryRemove(player, out _);
         }
     }
 
@@ -349,7 +364,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
 
     private async ValueTask EndFlightAsync(Player player, bool notifyObservers)
     {
-        if (this._speedElements.TryRemove(player, out var speedElement))
+        if (SpeedElements.TryRemove(player, out var speedElement))
         {
             player.Attributes?.RemoveElement(speedElement, Stats.MovementSpeedFactor);
         }

@@ -89,6 +89,39 @@ public class FlightTests
         Assert.That(await player.AttackByAsync(monster, null, false).ConfigureAwait(false), Is.Null);
     }
 
+    /// <summary>
+    /// Tests that a flight which another instance of the plugin ended (e.g. the one of the map removal at a warp)
+    /// can be started again with the instance of the chat command.
+    /// </summary>
+    [Test]
+    public async Task FlightCanBeStartedAgainAfterAWarpAsync()
+    {
+        var gameContext = GameContextTestHelper.CreateGameContext();
+        var player = await PlayerTestHelper.CreatePlayerAsync(gameContext).ConfigureAwait(false);
+        var map = await gameContext.GetMapAsync(0).ConfigureAwait(false);
+        await player.PlayerState.TryAdvanceToAsync(PlayerState.EnteredWorld).ConfigureAwait(false);
+        player.CurrentMap = map;
+        player.IsAlive = true;
+        var dinorant = new Persistence.BasicModel.Item
+        {
+            Durability = 255,
+            Definition = new Persistence.BasicModel.ItemDefinition { Group = 13, Number = 3 },
+        };
+        await player.Inventory!.AddItemAsync(DataModel.InventoryConstants.PetSlot, dinorant).ConfigureAwait(false);
+
+        var commandInstance = new FlightPlugIn();
+        var mapRemovalInstance = new FlightPlugIn();
+
+        await commandInstance.ToggleAsync(player).ConfigureAwait(false);
+        Assert.That(player.IsFlying, Is.True, "The flight starts.");
+
+        await mapRemovalInstance.ObjectRemovedFromMapAsync(map!, player).ConfigureAwait(false);
+        Assert.That(player.IsFlying, Is.False, "The warp ends the flight.");
+
+        await commandInstance.ToggleAsync(player).ConfigureAwait(false);
+        Assert.That(player.IsFlying, Is.True, "The flight starts again after the warp.");
+    }
+
     private static async ValueTask<Monster> CreateMonsterAsync(IGameContext gameContext)
     {
         var map = await gameContext.GetMapAsync(0).ConfigureAwait(false);
