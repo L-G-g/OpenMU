@@ -52,6 +52,14 @@ namespace
     constexpr int IcarusWorld = 10;
     const WORD* const TerrainAttributes = reinterpret_cast<const WORD*>(0x082C6AA0); // 256x256, y * 256 + x
     constexpr WORD NoGround = 0x08;
+    constexpr DWORD PathStepFunction = 0x005428B0;  // char __cdecl (CHARACTER*, char girar): avanza por el PATH
+    const BYTE PathStepPrologue[] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x68 }; // PUSH EBP, MOV EBP,ESP, SUB ESP,0x68
+    constexpr DWORD AngleToFunction = 0x00540C30;   // float __cdecl (x, y, destino x, y)
+    constexpr DWORD AngleDiffFunction = 0x005410A0; // float __cdecl (angulo, destino, 1)
+    constexpr DWORD TurnFunction = 0x00540EA0;      // float __cdecl (angulo, destino, paso)
+    constexpr float TileSize = 100.0f;              // como 0x005428B0: (baldosa + 0,5) * 100
+    constexpr float ArriveDistance = 20.0f;         // 0x00D23600
+    constexpr float TurnLimit = 45.0f;              // 0x00D2AF68
     constexpr DWORD SendChatFunction = 0x005BDE40;  // void __cdecl (const char* texto)
     int* const ChatWait = reinterpret_cast<int*>(0x08793728);
     constexpr int ChatReady = 0x32;                 // el chat sale si la espera es como mucho esto
@@ -67,7 +75,8 @@ namespace
     constexpr int PathMaxPoints = 15;
     constexpr DWORD PathCount = 2, PathX = 3, PathY = 0x12;
 
-    constexpr DWORD CharKey = 0x7E, CharPath = 0x274, CharObject = 0x308, CharLive = 0x30C, CharPosition = 0x404;
+    constexpr DWORD CharKey = 0x7E, CharTargetX = 0xAC, CharTargetY = 0xB0, CharPath = 0x274, CharObject = 0x308,
+        CharLive = 0x30C, CharPosition = 0x404, CharHeading = 0x418;
 
     // --- Montura y mascotas (bugs, OBJECT de 0x288 bytes) ---
     BYTE* const Bugs = reinterpret_cast<BYTE*>(0x08791550);
@@ -84,6 +93,10 @@ namespace
     using SpeedType = float(__cdecl*)(BYTE*);
     using PathType = bool(__cdecl*)(int, int, int, int, BYTE*, float, int);
     using BugMoveType = char(__cdecl*)(BYTE*, char);
+    using PathStepType = char(__cdecl*)(BYTE*, char);
+    using AngleToType = float(__cdecl*)(float, float, float, float);
+    using AngleDiffType = float(__cdecl*)(float, float, int);
+    using TurnType = float(__cdecl*)(float, float, float);
     using SendChatType = void(__cdecl*)(const char*);
 
     LogFunction g_log = nullptr;
@@ -285,6 +298,88 @@ namespace
         }
 
         return g_pathOriginal(sx, sy, tx, ty, path, distance, wall);
+    }
+
+    // --- Avance recto ---
+    // 0x005428B0 sigue el PATH con una curva por cada 4 puntos (+1 del PATH es el tramo, 0 a 3) y gira hacia
+    // ese objetivo; con una linea en escalera el objetivo va y viene y el personaje zigzaguea. Volando se gira
+    // hacia el ultimo punto, el punto actual (+0 del PATH) pasa al mas cercano (solo hacia adelante) y a menos
+    // de 20 del final se llega, como en el original.
+    __declspec(naked) char __cdecl PathStepOriginal(BYTE*, char)
+    {
+        __asm
+        {
+            push ebp
+            mov ebp, esp
+            sub esp, 0x68
+            push 0x005428B6 // PathStepFunction + 6
+            ret
+        }
+    }
+
+    PathStepType volatile g_pathStepOriginal = &PathStepOriginal;
+
+    float TileCenter(BYTE tile)
+    {
+        return (static_cast<float>(tile) + 0.5f) * TileSize;
+    }
+
+    char __cdecl PathStepHook(BYTE* character, char turn)
+    {
+        BYTE* path = character != nullptr ? character + CharPath : nullptr;
+        if (path == nullptr || CharacterIndex(character) < 0 || !IsFlying(character) || path[0] >= path[PathCount])
+        {
+            return g_pathStepOriginal(character, turn);
+        }
+
+        const int count = path[PathCount];
+        float* position = reinterpret_cast<float*>(character + CharPosition);
+        const float endX = TileCenter(path[PathX + count - 1]);
+        const float endY = TileCenter(path[PathY + count - 1]);
+
+        int nearest = path[0];
+        float nearestDistance = 0.0f;
+        for (int i = path[0]; i < count; i++)
+        {
+            const float dx = position[0] - TileCenter(path[PathX + i]);
+            const float dy = position[1] - TileCenter(path[PathY + i]);
+            const float distance = dx * dx + dy * dy;
+            if (i == path[0] || distance < nearestDistance)
+            {
+                nearest = i;
+                nearestDistance = distance;
+            }
+        }
+
+        path[0] = static_cast<BYTE>(nearest);
+        path[1] = 0;
+        const int next = nearest + 1 < count ? nearest + 1 : count - 1;
+        *reinterpret_cast<DWORD*>(character + CharTargetX) = path[PathX + next];
+        *reinterpret_cast<DWORD*>(character + CharTargetY) = path[PathY + next];
+
+        const float toEndX = position[0] - endX;
+        const float toEndY = position[1] - endY;
+        if (toEndX * toEndX + toEndY * toEndY < ArriveDistance * ArriveDistance)
+        {
+            path[0] = static_cast<BYTE>(count - 1);
+            *reinterpret_cast<DWORD*>(character + CharTargetX) = path[PathX + count - 1];
+            *reinterpret_cast<DWORD*>(character + CharTargetY) = path[PathY + count - 1];
+            position[0] = endX;
+            position[1] = endY;
+            return 1;
+        }
+
+        if (turn)
+        {
+            float* heading = reinterpret_cast<float*>(character + CharHeading);
+            const float target = reinterpret_cast<AngleToType>(AngleToFunction)(position[0], position[1], endX, endY);
+            const float difference = reinterpret_cast<AngleDiffType>(AngleDiffFunction)(*heading, target, 1);
+            *heading = difference < TurnLimit
+                ? reinterpret_cast<TurnType>(TurnFunction)(*heading, target, difference * 0.5f)
+                : target;
+        }
+
+        return 0;
     }
 
     // --- Alas del Dinorant ---
@@ -544,7 +639,8 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
     if (dispatch == 0
         || !Matches(SpeedFunction, SpeedPrologue, sizeof(SpeedPrologue))
         || !Matches(PathFunction, PathPrologue, sizeof(PathPrologue))
-        || !Matches(BugMoveFunction, BugMovePrologue, sizeof(BugMovePrologue)))
+        || !Matches(BugMoveFunction, BugMovePrologue, sizeof(BugMovePrologue))
+        || !Matches(PathStepFunction, PathStepPrologue, sizeof(PathStepPrologue)))
     {
         g_log("Flight: el main.exe no coincide; desactivado.");
         return false;
@@ -554,6 +650,7 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
     if (!JumpAtStart(SpeedFunction, &SpeedHook)
         || !JumpAtStart(PathFunction, &PathHook)
         || !JumpAtStart(BugMoveFunction, &BugMoveHook, sizeof(BugMovePrologue))
+        || !JumpAtStart(PathStepFunction, &PathStepHook)
         || !RedirectCall(DispatchCallSite, &PacketHook))
     {
         g_log("Flight: no se pudo instalar.");
