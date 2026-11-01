@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.GameLogic.PlugIns.MapInvasions;
 
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -29,7 +30,7 @@ using Nito.AsyncEx;
 [PlugIn]
 [Display(Name = nameof(PlugInResources.MapInvasionsPlugIn_Name), Description = nameof(PlugInResources.MapInvasionsPlugIn_Description), ResourceType = typeof(PlugInResources))]
 [Guid("6F0E2B7A-3C41-4D9B-8E25-A7C1D4F3B962")]
-public class MapInvasionsPlugIn : IPeriodicTaskPlugIn, IAttackableGotKilledPlugIn, ISupportCustomConfiguration<MapInvasionsConfiguration>, ISupportDefaultCustomConfiguration, IDisabledByDefault
+public class MapInvasionsPlugIn : IPeriodicTaskPlugIn, IAttackableGotKilledPlugIn, IMonsterItemDropPlugIn, ISupportCustomConfiguration<MapInvasionsConfiguration>, ISupportDefaultCustomConfiguration, IDisabledByDefault
 {
     /// <summary>
     /// The maximum distance between a dropped item and the monster.
@@ -42,6 +43,11 @@ public class MapInvasionsPlugIn : IPeriodicTaskPlugIn, IAttackableGotKilledPlugI
     private const int SpawnTries = 20;
 
     private readonly ConditionalWeakTable<IGameContext, InvasionState> _states = new();
+
+    /// <summary>
+    /// The monsters which were spawned by an invasion. Their normal item drops are cancelled, see <see cref="ItemDropping"/>.
+    /// </summary>
+    private readonly ConditionalWeakTable<Monster, object> _invasionMonsters = new();
 
     private int _forceStartCount;
 
@@ -113,6 +119,19 @@ public class MapInvasionsPlugIn : IPeriodicTaskPlugIn, IAttackableGotKilledPlugI
         catch (Exception ex)
         {
             player.Logger.LogError(ex, "Dropping the items of the invasion monster {monster} failed.", monster);
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The monsters of the invasions drop only the items of their invasion, which are dropped by <see cref="DropItemsAsync"/>
+    /// without this plugin point, so their normal item drops are cancelled. Their money still drops.
+    /// </remarks>
+    public void ItemDropping(AttackableNpcBase monster, Player killer, Item item, CancelEventArgs eventArgs)
+    {
+        if (monster is Monster invasionMonster && this._invasionMonsters.TryGetValue(invasionMonster, out _))
+        {
+            eventArgs.Cancel = true;
         }
     }
 
@@ -210,6 +229,7 @@ public class MapInvasionsPlugIn : IPeriodicTaskPlugIn, IAttackableGotKilledPlugI
             var monster = new Monster(area, monsterDefinition, map, gameContext.DropGenerator, new BasicMonsterIntelligence(), gameContext.PlugInManager, gameContext.PathFinderPool);
             monster.Initialize();
             state.Monsters[monster] = invasion;
+            this._invasionMonsters.AddOrUpdate(monster, invasion);
             await map.AddAsync(monster).ConfigureAwait(false);
             monster.OnSpawn();
         }
