@@ -97,8 +97,9 @@ namespace
         { reinterpret_cast<BYTE*>(0x08791550), 10 },  // bugs (0x00503720)
         { reinterpret_cast<BYTE*>(0x08967FE8), 200 }, // efectos (0x00721620)
         { reinterpret_cast<BYTE*>(0x097622F0), 100 }, // efectos (0x0074ABC0)
+        { reinterpret_cast<BYTE*>(0x09778748), 1000 }, // particulas (0x007711C0; 0x007716D0 borra las de un dueno)
     };
-    constexpr int AttachedCount = 310;
+    constexpr int AttachedCount = 1310;
 
     // Volando, el suelo dibujado sigue al terreno con esta rapidez (fraccion por segundo).
     constexpr float GroundFollowPerSecond = 3.0f;
@@ -692,6 +693,14 @@ namespace
 
         g_keyShift = GetPrivateProfileIntA("Flight", "KeyShift", 1, iniPath) != 0;
     }
+}
+
+// Altura de vuelo que se dibuja ahora para el personaje propio (0 en el suelo). camera3d.dll la usa para
+// agrandar el terreno visible: desde mas arriba se ve mas lejos.
+extern "C" __declspec(dllexport) float FlightHeroLift()
+{
+    const int i = CharacterIndex(reinterpret_cast<const BYTE*>(*Hero));
+    return i >= 0 ? g_lift[i] : 0.0f;
 }
 
 extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)

@@ -9,6 +9,13 @@
 
 #include "mods.h"
 
+namespace
+{
+    BeforeRenderCallback g_flightBeforeRender = nullptr;
+    BeforeRenderCallback g_flightAfterRender = nullptr;
+    FlightHeroLiftFunction g_flightHeroLift = nullptr;
+}
+
 void LoadFlight(LogFunction log)
 {
     HMODULE module = nullptr;
@@ -58,13 +65,15 @@ void LoadFlight(LogFunction log)
     host.iniPath = iniPath;
     host.setRenderHooks = &SetFlightRenderHooks;
     host.setKeyTick = &SetFlightKeyTick;
-    start(&host);
+    if (start(&host))
+    {
+        g_flightHeroLift = reinterpret_cast<FlightHeroLiftFunction>(GetProcAddress(flight, FlightHeroLiftName));
+    }
 }
 
-namespace
+float FlightViewLift()
 {
-    BeforeRenderCallback g_flightBeforeRender = nullptr;
-    BeforeRenderCallback g_flightAfterRender = nullptr;
+    return g_flightHeroLift != nullptr ? g_flightHeroLift() : 0.0f;
 }
 
 void SetFlightRenderHooks(BeforeRenderCallback before, BeforeRenderCallback after)

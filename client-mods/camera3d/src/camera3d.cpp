@@ -51,6 +51,7 @@ namespace
     constexpr float DegreesPerPixel = 0.3f;
     constexpr float PivotHeight = 100.0f;   // altura del punto alrededor del cual se inclina
     constexpr float CloseZoomLift = 0.12f;  // cuanto sube la camara por cada unidad que se acerca
+    constexpr float FlightLiftPerExtraView = 500.0f; // volando: +1 vez el area por cada 500 de altura
 
     // --- Estado (todo se usa desde el hilo del juego) ---
     volatile float g_yawDelta = 0.0f;
@@ -120,6 +121,8 @@ namespace
             scale *= 1.0f - g_pitchDelta / 25.0f; // hasta el doble con la inclinacion minima
         }
 
+        // Volando (flight.dll) la camara sigue al personaje subido y desde mas arriba se ve mas lejos.
+        scale *= 1.0f + FlightViewLift() / FlightLiftPerExtraView;
         return scale;
     }
 

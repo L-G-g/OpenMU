@@ -74,6 +74,7 @@ void SetFlightRenderHooks(BeforeRenderCallback before, BeforeRenderCallback afte
 void FlightBeforeRender();
 void FlightAfterRender();
 void SetFlightKeyTick(KeyTickCallback callback);
+float FlightViewLift(); // altura de vuelo del personaje propio, 0 sin flight.dll
 
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y

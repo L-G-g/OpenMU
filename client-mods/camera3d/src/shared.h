@@ -226,3 +226,7 @@ struct FlightHost
 // bool StartFlight(const FlightHost* host): se llama una vez, despues de StartTabMap.
 using StartFlightFunction = bool (*)(const FlightHost* host);
 constexpr const char* StartFlightName = "StartFlight";
+
+// float FlightHeroLift(): altura de vuelo dibujada del personaje propio (0 en el suelo). Opcional.
+using FlightHeroLiftFunction = float (*)();
+constexpr const char* FlightHeroLiftName = "FlightHeroLift";
