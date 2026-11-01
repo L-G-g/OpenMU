@@ -103,6 +103,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         PotionStacks.Apply(this.Context, this.GameConfiguration);
         IceQueenDungeon.Apply(this.Context, this.GameConfiguration);
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
+        MapDropsAndInvasions.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 
         // After all items exist.

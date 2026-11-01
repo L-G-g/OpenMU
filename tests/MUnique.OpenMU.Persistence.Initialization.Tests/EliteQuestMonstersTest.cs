@@ -94,7 +94,8 @@ internal class EliteQuestMonstersTest
 
             // The normal monsters stay as they are. The third Shadow is the copy of MapLevelLadder for Devil Square.
             Assert.That(gameConfiguration.Monsters.Count(m => m.Number == 36), Is.EqualTo(3));
-            Assert.That(gameConfiguration.Monsters.Single(m => m.GetId() == GuidHelper.CreateGuid<MonsterDefinition>(36)).DropItemGroups, Is.Empty);
+            // Its only drop is the Jewel of Life of Lost Tower of MapDropsAndInvasions, no quest item.
+            Assert.That(gameConfiguration.Monsters.Single(m => m.GetId() == GuidHelper.CreateGuid<MonsterDefinition>(36)).DropItemGroups.Where(g => g.GetId() != GuidHelper.CreateGuid<DropItemGroup>(MapDropsAndInvasions.MapDropItemGroupIdNumber, 3)), Is.Empty);
         });
     }
 

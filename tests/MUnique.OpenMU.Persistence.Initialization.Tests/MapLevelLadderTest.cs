@@ -112,7 +112,9 @@ internal class MapLevelLadderTest
         Assert.Multiple(() =>
         {
             Assert.That(hammerScout[Stats.Level], Is.EqualTo(130));
-            Assert.That(crywolf.DropItemGroups.Count(g => MapLevelLadder.IsFenrirMaterialGroup(g)), Is.EqualTo(3));
+            // The materials of the Fenrir drop from some of the monsters of Crywolf, see MapDropsAndInvasions, and stay there.
+            Assert.That(crywolf.DropItemGroups.Count(g => MapLevelLadder.IsFenrirMaterialGroup(g)), Is.EqualTo(0));
+            Assert.That(gameConfiguration.Monsters.SelectMany(m => m.DropItemGroups).Where(MapLevelLadder.IsFenrirMaterialGroup).Distinct().Count(), Is.EqualTo(3));
             Assert.That(swamp.DropItemGroups, Is.EquivalentTo(swampGroups));
             Assert.That(swamp.ExpMultiplier, Is.EqualTo(swampExperience));
             Assert.That(multipliers.Select(m => m.Number), Is.EquivalentTo(MapLevelLadder.CrywolfMonsterNumbers));
@@ -206,7 +208,8 @@ internal class MapLevelLadderTest
                     {
                         // Crywolf keeps the materials of the Fenrir.
                         Assert.That(map.DropItemGroups.Where(g => !MapLevelLadder.IsFenrirMaterialGroup(g)).Select(g => g.ItemType), Is.EquivalentTo(new[] { SpecialItemType.Money, SpecialItemType.Jewel }), name);
-                        Assert.That(map.DropItemGroups.Single(g => g.ItemType == SpecialItemType.Jewel).PossibleItems.Select(i => (i.Group, i.Number)), Is.EquivalentTo(MapLevelLadder.ZoneJewels), name);
+                        // MapDropsAndInvasions leaves only the Jewel of Creation, the other jewels drop from the monsters.
+                        Assert.That(map.DropItemGroups.Single(g => g.ItemType == SpecialItemType.Jewel).PossibleItems.Select(i => (i.Group, i.Number)), Is.EquivalentTo(new (byte, short)[] { (14, 22) }), name);
                         Assert.That(map.ExpMultiplier, Is.EqualTo(map.Number == CrywolfFortress.Number ? 1 : MapLevelLadder.JewelZoneExperienceMultiplier), name);
                     }
                 }
