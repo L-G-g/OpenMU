@@ -2088,7 +2088,7 @@
     <value>Flight (flying Dinorant, flight.dll)</value>
   </data>
   <data name="FlightPlugIn_Description" xml:space="preserve">
-    <value>Players fly on their Dinorant with /volar: they walk over walls (not over tiles without ground) faster by the speed factor, and can only move: no attacks or skills. Not in combat, only on the allowed maps, never in mini games. Needs flight.dll on the clients.</value>
+    <value>Players fly on their Dinorant with /volar: they walk over walls (not over tiles without ground) faster by the speed factor, and can only move: no attacks or skills, and monsters don't attack them. Not in combat, only on the allowed maps, never in mini games. Needs flight.dll on the clients.</value>
   </data>
   <data name="FlightChatCommandPlugIn_Name" xml:space="preserve">
     <value>Chat command: /volar (flight)</value>

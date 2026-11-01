@@ -18,7 +18,7 @@ using MUnique.OpenMU.PlugIns;
 /// Lets players fly on their Dinorant (<c>/volar</c>, or the key of the flight.dll client mod):
 /// a flying player walks over blocked tiles (walls, trees, houses), but not over tiles without ground,
 /// and moves faster by <see cref="FlightConfiguration.SpeedFactor"/>. Flying is movement only: no attacks
-/// and no skills. It can't be started in combat, and only on the allowed regular maps, never in a mini game.
+/// and no skills, and monsters don't attack a flying player. It can't be started in combat, and only on the allowed regular maps, never in a mini game.
 /// A player lands only on a walkable tile; when the flight is ended by force (the Dinorant is taken off or
 /// breaks), the player is put on the nearest walkable tile.
 /// </summary>

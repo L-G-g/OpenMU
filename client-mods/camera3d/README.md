@@ -262,7 +262,7 @@ al llegar, al cambiar de mapa, al morir o si el jugador mueve al personaje de ot
 
 Con el Dinorant equipado, Shift+V (o `/volar` en el chat) despega: el personaje sube, vuela por encima de
 paredes, árboles y casas (no por encima del vacío) y va un 50 % más rápido. Volando no se puede atacar ni usar
-skills. Otra vez Shift+V aterriza, solo sobre suelo caminable. Quien decide es el servidor (plugin "Flight" de
+skills, y los monstruos no lo atacan. Otra vez Shift+V aterriza, solo sobre suelo caminable. Quien decide es el servidor (plugin "Flight" de
 OpenMU: Dinorant, mapas comunes, no en combate); `camera3d.dll` carga `flight.dll` si está en la misma carpeta
 (`src/loadflight.cpp`):
 
@@ -270,7 +270,7 @@ OpenMU: Dinorant, mapas comunes, no en combate); `camera3d.dll` carga `flight.dl
 [Flight]
 Enabled=1           ; 0: no se carga flight.dll
 SpeedFactor=1.5     ; igual que "Speed factor" del plugin del servidor
-Height=200          ; altura de vuelo (una baldosa son 100)
+Height=350          ; altura de vuelo (una baldosa son 100)
 ClimbPerSecond=250  ; velocidad al despegar y aterrizar
 Key=V               ; letra, número o código de tecla en hexadecimal (0x56); 0 sin tecla
 KeyShift=1          ; 1: Shift + la tecla
@@ -291,6 +291,10 @@ La altura se suma solo para dibujar: el juego pone a los personajes sobre el ter
 Tarkan e Icarus) en muchos lugares, así que `camera3d.dll` avisa antes y después del dibujo de la escena (después
 del movimiento fluido, `src/frames.cpp`) y `flight.dll` sube la posición (`+0x404`) y después devuelve el valor
 exacto. La cámara sigue al personaje subido. Necesita FPS mayor a 25 (con 25 no se envuelve el dibujo).
+
+La montura y las mascotas son objetos aparte ("bugs": 10 `OBJECT` de `0x288` bytes en `0x08791550`, vivo en
+`+0x04`, posición en `+0xFC`, dueño en `+0x1D8` = `OBJECT` del personaje, `+0x308`). Copian la posición del
+dueño en el paso de lógica (`0x00501790`) y no al dibujar (`0x00503770`), así que se suben y se devuelven igual.
 
 ## Herramientas de prueba (muauto.dll)
 

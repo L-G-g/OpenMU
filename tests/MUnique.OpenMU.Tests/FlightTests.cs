@@ -6,7 +6,11 @@ namespace MUnique.OpenMU.Tests;
 
 using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.GameLogic;
+using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.Flight;
+using MUnique.OpenMU.GameLogic.NPC;
+using MonsterAttribute = MUnique.OpenMU.Persistence.BasicModel.MonsterAttribute;
+using MonsterDefinition = MUnique.OpenMU.Persistence.BasicModel.MonsterDefinition;
 
 /// <summary>
 /// Tests for the rules of the <see cref="FlightPlugIn"/>.
@@ -67,5 +71,42 @@ public class FlightTests
         Assert.That(FlightPlugIn.IsFlyableTile(terrain, new Pathfinding.Point(12, 10)), Is.True);
         Assert.That(FlightPlugIn.IsFlyableTile(terrain, new Pathfinding.Point(13, 10)), Is.False);
         Assert.That(FlightPlugIn.IsFlyableTile(terrain, new Pathfinding.Point(14, 10)), Is.True);
+    }
+
+    /// <summary>
+    /// Tests that a monster can hit a walking player, but not a flying one.
+    /// </summary>
+    [Test]
+    public async Task MonstersCantHitFlyingPlayersAsync()
+    {
+        var gameContext = GameContextTestHelper.CreateGameContext();
+        var player = await PlayerTestHelper.CreatePlayerAsync(gameContext).ConfigureAwait(false);
+        var monster = await CreateMonsterAsync(gameContext).ConfigureAwait(false);
+
+        Assert.That(await player.AttackByAsync(monster, null, false).ConfigureAwait(false), Is.Not.Null);
+
+        player.IsFlying = true;
+        Assert.That(await player.AttackByAsync(monster, null, false).ConfigureAwait(false), Is.Null);
+    }
+
+    private static async ValueTask<Monster> CreateMonsterAsync(IGameContext gameContext)
+    {
+        var map = await gameContext.GetMapAsync(0).ConfigureAwait(false);
+        var monsterDefinition = new MonsterDefinition { Id = Guid.NewGuid(), ObjectKind = NpcObjectKind.Monster, AttackDelay = TimeSpan.FromHours(1) };
+        monsterDefinition.Attributes.Add(new MonsterAttribute { AttributeDefinition = Stats.MaximumHealth, Value = 100 });
+        var spawnArea = new MonsterSpawnArea
+        {
+            MonsterDefinition = monsterDefinition,
+            GameMap = map!.Definition,
+            X1 = 140,
+            Y1 = 140,
+            X2 = 140,
+            Y2 = 140,
+            Quantity = 1,
+        };
+
+        var monster = new Monster(spawnArea, monsterDefinition, map, NullDropGenerator.Instance, new NullMonsterIntelligence(), gameContext.PlugInManager, gameContext.PathFinderPool);
+        monster.Initialize();
+        return monster;
     }
 }

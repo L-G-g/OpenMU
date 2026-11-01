@@ -20,6 +20,9 @@
 //     la altura de vuelo se suma solo para dibujar: camera3d.dll llama antes y despues del dibujo de la
 //     escena (despues del movimiento fluido) y aca se sube la posicion (+0x404) y despues se devuelve el
 //     valor exacto. La camara sigue al personaje subido. Al despegar y aterrizar la altura cambia de a poco.
+//   - Montura y mascotas: son "bugs" aparte (10 OBJECT en 0x08791550), que copian la posicion del dueno
+//     (+0x1D8, el OBJECT del personaje, +0x308) en el paso de logica (0x00501790), no al dibujar
+//     (0x00503770). Se suben y se devuelven igual que el personaje.
 //   - Tecla: [Flight] Key (Shift + V por defecto) manda /volar por el chat, solo con el foco en la ventana
 //     del juego (no escribiendo en el chat).
 
@@ -48,7 +51,13 @@ namespace
     // --- Personajes (CHARACTER, 0x598 bytes) ---
     constexpr int CharacterCount = 400;
     constexpr DWORD CharacterSize = 0x598;
-    constexpr DWORD CharKey = 0x7E, CharPath = 0x274, CharLive = 0x30C, CharPosition = 0x404;
+    constexpr DWORD CharKey = 0x7E, CharPath = 0x274, CharObject = 0x308, CharLive = 0x30C, CharPosition = 0x404;
+
+    // --- Montura y mascotas (bugs, OBJECT de 0x288 bytes) ---
+    BYTE* const Bugs = reinterpret_cast<BYTE*>(0x08791550);
+    constexpr int BugCount = 10;
+    constexpr DWORD BugSize = 0x288;
+    constexpr DWORD BugLive = 0x04, BugPosition = 0xFC, BugOwner = 0x1D8;
 
     // --- Paquetes ---
     constexpr int CodeOutOfScope = 0x14, CodeFlight = 0xFE;
@@ -65,7 +74,7 @@ namespace
     bool g_flying[IdMask + 1] = {};
 
     float g_speedFactor = 1.5f;
-    float g_height = 200.0f;      // unidades del mundo (una baldosa son 100)
+    float g_height = 350.0f;      // unidades del mundo (una baldosa son 100)
     float g_climbPerSecond = 250.0f;
     int g_key = 'V';
     bool g_keyShift = true;
@@ -77,6 +86,8 @@ namespace
     WORD g_liftKey[CharacterCount] = {};
     float g_savedZ[CharacterCount] = {};
     bool g_lifted[CharacterCount] = {};
+    float g_bugSavedZ[BugCount] = {};
+    bool g_bugLifted[BugCount] = {};
     LARGE_INTEGER g_frequency{};
     LARGE_INTEGER g_lastFrame{};
 
@@ -254,6 +265,26 @@ namespace
                 g_lifted[i] = true;
             }
         }
+
+        for (int b = 0; b < BugCount; b++)
+        {
+            BYTE* bug = Bugs + b * BugSize;
+            g_bugLifted[b] = false;
+            if (!bug[BugLive])
+            {
+                continue;
+            }
+
+            const BYTE* owner = *reinterpret_cast<BYTE* const*>(bug + BugOwner);
+            const int i = owner != nullptr ? CharacterIndex(owner - CharObject) : -1;
+            if (i >= 0 && g_lifted[i])
+            {
+                float* position = reinterpret_cast<float*>(bug + BugPosition);
+                g_bugSavedZ[b] = position[2];
+                position[2] += g_lift[i];
+                g_bugLifted[b] = true;
+            }
+        }
     }
 
     void __cdecl AfterRender()
@@ -270,6 +301,15 @@ namespace
             {
                 reinterpret_cast<float*>(characters + i * CharacterSize + CharPosition)[2] = g_savedZ[i];
                 g_lifted[i] = false;
+            }
+        }
+
+        for (int b = 0; b < BugCount; b++)
+        {
+            if (g_bugLifted[b])
+            {
+                reinterpret_cast<float*>(Bugs + b * BugSize + BugPosition)[2] = g_bugSavedZ[b];
+                g_bugLifted[b] = false;
             }
         }
     }
@@ -381,7 +421,7 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
 
     g_log = host->log;
     g_speedFactor = ReadFloat(host->iniPath, "SpeedFactor", 1.5f, 1.0f, 3.0f);
-    g_height = ReadFloat(host->iniPath, "Height", 200.0f, 0.0f, 1000.0f);
+    g_height = ReadFloat(host->iniPath, "Height", 350.0f, 0.0f, 1000.0f);
     g_climbPerSecond = ReadFloat(host->iniPath, "ClimbPerSecond", 250.0f, 10.0f, 10000.0f);
     ReadKey(host->iniPath);
     QueryPerformanceFrequency(&g_frequency);
