@@ -42,7 +42,7 @@ internal static class SpectreRivals
     /// <summary>
     /// The version of the rules which created the rivals, after the tier. Rivals of older rules are created again.
     /// </summary>
-    private const byte RulesVersion = 3;
+    private const byte RulesVersion = 4;
 
     /// <summary>
     /// The build variant of the stats of the rivals: the damage build, e.g. the archer elf instead of the support elf.
@@ -170,7 +170,7 @@ internal static class SpectreRivals
         foreach (var (group, number) in SpectreEvolution.GetRivalEquipment(kind, tier))
         {
             if (configuration.Items.FirstOrDefault(i => i.Group == group && i.Number == number) is { } definition
-                && definition.QualifiedCharacters.Contains(character.CharacterClass!)
+                && IsQualified(definition, character.CharacterClass!)
                 && AddToFreeSlot(context, inventory, definition, level) is { } item
                 && excellent)
             {
@@ -188,6 +188,21 @@ internal static class SpectreRivals
         {
             AddToFreeSlot(context, inventory, configuration.Items.FirstOrDefault(i => i.Group == wingsGroup && i.Number == wingsNumber), level);
         }
+    }
+
+    private static bool IsQualified(ItemDefinition definition, CharacterClass characterClass)
+    {
+        // Also the items of the later class generations, e.g. the sets of the Bloody Summoner for a summoner
+        // which only evolves at the last tier.
+        for (CharacterClass? current = characterClass; current is not null; current = current.NextGenerationClass)
+        {
+            if (definition.QualifiedCharacters.Contains(current))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static Item? AddToFreeSlot(IContext context, ItemStorage inventory, ItemDefinition? definition, byte level)
