@@ -22,7 +22,11 @@
 //     valor exacto. La camara sigue al personaje subido. Al despegar y aterrizar la altura cambia de a poco.
 //   - Montura y mascotas: son "bugs" aparte (10 OBJECT en 0x08791550), que copian la posicion del dueno
 //     (+0x1D8, el OBJECT del personaje, +0x308) en el paso de logica (0x00501790), no al dibujar
-//     (0x00503770). Se suben y se devuelven igual que el personaje.
+//     (0x00503770). Se suben y se devuelven igual que el personaje, y tambien los efectos con ese dueno
+//     (0x08967FE8 y 0x097622F0, por ejemplo el buff del Elf Soldier). Volando, el suelo dibujado sigue al
+//     terreno de a poco, para que no rebote con el relieve.
+//   - Jinete: 0x0054F710 elige la accion al caminar; volando ve el mundo 10 (en Icarus el jinete del Dinorant
+//     no usa la accion de correr montado, que sube y baja).
 //   - Alas: el paso del bug (0x00501790) elige las acciones de vuelo del Dinorant (bug 0x143: 1, 3, 5, 7
 //     en vez de 0, 2, 4, 6) cuando el mundo ([0x00E61E18]) es 8 (Tarkan) o 10 (Icarus). Si el dueno vuela,
 //     durante esa llamada el mundo es 10 y despues vuelve a ser el de antes.
@@ -78,11 +82,30 @@ namespace
     constexpr DWORD CharKey = 0x7E, CharTargetX = 0xAC, CharTargetY = 0xB0, CharPath = 0x274, CharObject = 0x308,
         CharLive = 0x30C, CharPosition = 0x404, CharHeading = 0x418;
 
-    // --- Montura y mascotas (bugs, OBJECT de 0x288 bytes) ---
-    BYTE* const Bugs = reinterpret_cast<BYTE*>(0x08791550);
-    constexpr int BugCount = 10;
-    constexpr DWORD BugSize = 0x288;
-    constexpr DWORD BugLive = 0x04, BugPosition = 0xFC, BugOwner = 0x1D8;
+    // --- Objetos con dueno (OBJECT de 0x288 bytes): montura y mascotas (bugs) y efectos ---
+    constexpr DWORD ObjectSize = 0x288;
+    constexpr DWORD ObjectLive = 0x04, ObjectPosition = 0xFC, ObjectOwner = 0x1D8;
+    constexpr DWORD BugLive = ObjectLive, BugOwner = ObjectOwner;
+
+    struct AttachedArray
+    {
+        BYTE* base;
+        int count;
+    };
+
+    const AttachedArray AttachedArrays[] = {
+        { reinterpret_cast<BYTE*>(0x08791550), 10 },  // bugs (0x00503720)
+        { reinterpret_cast<BYTE*>(0x08967FE8), 200 }, // efectos (0x00721620)
+        { reinterpret_cast<BYTE*>(0x097622F0), 100 }, // efectos (0x0074ABC0)
+    };
+    constexpr int AttachedCount = 310;
+
+    // Volando, el suelo dibujado sigue al terreno con esta rapidez (fraccion por segundo).
+    constexpr float GroundFollowPerSecond = 3.0f;
+
+    // --- Pose del jinete ---
+    constexpr DWORD RiderWalkFunction = 0x0054F710; // void __cdecl (CHARACTER*): accion al caminar
+    const BYTE RiderWalkPrologue[] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x44 }; // PUSH EBP, MOV EBP,ESP, SUB ESP,0x44
 
     // --- Paquetes ---
     constexpr int CodeOutOfScope = 0x14, CodeFlight = 0xFE;
@@ -93,6 +116,7 @@ namespace
     using SpeedType = float(__cdecl*)(BYTE*);
     using PathType = bool(__cdecl*)(int, int, int, int, BYTE*, float, int);
     using BugMoveType = char(__cdecl*)(BYTE*, char);
+    using RiderWalkType = void(__cdecl*)(BYTE*);
     using PathStepType = char(__cdecl*)(BYTE*, char);
     using AngleToType = float(__cdecl*)(float, float, float, float);
     using AngleDiffType = float(__cdecl*)(float, float, int);
@@ -116,8 +140,10 @@ namespace
     WORD g_liftKey[CharacterCount] = {};
     float g_savedZ[CharacterCount] = {};
     bool g_lifted[CharacterCount] = {};
-    float g_bugSavedZ[BugCount] = {};
-    bool g_bugLifted[BugCount] = {};
+    float g_ground[CharacterCount] = {};
+    float g_offset[CharacterCount] = {};
+    float g_attachedSavedZ[AttachedCount] = {};
+    bool g_attachedLifted[AttachedCount] = {};
     LARGE_INTEGER g_frequency{};
     LARGE_INTEGER g_lastFrame{};
 
@@ -415,6 +441,37 @@ namespace
         return result;
     }
 
+    // --- Pose del jinete ---
+    // 0x0054F710 elige la accion del personaje al caminar; con el Dinorant, en Tarkan e Icarus no le pone la de
+    // correr montado (que sube y baja). Volando ve el mundo 10 durante la llamada, como el paso del bug.
+    __declspec(naked) void __cdecl RiderWalkOriginal(BYTE*)
+    {
+        __asm
+        {
+            push ebp
+            mov ebp, esp
+            sub esp, 0x44
+            push 0x0054F716 // RiderWalkFunction + 6
+            ret
+        }
+    }
+
+    RiderWalkType volatile g_riderWalkOriginal = &RiderWalkOriginal;
+
+    void __cdecl RiderWalkHook(BYTE* character)
+    {
+        if (character == nullptr || CharacterIndex(character) < 0 || !IsFlying(character))
+        {
+            g_riderWalkOriginal(character);
+            return;
+        }
+
+        const int world = *World;
+        *World = IcarusWorld;
+        g_riderWalkOriginal(character);
+        *World = world;
+    }
+
     // --- Altura (solo para dibujar) ---
     void __cdecl BeforeRender()
     {
@@ -452,6 +509,7 @@ namespace
                 // Otro personaje en ese lugar: empieza en el suelo (o ya arriba, si aparecio volando).
                 g_liftKey[i] = key;
                 g_lift[i] = g_flying[key] ? g_height : 0.0f;
+                g_ground[i] = reinterpret_cast<const float*>(character + CharPosition)[2];
             }
 
             const float target = g_flying[key] ? g_height : 0.0f;
@@ -464,32 +522,44 @@ namespace
                 g_lift[i] = g_lift[i] - step < target ? target : g_lift[i] - step;
             }
 
-            if (g_lift[i] > 0.0f)
+            float* position = reinterpret_cast<float*>(character + CharPosition);
+            if (g_lift[i] <= 0.0f)
             {
-                float* position = reinterpret_cast<float*>(character + CharPosition);
-                g_savedZ[i] = position[2];
-                position[2] += g_lift[i];
-                g_lifted[i] = true;
-            }
-        }
-
-        for (int b = 0; b < BugCount; b++)
-        {
-            BYTE* bug = Bugs + b * BugSize;
-            g_bugLifted[b] = false;
-            if (!bug[BugLive])
-            {
+                g_ground[i] = position[2];
                 continue;
             }
 
-            const BYTE* owner = *reinterpret_cast<BYTE* const*>(bug + BugOwner);
-            const int i = owner != nullptr ? CharacterIndex(owner - CharObject) : -1;
-            if (i >= 0 && g_lifted[i])
+            // El suelo dibujado sigue al terreno de a poco: volando no se notan los pozos ni los bordes del relieve.
+            const float follow = seconds * GroundFollowPerSecond;
+            g_ground[i] += (position[2] - g_ground[i]) * (follow > 1.0f ? 1.0f : follow);
+            g_savedZ[i] = position[2];
+            g_offset[i] = g_ground[i] + g_lift[i] - position[2];
+            position[2] += g_offset[i];
+            g_lifted[i] = true;
+        }
+
+        // La montura, las mascotas y los efectos (por ejemplo el buff del Elf Soldier) suben igual que su dueno.
+        int slot = 0;
+        for (const AttachedArray& attached : AttachedArrays)
+        {
+            for (int a = 0; a < attached.count; a++, slot++)
             {
-                float* position = reinterpret_cast<float*>(bug + BugPosition);
-                g_bugSavedZ[b] = position[2];
-                position[2] += g_lift[i];
-                g_bugLifted[b] = true;
+                BYTE* object = attached.base + a * ObjectSize;
+                g_attachedLifted[slot] = false;
+                if (!object[ObjectLive])
+                {
+                    continue;
+                }
+
+                const BYTE* owner = *reinterpret_cast<BYTE* const*>(object + ObjectOwner);
+                const int i = owner != nullptr ? CharacterIndex(owner - CharObject) : -1;
+                if (i >= 0 && g_lifted[i])
+                {
+                    float* position = reinterpret_cast<float*>(object + ObjectPosition);
+                    g_attachedSavedZ[slot] = position[2];
+                    position[2] += g_offset[i];
+                    g_attachedLifted[slot] = true;
+                }
             }
         }
     }
@@ -511,12 +581,16 @@ namespace
             }
         }
 
-        for (int b = 0; b < BugCount; b++)
+        int slot = 0;
+        for (const AttachedArray& attached : AttachedArrays)
         {
-            if (g_bugLifted[b])
+            for (int a = 0; a < attached.count; a++, slot++)
             {
-                reinterpret_cast<float*>(Bugs + b * BugSize + BugPosition)[2] = g_bugSavedZ[b];
-                g_bugLifted[b] = false;
+                if (g_attachedLifted[slot])
+                {
+                    reinterpret_cast<float*>(attached.base + a * ObjectSize + ObjectPosition)[2] = g_attachedSavedZ[slot];
+                    g_attachedLifted[slot] = false;
+                }
             }
         }
     }
@@ -640,7 +714,8 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
         || !Matches(SpeedFunction, SpeedPrologue, sizeof(SpeedPrologue))
         || !Matches(PathFunction, PathPrologue, sizeof(PathPrologue))
         || !Matches(BugMoveFunction, BugMovePrologue, sizeof(BugMovePrologue))
-        || !Matches(PathStepFunction, PathStepPrologue, sizeof(PathStepPrologue)))
+        || !Matches(PathStepFunction, PathStepPrologue, sizeof(PathStepPrologue))
+        || !Matches(RiderWalkFunction, RiderWalkPrologue, sizeof(RiderWalkPrologue)))
     {
         g_log("Flight: el main.exe no coincide; desactivado.");
         return false;
@@ -651,6 +726,7 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
         || !JumpAtStart(PathFunction, &PathHook)
         || !JumpAtStart(BugMoveFunction, &BugMoveHook, sizeof(BugMovePrologue))
         || !JumpAtStart(PathStepFunction, &PathStepHook)
+        || !JumpAtStart(RiderWalkFunction, &RiderWalkHook)
         || !RedirectCall(DispatchCallSite, &PacketHook))
     {
         g_log("Flight: no se pudo instalar.");
