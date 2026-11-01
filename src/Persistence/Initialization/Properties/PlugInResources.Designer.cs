@@ -971,6 +971,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized IceQueenDungeonUpdatePlugIn_Description text.</summary>
         public static string IceQueenDungeonUpdatePlugIn_Description => ResourceManager.GetString("IceQueenDungeonUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized MapDropsAndInvasionsUpdatePlugIn_Name text.</summary>
+        public static string MapDropsAndInvasionsUpdatePlugIn_Name => ResourceManager.GetString("MapDropsAndInvasionsUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDropsAndInvasionsUpdatePlugIn_Description text.</summary>
+        public static string MapDropsAndInvasionsUpdatePlugIn_Description => ResourceManager.GetString("MapDropsAndInvasionsUpdatePlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized StrongGoldenMobsUpdatePlugIn_Name text.</summary>
         public static string StrongGoldenMobsUpdatePlugIn_Name => ResourceManager.GetString("StrongGoldenMobsUpdatePlugIn_Name", resourceCulture)!;
 

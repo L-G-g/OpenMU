@@ -2003,6 +2003,75 @@
   <data name="ShopPriceChatCommandPlugIn_Description" xml:space="preserve">
     <value>Sets the price of an item of the own personal store in one of the enabled currencies, e.g. '/shopprice 1 10 bless'. Without arguments, it lists the prices.</value>
   </data>
+  <data name="MapInvasionsPlugIn_Name" xml:space="preserve">
+    <value>Map invasions</value>
+  </data>
+  <data name="MapInvasionsPlugIn_Description" xml:space="preserve">
+    <value>Invades one map after another, in a random order which repeats only after every map was invaded. The monsters of an invasion stay until the next invasion of their map, which replaces the ones that are left, and each of them always drops the configured items.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Interval_Name" xml:space="preserve">
+    <value>Interval</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Interval_Description" xml:space="preserve">
+    <value>The time between two invasions (at least one minute).</value>
+  </data>
+  <data name="MapInvasionsConfiguration_FirstInvasionDelay_Name" xml:space="preserve">
+    <value>First invasion delay</value>
+  </data>
+  <data name="MapInvasionsConfiguration_FirstInvasionDelay_Description" xml:space="preserve">
+    <value>The time between the start of the game server and the first invasion. The invasions start a new cycle when the game server starts.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_SpawnDistance_Name" xml:space="preserve">
+    <value>Spawn distance</value>
+  </data>
+  <data name="MapInvasionsConfiguration_SpawnDistance_Description" xml:space="preserve">
+    <value>The monsters appear at random coordinates within this distance of random monster spots of the map.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_StartMessage_Name" xml:space="preserve">
+    <value>Start message</value>
+  </data>
+  <data name="MapInvasionsConfiguration_StartMessage_Description" xml:space="preserve">
+    <value>The message which all players get when an invasion starts. {monster} is replaced by the name of the monster and {map} by the name of the map.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Invasions_Name" xml:space="preserve">
+    <value>Invasions</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Invasions_Description" xml:space="preserve">
+    <value>The invasions of a cycle, each one happens once per cycle.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_MapNumber_Name" xml:space="preserve">
+    <value>Map number</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Monster_Name" xml:space="preserve">
+    <value>Monster</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Count_Name" xml:space="preserve">
+    <value>Number of monsters</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Drops_Name" xml:space="preserve">
+    <value>Drops</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Drops_Description" xml:space="preserve">
+    <value>The items which each monster always drops, in addition to its normal drop.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Items_Name" xml:space="preserve">
+    <value>Items</value>
+  </data>
+  <data name="MapInvasionsConfiguration_MinimumCount_Name" xml:space="preserve">
+    <value>Minimum number of items</value>
+  </data>
+  <data name="MapInvasionsConfiguration_MaximumCount_Name" xml:space="preserve">
+    <value>Maximum number of items</value>
+  </data>
+  <data name="MapInvasionsConfiguration_ItemGroup_Name" xml:space="preserve">
+    <value>Item group</value>
+  </data>
+  <data name="MapInvasionsConfiguration_ItemNumber_Name" xml:space="preserve">
+    <value>Item number</value>
+  </data>
+  <data name="MapInvasionsConfiguration_ItemLevel_Name" xml:space="preserve">
+    <value>Item level</value>
+  </data>
   <data name="ServerAnnouncementsPlugIn_Name" xml:space="preserve">
     <value>Server announcements</value>
   </data>
