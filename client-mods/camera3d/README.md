@@ -258,6 +258,40 @@ no se camina, `0x08` sin suelo) y se manda por tramos de 10 baldosas, uno cada v
 frena, en el paso de lógica (lo llama `camera3d.dll` después de actualizar las teclas). La caminata se corta
 al llegar, al cambiar de mapa, al morir o si el jugador mueve al personaje de otra forma.
 
+## Monturas voladoras (flight.dll)
+
+Con el Dinorant equipado, Shift+V (o `/volar` en el chat) despega: el personaje sube, vuela por encima de
+paredes, árboles y casas (no por encima del vacío) y va un 50 % más rápido. Volando no se puede atacar ni usar
+skills. Otra vez Shift+V aterriza, solo sobre suelo caminable. Quien decide es el servidor (plugin "Flight" de
+OpenMU: Dinorant, mapas comunes, no en combate); `camera3d.dll` carga `flight.dll` si está en la misma carpeta
+(`src/loadflight.cpp`):
+
+```
+[Flight]
+Enabled=1           ; 0: no se carga flight.dll
+SpeedFactor=1.5     ; igual que "Speed factor" del plugin del servidor
+Height=200          ; altura de vuelo (una baldosa son 100)
+ClimbPerSecond=250  ; velocidad al despegar y aterrizar
+Key=V               ; letra, número o código de tecla en hexadecimal (0x56); 0 sin tecla
+KeyShift=1          ; 1: Shift + la tecla
+```
+
+El servidor manda `C1 06 FE [número del objeto, 2 bytes big endian] [1 vuela, 0 no]` cuando alguien despega o
+aterriza y cuando uno que vuela entra a la vista; el `main.exe` original lo ignora.
+
+`src/flight/flight.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x00564B20` | `float Velocidad(personaje)`: 12 caminando, 15 alas/Uniria/Dinorant, 16-19 caballo/Fenrir, x0,5 con hielo | Salto al principio (6 bytes al trampolín): x `SpeedFactor` si vuela. La usa el paso de movimiento (`0x00564DD0`) de todos los personajes |
+| `0x00542D20` | Búsqueda de camino (x, y, destino, `PATH*` = personaje `+0x274`, distancia, pared) | Una baldosa se pisa si su atributo (`0x082C6AA0`) es menor que "pared" (2): volando se pasa 8, se cruza `0x04` y no `0x08`. También mueve a los otros jugadores |
+| `0x0065FD79` | CALL al reparto de paquetes (encadenado) | `0xFE` marca quién vuela; `0x14` (salen de la vista) los desmarca |
+
+La altura se suma solo para dibujar: el juego pone a los personajes sobre el terreno (+30 con Dinorant, +90 en
+Tarkan e Icarus) en muchos lugares, así que `camera3d.dll` avisa antes y después del dibujo de la escena (después
+del movimiento fluido, `src/frames.cpp`) y `flight.dll` sube la posición (`+0x404`) y después devuelve el valor
+exacto. La cámara sigue al personaje subido. Necesita FPS mayor a 25 (con 25 no se envuelve el dibujo).
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -486,6 +520,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/loadespectros.cpp`: carga de `espectros.dll` si está junto a la DLL.
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
+- `src/loadflight.cpp`: carga de `flight.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
@@ -495,6 +530,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/espectros/`: `espectros.dll`, ventana de espectros (Shift+S) y espectros transparentes.
 - `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
+- `src/flight/`: `flight.dll`, monturas voladoras.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -510,7 +546,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp src\loadflight.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -518,6 +554,7 @@ cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -529,7 +566,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `tabmap.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `tabmap.dll` y `flight.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

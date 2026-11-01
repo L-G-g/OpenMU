@@ -67,6 +67,14 @@ void SetEspectrosKeyTick(KeyTickCallback callback);
 void LoadTabMap(LogFunction log);
 void SetTabMapKeyTick(KeyTickCallback callback);
 
+// Monturas voladoras: carga flight.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva. Lo que se
+// llama antes y despues de dibujar la escena principal (frames.cpp) y su paso de logica (rightclick.cpp).
+void LoadFlight(LogFunction log);
+void SetFlightRenderHooks(BeforeRenderCallback before, BeforeRenderCallback after);
+void FlightBeforeRender();
+void FlightAfterRender();
+void SetFlightKeyTick(KeyTickCallback callback);
+
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
 // despues de dibujar vuelve a poner las reales.
