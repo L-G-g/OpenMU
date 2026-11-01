@@ -79,7 +79,7 @@ internal class MapDropsAndInvasionsTest
 
             // Every monster of the maps drops the item of the map, with the expected chance.
             Assert.That(Monsters(lorencia), Is.Not.Empty);
-            Assert.That(Monsters(lorencia).All(m => m.DropItemGroups.Any(g => g.PossibleItems.Contains(chaos) && Math.Abs(g.Chance - (1.0 / 750)) < 1e-9)), Is.True);
+            Assert.That(Monsters(lorencia).All(m => m.DropItemGroups.Any(g => g.PossibleItems.Contains(chaos) && Math.Abs(g.Chance - (1.0 / 1250)) < 1e-9)), Is.True);
             Assert.That(Monsters(kanturu).All(m => m.DropItemGroups.Any(g => g.PossibleItems.Contains(gemstone))), Is.True);
             Assert.That(Monsters(relics).All(m => m.DropItemGroups.Any(g => g.PossibleItems.Contains(guardian))), Is.True);
             Assert.That(Monsters(swamp).All(m => m.DropItemGroups.Any(g => g.PossibleItems.Count == 4 && g.PossibleItems.Contains(chaos))), Is.True);

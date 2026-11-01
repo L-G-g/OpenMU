@@ -34,9 +34,9 @@ internal static class MapDropsAndInvasions
 {
     /// <summary>
     /// The number of monsters which a player kills per hour, which the chances of <see cref="MapDrops"/> are based on.
-    /// It was measured with a strong character in Raklion.
+    /// It's a bit above the 1,500 which were measured with a strong character in Raklion.
     /// </summary>
-    internal const int ReferenceKillsPerHour = 1500;
+    internal const int ReferenceKillsPerHour = 2500;
 
     /// <summary>
     /// The number from which the ids of the drop item groups of <see cref="MapDrops"/> are derived.
@@ -89,6 +89,8 @@ internal static class MapDropsAndInvasions
         ([38], [JewelOfGuardian], 0, 60, "Jewel of Guardian of Kanturu Relics"),
         ([56], [JewelOfChaos, JewelOfBless, JewelOfSoul, JewelOfLife], 0, 30, "Jewels of Swamp of Calmness"),
         ([57], [SphereMono], 0, 45, "Sphere (Mono) of Raklion"),
+        ([4], [JewelOfCreation], 0, 45, "Jewel of Creation of Lost Tower"),
+        ([33], [JewelOfCreation], 0, 40, "Jewel of Creation of Aida"),
     ];
 
     /// <summary>
