@@ -5199,5 +5199,17 @@ namespace MUnique.OpenMU.GameLogic.Properties {
                 return ResourceManager.GetString("DiscordIntegrationFeaturePlugIn_Description", resourceCulture);
             }
         }
+
+        /// <summary>Gets the localized FlightPlugIn_Name text.</summary>
+        public static string FlightPlugIn_Name => ResourceManager.GetString("FlightPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightPlugIn_Description text.</summary>
+        public static string FlightPlugIn_Description => ResourceManager.GetString("FlightPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightChatCommandPlugIn_Name text.</summary>
+        public static string FlightChatCommandPlugIn_Name => ResourceManager.GetString("FlightChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightChatCommandPlugIn_Description text.</summary>
+        public static string FlightChatCommandPlugIn_Description => ResourceManager.GetString("FlightChatCommandPlugIn_Description", resourceCulture)!;
     }
 }

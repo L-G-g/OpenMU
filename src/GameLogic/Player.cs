@@ -198,6 +198,12 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     /// <inheritdoc />
     public bool IsWalking => this._movement.IsWalking;
 
+    /// <summary>
+    /// Gets a value indicating whether the player is flying on its mount, see <see cref="Flight.FlightPlugIn"/>.
+    /// A flying player may walk over blocked tiles and can't attack or use skills.
+    /// </summary>
+    public bool IsFlying { get; internal set; }
+
     /// <inheritdoc />
     public TimeSpan StepDelay => this._movement.StepDelay;
 

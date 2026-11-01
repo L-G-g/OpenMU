@@ -62,6 +62,11 @@ public class NewPlayersInScopePlugIn : INewPlayersInScopePlugIn
         {
             await this.Player.InvokeViewPlugInAsync<IAssignPlayersToGensPlugIn>(p => p.AssignPlayersToGensAsync(gensPlayers)).ConfigureAwait(false);
         }
+
+        foreach (var flyingPlayer in newPlayers.Where(p => p.IsFlying))
+        {
+            await this.Player.InvokeViewPlugInAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(flyingPlayer, true)).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
