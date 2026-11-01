@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.Persistence.Initialization.Tests;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using MUnique.OpenMU.DataModel.Configuration;
+using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlugIns.InvasionEvents;
 using MUnique.OpenMU.GameLogic.PlugIns.MapInvasions;
 using MUnique.OpenMU.Persistence.Initialization.Updates;
@@ -95,6 +96,10 @@ internal class MapDropsAndInvasionsTest
                 var map = gameConfiguration.Maps.First(m => m.Number == mapNumber && m.Discriminator == 0);
                 Assert.That(map.MonsterSpawns.Where(s => s.MonsterDefinition?.Number == monsterNumber && s.SpawnTrigger == SpawnTrigger.Automatic), Is.Empty, $"map {mapNumber}, monster {monsterNumber}");
             }
+
+            // The invaders of Lorencia, Noria and Elbeland are 3 levels above the Skeleton Warrior (19).
+            Assert.That(MapLevelLadder.GetOriginalMonster(gameConfiguration, 44)![Stats.Level], Is.EqualTo(22));
+            Assert.That(MapLevelLadder.GetOriginalMonster(gameConfiguration, 135)![Stats.Level], Is.EqualTo(22));
 
             var plugIn = gameConfiguration.PlugInConfigurations.First(c => c.TypeId == typeof(MapInvasionsPlugIn).GUID);
             Assert.That(plugIn.IsActive, Is.True);

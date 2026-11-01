@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 
 using MUnique.OpenMU.DataModel.Configuration.Items;
+using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlugIns.InvasionEvents;
 using MUnique.OpenMU.GameLogic.PlugIns.MapInvasions;
 using MUnique.OpenMU.Persistence.Initialization.Updates;
@@ -47,6 +48,11 @@ internal static class MapDropsAndInvasions
     /// The number of monsters of an invasion.
     /// </summary>
     internal const int InvasionMonsterCount = 10;
+
+    /// <summary>
+    /// The number of levels above the strongest monster of Lorencia of the invaders of Lorencia, Noria and Elbeland.
+    /// </summary>
+    internal const int FirstZoneInvaderLevelAbove = 3;
 
     private const short CommonJewelDropItemGroupNumber = 4;
 
@@ -149,7 +155,38 @@ internal static class MapDropsAndInvasions
         MoveFenrirMaterialsToMonsters(gameConfiguration);
         RemoveInvasionMonsterSpawns(gameConfiguration);
         AddMapDrops(context, gameConfiguration);
+        LowerFirstZoneInvaders(gameConfiguration);
         ConfigureInvasions(context, gameConfiguration);
+    }
+
+    /// <summary>
+    /// Lowers the level of the Red Dragon and the White Wizard, the invaders of Lorencia, Noria and Elbeland,
+    /// to <see cref="FirstZoneInvaderLevelAbove"/> levels above the strongest monster of Lorencia. Their other stats stay as they are.
+    /// </summary>
+    private static void LowerFirstZoneInvaders(GameConfiguration gameConfiguration)
+    {
+        if (GetMap(gameConfiguration, 0) is not { } lorencia)
+        {
+            return;
+        }
+
+        var strongestLevel = lorencia.MonsterSpawns
+            .Where(s => s.SpawnTrigger == SpawnTrigger.Automatic && s.MonsterDefinition?.ObjectKind == NpcObjectKind.Monster)
+            .Select(s => s.MonsterDefinition![Stats.Level])
+            .DefaultIfEmpty(0)
+            .Max();
+        if (strongestLevel <= 0)
+        {
+            return;
+        }
+
+        foreach (var number in new short[] { 44, 135 })
+        {
+            if (MapLevelLadder.GetOriginalMonster(gameConfiguration, number)?.Attributes.FirstOrDefault(a => a.AttributeDefinition?.Id == Stats.Level.Id) is { } level)
+            {
+                level.Value = strongestLevel + FirstZoneInvaderLevelAbove;
+            }
+        }
     }
 
     private static (byte Group, short Number, byte Level) Item((byte Group, short Number) item, byte level = 0) => (item.Group, item.Number, level);
