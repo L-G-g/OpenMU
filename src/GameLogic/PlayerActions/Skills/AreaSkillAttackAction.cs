@@ -30,6 +30,12 @@ public class AreaSkillAttackAction
     /// <param name="hitImplicitlyForExplicitSkill">If set to <c>true</c>, hit implicitly for <see cref="SkillType.AreaSkillExplicitHits"/>.</param>
     public async ValueTask AttackAsync(Player player, ushort extraTargetId, ushort skillId, Point targetAreaCenter, byte rotation, bool hitImplicitlyForExplicitSkill = false)
     {
+        if (player.IsFlying)
+        {
+            // Flying is movement only, see FlightPlugIn.
+            return;
+        }
+
         var skillEntry = player.SkillList?.GetSkill(skillId);
         if (skillEntry?.Skill is not { } skill || skill.SkillType == SkillType.PassiveBoost)
         {
