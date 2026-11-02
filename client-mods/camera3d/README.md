@@ -267,9 +267,22 @@ Volando no se puede atacar ni usar skills, y los monstruos no lo atacan. Otra ve
 suelo caminable. Quien decide es el servidor (plugin "Flight" de OpenMU: Dinorant o alas, mapas comunes, no en
 combate ni en la zona segura); `camera3d.dll` carga `flight.dll` si está en la misma carpeta (`src/loadflight.cpp`).
 
-Con alas (sin el Dinorant): al despegar y aterrizar aletea en el lugar (la acción de volar) mientras sube o baja,
-quieto en el aire queda en la pose de parado, y moviéndose usa la acción de volar (`0x22`/`0x23`, el cuerpo
-horizontal). Con el Dinorant queda la pose de jinete de Icarus.
+Con alas (sin el Dinorant) las poses se arman ajustando los huesos en cada cuadro, sin tocar archivos del juego:
+al despegar se agacha y salta (sube rápido, estirado con los brazos en V), quieto en el aire queda parado,
+moviéndose va como Superman (horizontal, brazos estirados adelante, piernas juntas atrás, con un vaivén lento) y
+al aterrizar frena (cuerpo hacia atrás, piernas y brazos adelante) y baja. Con otra montura (Fenrir, Dark Horse,
+Uniria) la montura no se dibuja mientras vuela y vuelve al aterrizar. Con el Dinorant queda la pose de jinete de
+Icarus.
+
+Huesos: `0x005440B0` es `BMD::Animation` (thiscall: `BoneTransform` (`0x07BC08A0`), cuadro (`+0x8C`), cuadro
+anterior (`+0x90`), acción anterior (`+0x14`), `Angle` (`+0x108`), `HeadAngle` (`+0x114`), ...). Arma la matriz
+3x4 de cada hueso (padre × local). Después de llamarla, para el personaje que vuela con alas (`Angle - 0x108 - 0x308`),
+se gira cada miembro con todo lo que cuelga de él alrededor de su articulación para apuntarlo hacia una dirección
+y se inclina el cuerpo desde la pelvis. Adelante es `(sen giro, -cos giro, 0)` (el paso `0x00564DD0` avanza por
+`(0, -1, 0)` girado). El modelo del jugador es `0x48B` (`*(*(0x00E8C200) + 8) + 0x48B × 0x104`): 60 huesos
+(`+0x22`), cada uno de `0x8C` bytes en `+0x2C` (nombre, `+0x20` padre, `+0x22` vacío): pelvis 2, muslos 3/10,
+pantorrillas 4/11, pies 5/12, columna 17/18, cuello 19, cabeza 20, claviculas 25/34, brazos 26/35, antebrazos 27/36,
+manos 28/37. La acción quieto la elige `0x0054EA80` (con Fenrir `0x7A`-`0x7D`); `0x005518F0` es la de atacar.
 
 ```
 [Flight]

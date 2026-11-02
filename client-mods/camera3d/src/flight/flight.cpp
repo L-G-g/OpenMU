@@ -38,6 +38,7 @@
 
 #include "../shared.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,10 +85,10 @@ namespace
         CharHeading = 0x418;
     constexpr short DinorantHelper = 0x1E96;     // +0x22C con el Dinorant (0x00564B20, 0x0054F710)
     constexpr short UniriaHelper = 0x1E95, DarkHorseHelper = 0x1E97, FenrirHelper = 0x1EB8;
-    const BYTE StopActionPrologue[] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18 }; // PUSH EBP, MOV EBP,ESP, SUB ESP,0x18
+    const BYTE StopActionPrologue[] = { 0x55, 0x8B, 0xEC, 0x6A, 0xFF }; // PUSH EBP, MOV EBP,ESP, PUSH -1
     constexpr DWORD CharRun = 0x25;              // contador de correr (0x0054F710: con alas, 40 o mas vuela)
     constexpr BYTE FlyRun = 0x28;
-    constexpr DWORD StopActionFunction = 0x005518F0; // void __cdecl (CHARACTER*): accion quieto
+    constexpr DWORD StopActionFunction = 0x0054EA80; // void __cdecl (CHARACTER*): accion quieto (0x7A-0x7D con Fenrir)
 
     // --- Objetos con dueno (OBJECT de 0x288 bytes): montura y mascotas (bugs) y efectos ---
     constexpr DWORD ObjectSize = 0x288;
@@ -116,6 +117,7 @@ namespace
         { reinterpret_cast<BYTE*>(0x087C5708), 500, 0xA18, 0x00, 0x54, true },
     };
     constexpr int AttachedCount = 1810;
+    constexpr BYTE AttachedNone = 0, AttachedLifted = 1, AttachedHidden = 2;
 
     // Volando, el suelo dibujado sigue al terreno con esta rapidez (fraccion por segundo).
     constexpr float GroundFollowPerSecond = 3.0f;
@@ -149,6 +151,7 @@ namespace
     float g_speedFactor = 1.5f;
     float g_height = 350.0f;      // unidades del mundo (una baldosa son 100)
     float g_climbPerSecond = 250.0f;
+    float FlightForwardSign = 1.0f; // [Flight] ForwardSign: 1 o -1, para que Superman mire hacia donde avanza
     int g_key = 'V';
     bool g_keyShift = true;
     BYTE g_suppressedKey = 0;
@@ -160,11 +163,27 @@ namespace
     float g_savedZ[CharacterCount] = {};
     bool g_lifted[CharacterCount] = {};
     float g_target[CharacterCount] = {};
-    bool g_transition[CharacterCount] = {};
+
+    // Vuelo con alas: fases del despegue y del aterrizaje y cuanto de cada pose se aplica a los huesos.
+    enum Phase : BYTE { PhaseGround, PhaseCrouch, PhaseRise, PhaseAir, PhaseBrake, PhaseDrop };
+
+    struct Pose
+    {
+        float crouch = 0.0f;  // agachado antes del salto
+        float stretch = 0.0f; // estirado subiendo (brazos arriba en V)
+        float super = 0.0f;   // Superman: horizontal, brazos adelante, piernas atras
+        float brake = 0.0f;   // frenando: cuerpo hacia atras, piernas adelante, brazos abiertos
+    };
+
+    Phase g_phase[CharacterCount] = {};
+    float g_phaseTime[CharacterCount] = {};
+    float g_dropFrom[CharacterCount] = {};
+    Pose g_pose[CharacterCount] = {};
+    float g_swayTime = 0.0f;
     float g_ground[CharacterCount] = {};
     float g_offset[CharacterCount] = {};
     float g_attachedSavedZ[AttachedCount] = {};
-    bool g_attachedLifted[AttachedCount] = {};
+    BYTE g_attachedState[AttachedCount] = {}; // AttachedNone, AttachedLifted o AttachedHidden
     LARGE_INTEGER g_frequency{};
     LARGE_INTEGER g_lastFrame{};
 
@@ -565,15 +584,15 @@ namespace
         *World = world;
     }
 
-    // 0x005518F0 elige la accion quieto. Con alas y otra montura, volando, se elige como sin montura (parado).
+    // 0x0054EA80 elige la accion quieto. Con alas y otra montura, volando, se elige como sin montura (parado).
     __declspec(naked) void __cdecl StopActionOriginal(BYTE*)
     {
         __asm
         {
             push ebp
             mov ebp, esp
-            sub esp, 0x18
-            push 0x005518F6 // StopActionFunction + 6
+            push -1
+            push 0x0054EA85 // StopActionFunction + 5
             ret
         }
     }
@@ -590,6 +609,398 @@ namespace
 
         const WithoutMount withoutMount(character);
         g_stopActionOriginal(character);
+    }
+
+    // --- Vuelo con alas: fases ---
+    constexpr float CrouchSeconds = 0.25f; // agachado antes del salto
+    constexpr float RiseSeconds = 0.7f;    // subida del salto, rapida al principio
+    constexpr float BrakeSeconds = 0.45f;  // freno en el aire antes de bajar
+    constexpr float DropSeconds = 0.55f;   // bajada al suelo, rapida al final
+    constexpr float SuperPerSecond = 3.0f; // rapidez con la que entra y sale la pose de Superman
+
+    float Clamp01(float value)
+    {
+        return value < 0.0f ? 0.0f : value > 1.0f ? 1.0f : value;
+    }
+
+    float EaseOut(float t)
+    {
+        t = Clamp01(t);
+        return 1.0f - (1.0f - t) * (1.0f - t);
+    }
+
+    float EaseIn(float t)
+    {
+        t = Clamp01(t);
+        return t * t;
+    }
+
+    float Approach(float value, float target, float step)
+    {
+        return value < target ? (value + step > target ? target : value + step) : (value - step < target ? target : value - step);
+    }
+
+    void StandStill(BYTE* character)
+    {
+        if (!character[CharMoving])
+        {
+            reinterpret_cast<RiderWalkType>(StopActionFunction)(character);
+        }
+    }
+
+    // Despegue: agachado, salto (sube rapido estirado); en el aire: quieto parado o Superman al moverse;
+    // aterrizaje: freno arriba y despues baja. Fija g_lift y g_pose del lugar.
+    void UpdateWingFlight(int i, BYTE* character, bool flying, float seconds)
+    {
+        float& t = g_phaseTime[i];
+        t += seconds;
+        Pose pose{};
+        switch (g_phase[i])
+        {
+        case PhaseGround:
+            g_lift[i] = 0.0f;
+            if (flying)
+            {
+                g_phase[i] = PhaseCrouch;
+                t = 0.0f;
+                StandStill(character); // baja de la montura (si tiene otra que no es el Dinorant) antes de agacharse
+            }
+
+            break;
+        case PhaseCrouch:
+            g_lift[i] = 0.0f;
+            pose.crouch = EaseOut(t / CrouchSeconds);
+            if (!flying)
+            {
+                g_phase[i] = PhaseGround;
+            }
+            else if (t >= CrouchSeconds)
+            {
+                g_phase[i] = PhaseRise;
+                t = 0.0f;
+            }
+
+            break;
+        case PhaseRise:
+            g_lift[i] = g_height * EaseOut(t / RiseSeconds);
+            pose.stretch = 1.0f - EaseIn(t / RiseSeconds);
+            pose.crouch = 1.0f - Clamp01(t / 0.12f);
+            if (!flying)
+            {
+                g_phase[i] = PhaseBrake;
+                t = 0.0f;
+            }
+            else if (t >= RiseSeconds)
+            {
+                g_phase[i] = PhaseAir;
+                t = 0.0f;
+                StandStill(character);
+            }
+
+            break;
+        case PhaseAir:
+            g_lift[i] = g_height;
+            if (!flying)
+            {
+                g_phase[i] = PhaseBrake;
+                t = 0.0f;
+            }
+
+            break;
+        case PhaseBrake:
+            pose.brake = EaseOut(t / (BrakeSeconds * 0.5f));
+            if (flying)
+            {
+                g_phase[i] = PhaseAir;
+                t = 0.0f;
+            }
+            else if (t >= BrakeSeconds)
+            {
+                g_phase[i] = PhaseDrop;
+                g_dropFrom[i] = g_lift[i];
+                t = 0.0f;
+            }
+
+            break;
+        case PhaseDrop:
+            g_lift[i] = g_dropFrom[i] * (1.0f - EaseIn(t / DropSeconds));
+            pose.brake = 1.0f - EaseIn(t / DropSeconds);
+            if (flying)
+            {
+                g_phase[i] = PhaseRise;
+                t = 0.0f;
+            }
+            else if (t >= DropSeconds)
+            {
+                g_phase[i] = PhaseGround;
+                g_lift[i] = 0.0f;
+                t = 0.0f;
+                StandStill(character);
+            }
+
+            break;
+        }
+
+        // Superman entra de a poco al moverse en el aire y sale al quedarse quieto.
+        const bool super = g_phase[i] == PhaseAir && character[CharMoving];
+        pose.super = Approach(g_pose[i].super, super ? 1.0f : 0.0f, seconds * SuperPerSecond);
+        g_pose[i] = pose;
+    }
+
+    // --- Vuelo con alas: huesos ---
+    // 0x005440B0 es BMD::Animation (thiscall: BoneTransform, cuadro, cuadro anterior, accion anterior, Angle,
+    // HeadAngle, padre, trasladar): arma la matriz 3x4 de cada hueso (0x30 bytes) en el espacio del modelo,
+    // padre * local. Despues se ajustan los huesos del personaje que vuela con alas: se "apunta" cada miembro
+    // hacia una direccion (girando el hueso y todo lo que cuelga de el alrededor de su articulacion) y se
+    // inclina el cuerpo desde la pelvis. El esqueleto de Player.bmd: 60 huesos (BMD +0x22 cantidad, +0x2C los
+    // huesos de 0x8C bytes: nombre, +0x20 padre, +0x22 hueso vacio).
+    constexpr DWORD AnimationFunction = 0x005440B0;
+    const BYTE AnimationPrologue[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0xA4, 0x00, 0x00, 0x00 }; // ... SUB ESP,0xA4
+    constexpr int PlayerBoneCount = 60;
+    constexpr int BonePelvis = 2, BoneLThigh = 3, BoneLCalf = 4, BoneLFoot = 5, BoneRThigh = 10, BoneRCalf = 11,
+        BoneRFoot = 12, BoneRClavicle = 25, BoneRUpperArm = 26, BoneRForearm = 27, BoneRHand = 28,
+        BoneLClavicle = 34, BoneLUpperArm = 35, BoneLForearm = 36, BoneLHand = 37;
+    constexpr DWORD BmdBoneCount = 0x22, BmdBones = 0x2C, BoneSize = 0x8C, BoneParent = 0x20, BoneDummy = 0x22;
+    constexpr float Pi = 3.14159265f;
+
+    using AnimationType = void(__fastcall*)(BYTE*, void*, float*, float, float, DWORD, float*, float*, DWORD, DWORD);
+
+    struct Vec3
+    {
+        float x, y, z;
+    };
+
+    Vec3 operator+(Vec3 a, Vec3 b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
+    Vec3 operator-(Vec3 a, Vec3 b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
+    Vec3 operator*(Vec3 a, float s) { return { a.x * s, a.y * s, a.z * s }; }
+    float Dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+    Vec3 Cross(Vec3 a, Vec3 b) { return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
+
+    Vec3 Normalize(Vec3 v)
+    {
+        const float length = sqrtf(Dot(v, v));
+        return length > 0.0001f ? v * (1.0f / length) : Vec3{ 0.0f, 0.0f, 0.0f };
+    }
+
+    struct Skeleton
+    {
+        float (*bones)[3][4];
+        const BYTE* bmd;
+
+        Vec3 Position(int bone) const { return { bones[bone][0][3], bones[bone][1][3], bones[bone][2][3] }; }
+
+        bool IsInside(int bone, int ancestor) const
+        {
+            const BYTE* records = *reinterpret_cast<BYTE* const*>(bmd + BmdBones);
+            for (int guard = 0; bone >= 0 && bone < PlayerBoneCount && guard < PlayerBoneCount; guard++)
+            {
+                if (bone == ancestor)
+                {
+                    return true;
+                }
+
+                if (records[bone * BoneSize + BoneDummy] != 0)
+                {
+                    return false;
+                }
+
+                bone = *reinterpret_cast<const short*>(records + bone * BoneSize + BoneParent);
+            }
+
+            return false;
+        }
+
+        // Gira el hueso y todo lo que cuelga de el alrededor de "pivot" (eje normalizado, angulo en radianes).
+        void Rotate(int root, Vec3 pivot, Vec3 axis, float angle) const
+        {
+            if (angle == 0.0f)
+            {
+                return;
+            }
+
+            const float c = cosf(angle), s = sinf(angle), k = 1.0f - c;
+            const float r[3][3] = {
+                { c + axis.x * axis.x * k, axis.x * axis.y * k - axis.z * s, axis.x * axis.z * k + axis.y * s },
+                { axis.y * axis.x * k + axis.z * s, c + axis.y * axis.y * k, axis.y * axis.z * k - axis.x * s },
+                { axis.z * axis.x * k - axis.y * s, axis.z * axis.y * k + axis.x * s, c + axis.z * axis.z * k },
+            };
+
+            const BYTE* records = *reinterpret_cast<BYTE* const*>(bmd + BmdBones);
+            for (int b = 0; b < PlayerBoneCount; b++)
+            {
+                if (records[b * BoneSize + BoneDummy] != 0 || !IsInside(b, root))
+                {
+                    continue;
+                }
+
+                float (&m)[3][4] = bones[b];
+                float result[3][4];
+                const float t[3] = { m[0][3] - pivot.x, m[1][3] - pivot.y, m[2][3] - pivot.z };
+                for (int row = 0; row < 3; row++)
+                {
+                    for (int col = 0; col < 3; col++)
+                    {
+                        result[row][col] = r[row][0] * m[0][col] + r[row][1] * m[1][col] + r[row][2] * m[2][col];
+                    }
+
+                    result[row][3] = r[row][0] * t[0] + r[row][1] * t[1] + r[row][2] * t[2];
+                }
+
+                for (int row = 0; row < 3; row++)
+                {
+                    m[row][0] = result[row][0];
+                    m[row][1] = result[row][1];
+                    m[row][2] = result[row][2];
+                }
+
+                m[0][3] = result[0][3] + pivot.x;
+                m[1][3] = result[1][3] + pivot.y;
+                m[2][3] = result[2][3] + pivot.z;
+            }
+        }
+
+        // Apunta el hueso (de su articulacion a la del hijo) hacia "direction", en la medida "weight".
+        void Aim(int bone, int child, Vec3 direction, float weight) const
+        {
+            if (weight <= 0.0f)
+            {
+                return;
+            }
+
+            const Vec3 pivot = Position(bone);
+            const Vec3 current = Normalize(Position(child) - pivot);
+            const Vec3 target = Normalize(direction);
+            const Vec3 axis = Normalize(Cross(current, target));
+            const float cosine = Dot(current, target);
+            if (Dot(axis, axis) < 0.5f)
+            {
+                return; // ya apunta ahi (o justo al reves)
+            }
+
+            Rotate(bone, pivot, axis, acosf(cosine < -1.0f ? -1.0f : cosine > 1.0f ? 1.0f : cosine) * weight);
+        }
+
+        void Translate(int root, Vec3 offset) const
+        {
+            const BYTE* records = *reinterpret_cast<BYTE* const*>(bmd + BmdBones);
+            for (int b = 0; b < PlayerBoneCount; b++)
+            {
+                if (records[b * BoneSize + BoneDummy] == 0 && IsInside(b, root))
+                {
+                    bones[b][0][3] += offset.x;
+                    bones[b][1][3] += offset.y;
+                    bones[b][2][3] += offset.z;
+                }
+            }
+        }
+    };
+
+    bool IsPlayerSkeleton(const BYTE* bmd)
+    {
+        static const BYTE* checked = nullptr;
+        if (bmd == checked)
+        {
+            return true;
+        }
+
+        const BYTE* records = *reinterpret_cast<BYTE* const*>(bmd + BmdBones);
+        if (*reinterpret_cast<const short*>(bmd + BmdBoneCount) != PlayerBoneCount || records == nullptr
+            || strcmp(reinterpret_cast<const char*>(records + BoneRUpperArm * BoneSize), "Bip01 R UpperArm") != 0
+            || strcmp(reinterpret_cast<const char*>(records + BoneLThigh * BoneSize), "Bip01 L Thigh") != 0)
+        {
+            return false;
+        }
+
+        checked = bmd;
+        return true;
+    }
+
+    // Una pierna o un brazo: apunta el hueso de arriba y despues el de abajo.
+    void AimLimb(const Skeleton& skeleton, int upper, int lower, int end, Vec3 upperDirection, Vec3 lowerDirection, float weight)
+    {
+        skeleton.Aim(upper, lower, upperDirection, weight);
+        skeleton.Aim(lower, end, lowerDirection, weight);
+    }
+
+    void ApplyPose(const Skeleton& skeleton, const Pose& pose, float yawDegrees)
+    {
+        if (pose.crouch <= 0.0f && pose.stretch <= 0.0f && pose.super <= 0.0f && pose.brake <= 0.0f)
+        {
+            return;
+        }
+
+        // Ejes del cuerpo parado. El juego avanza por (0, -1, 0) girado por el angulo del personaje (0x00564DD0)
+        // y los huesos ya incluyen ese giro: adelante es (sen giro, -cos giro, 0).
+        const Vec3 up{ 0.0f, 0.0f, 1.0f };
+        const float yaw = yawDegrees * Pi / 180.0f;
+        const Vec3 forward = Vec3{ sinf(yaw), -cosf(yaw), 0.0f } * FlightForwardSign;
+        const Vec3 right = Cross(forward, up);
+
+        // Superman: brazos estirados por encima de la cabeza (al inclinar el cuerpo quedan adelante), piernas
+        // juntas y derechas.
+        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up + forward * 0.15f + right * 0.12f, up + forward * 0.1f + right * 0.05f, pose.super);
+        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, up + forward * 0.15f - right * 0.12f, up + forward * 0.1f - right * 0.05f, pose.super);
+        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -1.0f + right * 0.03f, up * -1.0f + forward * -0.05f, pose.super);
+        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -1.0f - right * 0.03f, up * -1.0f + forward * -0.05f, pose.super);
+
+        // Subiendo: brazos arriba en V, piernas derechas.
+        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up + right * 0.45f, up + right * 0.35f, pose.stretch);
+        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, up - right * 0.45f, up - right * 0.35f, pose.stretch);
+        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -1.0f + right * 0.05f, up * -1.0f, pose.stretch);
+        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -1.0f - right * 0.05f, up * -1.0f, pose.stretch);
+
+        // Agachado: rodillas adelante, brazos atras y abajo para tomar impulso.
+        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, forward * 0.8f - up * 0.6f + right * 0.1f, forward * -0.45f - up * 0.9f, pose.crouch);
+        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, forward * 0.8f - up * 0.6f - right * 0.1f, forward * -0.45f - up * 0.9f, pose.crouch);
+        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, forward * -0.5f - up * 0.7f + right * 0.3f, forward * -0.4f - up * 0.8f, pose.crouch);
+        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, forward * -0.5f - up * 0.7f - right * 0.3f, forward * -0.4f - up * 0.8f, pose.crouch);
+
+        // Frenando: piernas adelante, brazos adelante y abiertos.
+        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -0.85f + forward * 0.55f + right * 0.08f, up * -1.0f + forward * 0.1f, pose.brake);
+        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -0.85f + forward * 0.55f - right * 0.08f, up * -1.0f + forward * 0.1f, pose.brake);
+        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, forward * 0.6f + up * 0.25f + right * 0.75f, forward * 0.7f + up * 0.3f + right * 0.6f, pose.brake);
+        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, forward * 0.6f + up * 0.25f - right * 0.75f, forward * 0.7f + up * 0.3f - right * 0.6f, pose.brake);
+
+        // Todo el cuerpo desde la pelvis: Superman casi horizontal con un vaiven lento, adelante al agacharse,
+        // hacia atras al frenar. Agachado baja la pelvis para que los pies sigan en el suelo.
+        const Vec3 pelvis = skeleton.Position(BonePelvis);
+        const float sway = sinf(g_swayTime * 1.3f);
+        const float pitch = (80.0f + 4.0f * sinf(g_swayTime * 0.9f)) * pose.super + 25.0f * pose.crouch + 8.0f * pose.stretch - 28.0f * pose.brake;
+        // Girar alrededor de "derecha" con angulo positivo lleva arriba hacia atras: se gira al reves.
+        skeleton.Rotate(BonePelvis, pelvis, right, -pitch * Pi / 180.0f);
+        skeleton.Rotate(BonePelvis, pelvis, Normalize(Cross(right, up)), 6.0f * sway * pose.super * Pi / 180.0f);
+        skeleton.Translate(BonePelvis, up * (-35.0f * pose.crouch));
+    }
+
+    __declspec(naked) void __fastcall AnimationOriginal(BYTE*, void*, float*, float, float, DWORD, float*, float*, DWORD, DWORD)
+    {
+        __asm
+        {
+            push ebp
+            mov ebp, esp
+            sub esp, 0xA4
+            push 0x005440B9 // AnimationFunction + 9
+            ret
+        }
+    }
+
+    AnimationType volatile g_animationOriginal = &AnimationOriginal;
+
+    void __fastcall AnimationHook(BYTE* bmd, void* edx, float* boneTransform, float frame, float priorFrame,
+        DWORD priorAction, float* angle, float* headAngle, DWORD parent, DWORD translate)
+    {
+        g_animationOriginal(bmd, edx, boneTransform, frame, priorFrame, priorAction, angle, headAngle, parent, translate);
+
+        // El Angle que recibe es el del OBJECT (+0x108) del personaje que se dibuja.
+        BYTE* character = angle != nullptr ? reinterpret_cast<BYTE*>(angle) - 0x108 - CharObject : nullptr;
+        const int i = CharacterIndex(character);
+        if (i < 0 || boneTransform == nullptr || bmd == nullptr || !IsPlayerSkeleton(bmd))
+        {
+            return;
+        }
+
+        const Skeleton skeleton{ reinterpret_cast<float(*)[3][4]>(boneTransform), bmd };
+        ApplyPose(skeleton, g_pose[i], angle[2]);
     }
 
     // --- Altura (solo para dibujar) ---
@@ -613,6 +1024,7 @@ namespace
         }
 
         const float step = g_climbPerSecond * seconds;
+        g_swayTime += seconds;
         for (int i = 0; i < CharacterCount; i++)
         {
             BYTE* character = characters + i * CharacterSize;
@@ -630,38 +1042,30 @@ namespace
                 g_liftKey[i] = key;
                 g_lift[i] = g_flying[key] ? g_height : 0.0f;
                 g_target[i] = g_lift[i];
-                g_transition[i] = false;
+                g_phase[i] = g_flying[key] ? PhaseAir : PhaseGround;
+                g_phaseTime[i] = 0.0f;
+                g_pose[i] = Pose{};
                 g_ground[i] = reinterpret_cast<const float*>(character + CharPosition)[2];
             }
 
             const float target = g_flying[key] ? g_height : 0.0f;
-            if (target != g_target[i])
+            g_target[i] = target;
+            if (HasWingsWithoutDinorant(character))
             {
-                // Despega o aterriza: con alas, quieto, aletea (la accion de caminar, que con alas es la de volar)
-                // mientras sube o baja, y al llegar vuelve a quedarse quieto.
-                g_target[i] = target;
-                g_transition[i] = HasWingsWithoutDinorant(character) && !character[CharMoving];
-                if (g_transition[i])
+                // Con alas: salto al despegar, freno al aterrizar y pose de Superman al moverse (ver UpdateWingFlight).
+                UpdateWingFlight(i, character, g_flying[key] != 0, seconds);
+            }
+            else
+            {
+                g_phase[i] = g_flying[key] ? PhaseAir : PhaseGround;
+                g_pose[i] = Pose{};
+                if (g_lift[i] < target)
                 {
-                    reinterpret_cast<RiderWalkType>(RiderWalkFunction)(character);
+                    g_lift[i] = g_lift[i] + step > target ? target : g_lift[i] + step;
                 }
-            }
-
-            if (g_lift[i] < target)
-            {
-                g_lift[i] = g_lift[i] + step > target ? target : g_lift[i] + step;
-            }
-            else if (g_lift[i] > target)
-            {
-                g_lift[i] = g_lift[i] - step < target ? target : g_lift[i] - step;
-            }
-
-            if (g_transition[i] && g_lift[i] == target)
-            {
-                g_transition[i] = false;
-                if (!character[CharMoving])
+                else if (g_lift[i] > target)
                 {
-                    reinterpret_cast<RiderWalkType>(StopActionFunction)(character);
+                    g_lift[i] = g_lift[i] - step < target ? target : g_lift[i] - step;
                 }
             }
 
@@ -688,7 +1092,7 @@ namespace
             for (int a = 0; a < attached.count; a++, slot++)
             {
                 BYTE* object = attached.base + a * attached.size;
-                g_attachedLifted[slot] = false;
+                g_attachedState[slot] = AttachedNone;
                 if (!object[attached.live])
                 {
                     continue;
@@ -696,20 +1100,20 @@ namespace
 
                 const BYTE* owner = *reinterpret_cast<BYTE* const*>(object + attached.owner);
                 const int i = owner != nullptr ? CharacterIndex(owner - CharObject) : -1;
-                const bool hide = attached.hide
-                    || (attached.base == AttachedArrays[0].base && i >= 0 && HidesMount(owner - CharObject)); // otra montura
-                if (i >= 0 && g_lifted[i] && hide)
+                // Otra montura: no se dibuja desde que empieza el vuelo (tambien agachado, todavia en el suelo).
+                const bool otherMount = attached.base == AttachedArrays[0].base && i >= 0 && HidesMount(owner - CharObject);
+                if (i >= 0 && (otherMount || (g_lifted[i] && attached.hide)))
                 {
                     g_attachedSavedZ[slot] = object[attached.live]; // aca se guarda el valor de "vivo"
                     object[attached.live] = 0;
-                    g_attachedLifted[slot] = true;
+                    g_attachedState[slot] = AttachedHidden;
                 }
                 else if (i >= 0 && g_lifted[i])
                 {
                     float* position = reinterpret_cast<float*>(object + ObjectPosition);
                     g_attachedSavedZ[slot] = position[2];
                     position[2] += g_offset[i];
-                    g_attachedLifted[slot] = true;
+                    g_attachedState[slot] = AttachedLifted;
                 }
             }
         }
@@ -737,10 +1141,10 @@ namespace
         {
             for (int a = 0; a < attached.count; a++, slot++)
             {
-                if (g_attachedLifted[slot])
+                if (g_attachedState[slot] != AttachedNone)
                 {
                     BYTE* object = attached.base + a * attached.size;
-                    if (attached.hide)
+                    if (g_attachedState[slot] == AttachedHidden)
                     {
                         object[attached.live] = static_cast<BYTE>(g_attachedSavedZ[slot]);
                     }
@@ -749,7 +1153,7 @@ namespace
                         reinterpret_cast<float*>(object + ObjectPosition)[2] = g_attachedSavedZ[slot];
                     }
 
-                    g_attachedLifted[slot] = false;
+                    g_attachedState[slot] = AttachedNone;
                 }
             }
         }
@@ -873,6 +1277,7 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
     g_speedFactor = ReadFloat(host->iniPath, "SpeedFactor", 1.5f, 1.0f, 3.0f);
     g_height = ReadFloat(host->iniPath, "Height", 350.0f, 0.0f, 1000.0f);
     g_climbPerSecond = ReadFloat(host->iniPath, "ClimbPerSecond", 250.0f, 10.0f, 10000.0f);
+    FlightForwardSign = ReadFloat(host->iniPath, "ForwardSign", 1.0f, -1.0f, 1.0f) < 0.0f ? -1.0f : 1.0f;
     ReadKey(host->iniPath);
     QueryPerformanceFrequency(&g_frequency);
 
@@ -884,7 +1289,8 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
         || !Matches(BugMoveFunction, BugMovePrologue, sizeof(BugMovePrologue))
         || !Matches(PathStepFunction, PathStepPrologue, sizeof(PathStepPrologue))
         || !Matches(RiderWalkFunction, RiderWalkPrologue, sizeof(RiderWalkPrologue))
-        || !Matches(StopActionFunction, StopActionPrologue, sizeof(StopActionPrologue)))
+        || !Matches(StopActionFunction, StopActionPrologue, sizeof(StopActionPrologue))
+        || !Matches(AnimationFunction, AnimationPrologue, sizeof(AnimationPrologue)))
     {
         g_log("Flight: el main.exe no coincide; desactivado.");
         return false;
@@ -896,7 +1302,8 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
         || !JumpAtStart(BugMoveFunction, &BugMoveHook, sizeof(BugMovePrologue))
         || !JumpAtStart(PathStepFunction, &PathStepHook)
         || !JumpAtStart(RiderWalkFunction, &RiderWalkHook)
-        || !JumpAtStart(StopActionFunction, &StopActionHook)
+        || !JumpAtStart(StopActionFunction, &StopActionHook, sizeof(StopActionPrologue))
+        || !JumpAtStart(AnimationFunction, &AnimationHook, sizeof(AnimationPrologue))
         || !RedirectCall(DispatchCallSite, &PacketHook))
     {
         g_log("Flight: no se pudo instalar.");
