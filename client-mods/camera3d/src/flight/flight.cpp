@@ -86,6 +86,7 @@ namespace
     constexpr short DinorantHelper = 0x1E96;     // +0x22C con el Dinorant (0x00564B20, 0x0054F710)
     constexpr short UniriaHelper = 0x1E95, DarkHorseHelper = 0x1E97, FenrirHelper = 0x1EB8;
     const BYTE StopActionPrologue[] = { 0x55, 0x8B, 0xEC, 0x6A, 0xFF }; // PUSH EBP, MOV EBP,ESP, PUSH -1
+    constexpr DWORD CharRightWeapon = 0x1C0, CharLeftWeapon = 0x1E4; // tipo del arma de cada mano (-1 sin arma)
     constexpr DWORD CharRun = 0x25;              // contador de correr (0x0054F710: con alas, 40 o mas vuela)
     constexpr BYTE FlyRun = 0x28;
     constexpr DWORD StopActionFunction = 0x0054EA80; // void __cdecl (CHARACTER*): accion quieto (0x7A-0x7D con Fenrir)
@@ -163,9 +164,11 @@ namespace
     float g_savedZ[CharacterCount] = {};
     bool g_lifted[CharacterCount] = {};
     float g_target[CharacterCount] = {};
+    bool g_weaponsHidden[CharacterCount] = {};
+    short g_savedWeapons[CharacterCount][2] = {};
 
     // Vuelo con alas: fases del despegue y del aterrizaje y cuanto de cada pose se aplica a los huesos.
-    enum Phase : BYTE { PhaseGround, PhaseCrouch, PhaseRise, PhaseAir, PhaseBrake, PhaseDrop };
+    enum Phase : BYTE { PhaseGround, PhaseCrouch, PhaseRise, PhaseAir, PhaseDescend, PhaseBrake, PhaseDrop };
 
     struct Pose
     {
@@ -614,7 +617,8 @@ namespace
     // --- Vuelo con alas: fases ---
     constexpr float CrouchSeconds = 0.25f; // agachado antes del salto
     constexpr float RiseSeconds = 0.7f;    // subida del salto, rapida al principio
-    constexpr float BrakeSeconds = 0.45f;  // freno en el aire antes de bajar
+    constexpr float DescendSeconds = 0.6f; // baja planeando hasta la mitad de la altura antes de frenar
+    constexpr float BrakeSeconds = 0.45f;  // freno a media altura antes de bajar del todo
     constexpr float DropSeconds = 0.55f;   // bajada al suelo, rapida al final
     constexpr float SuperPerSecond = 3.0f; // rapidez con la que entra y sale la pose de Superman
 
@@ -687,7 +691,8 @@ namespace
             pose.crouch = 1.0f - Clamp01(t / 0.12f);
             if (!flying)
             {
-                g_phase[i] = PhaseBrake;
+                g_phase[i] = PhaseDescend;
+                g_dropFrom[i] = g_lift[i];
                 t = 0.0f;
             }
             else if (t >= RiseSeconds)
@@ -702,11 +707,32 @@ namespace
             g_lift[i] = g_height;
             if (!flying)
             {
+                g_phase[i] = PhaseDescend;
+                g_dropFrom[i] = g_lift[i];
+                t = 0.0f;
+            }
+
+            break;
+        case PhaseDescend:
+        {
+            // Baja planeando (sin pose de freno) hasta la mitad de la altura; ahi empieza el freno.
+            const float half = g_height * 0.5f;
+            const float k = Clamp01(t / DescendSeconds);
+            const float eased = k * k * (3.0f - 2.0f * k);
+            g_lift[i] = g_dropFrom[i] > half ? g_dropFrom[i] + (half - g_dropFrom[i]) * eased : g_dropFrom[i];
+            if (flying)
+            {
+                g_phase[i] = PhaseRise;
+                t = RiseSeconds * 0.5f;
+            }
+            else if (k >= 1.0f || g_dropFrom[i] <= half)
+            {
                 g_phase[i] = PhaseBrake;
                 t = 0.0f;
             }
 
             break;
+        }
         case PhaseBrake:
             pose.brake = EaseOut(t / (BrakeSeconds * 0.5f));
             if (flying)
@@ -936,12 +962,14 @@ namespace
         const Vec3 forward = Vec3{ sinf(yaw), -cosf(yaw), 0.0f } * FlightForwardSign;
         const Vec3 right = Cross(forward, up);
 
-        // Superman: brazos estirados por encima de la cabeza (al inclinar el cuerpo quedan adelante), piernas
-        // juntas y derechas.
-        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up + forward * 0.15f + right * 0.12f, up + forward * 0.1f + right * 0.05f, pose.super);
-        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, up + forward * 0.15f - right * 0.12f, up + forward * 0.1f - right * 0.05f, pose.super);
-        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -1.0f + right * 0.03f, up * -1.0f + forward * -0.05f, pose.super);
-        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -1.0f - right * 0.03f, up * -1.0f + forward * -0.05f, pose.super);
+        // Volando: brazos hacia atras a lo largo del cuerpo, hacia las caderas, con los codos apenas doblados;
+        // piernas juntas con las rodillas un poco flojas. Al inclinar el cuerpo quedan estirados hacia atras.
+        // Un poco menos que la pose entera, para que no quede rigida.
+        const float relaxed = pose.super * 0.85f;
+        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up * -0.8f - forward * 0.45f + right * 0.22f, up * -0.75f - forward * 0.55f + right * 0.12f, relaxed);
+        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, up * -0.8f - forward * 0.45f - right * 0.22f, up * -0.75f - forward * 0.55f - right * 0.12f, relaxed);
+        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -1.0f + forward * 0.12f + right * 0.06f, up * -1.0f - forward * 0.28f, relaxed);
+        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -1.0f + forward * 0.12f - right * 0.06f, up * -1.0f - forward * 0.28f, relaxed);
 
         // Subiendo: brazos arriba en V, piernas derechas.
         AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up + right * 0.45f, up + right * 0.35f, pose.stretch);
@@ -965,7 +993,7 @@ namespace
         // hacia atras al frenar. Agachado baja la pelvis para que los pies sigan en el suelo.
         const Vec3 pelvis = skeleton.Position(BonePelvis);
         const float sway = sinf(g_swayTime * 1.3f);
-        const float pitch = (80.0f + 4.0f * sinf(g_swayTime * 0.9f)) * pose.super + 25.0f * pose.crouch + 8.0f * pose.stretch - 28.0f * pose.brake;
+        const float pitch = (60.0f + 4.0f * sinf(g_swayTime * 0.9f)) * pose.super + 25.0f * pose.crouch + 8.0f * pose.stretch - 28.0f * pose.brake;
         // Girar alrededor de "derecha" con angulo positivo lleva arriba hacia atras: se gira al reves.
         skeleton.Rotate(BonePelvis, pelvis, right, -pitch * Pi / 180.0f);
         skeleton.Rotate(BonePelvis, pelvis, Normalize(Cross(right, up)), 6.0f * sway * pose.super * Pi / 180.0f);
@@ -991,7 +1019,8 @@ namespace
     // y quietas y abiertas planeando.
     constexpr DWORD ModelManager = 0x00E8C200, ModelSize = 0x104, BmdActions = 0x30, BmdCurrentAction = 0xA0,
         ActionSize = 0x10, ActionKeys = 0x08;
-    constexpr float GlideFrame = 0.0f; // cuadro de las alas abiertas planeando
+    constexpr float GlideFrame = 0.0f;      // cuadro de las alas abiertas (agachado antes del salto)
+    constexpr float SlowFlapSeconds = 1.6f; // un aleteo lento volando como Superman
     int g_animatedCharacter = -1;      // ultimo personaje cuyo cuerpo se animo (sus alas vienen despues)
 
     bool IsWingsModelOf(const BYTE* bmd, const BYTE* character)
@@ -1027,10 +1056,16 @@ namespace
             return last * (cycles - floorf(cycles));
         }
         case PhaseAir:
-        case PhaseDrop:
-            return GlideFrame;
+            if (g_pose[i].super > 0.5f)
+            {
+                // Volando como Superman: aleteos lentos.
+                const float cycle = g_swayTime / SlowFlapSeconds;
+                return last * (cycle - floorf(cycle));
+            }
+
+            return -1.0f; // quieto en el aire: el aleteo normal de las alas
         default:
-            return -1.0f;
+            return -1.0f; // bajando: el aleteo normal
         }
     }
 
@@ -1154,6 +1189,22 @@ namespace
             g_lifted[i] = true;
         }
 
+        // Volando con alas, desde el despegue hasta el aterrizaje, no se dibujan las armas (ni el escudo).
+        for (int i = 0; i < CharacterCount; i++)
+        {
+            BYTE* character = characters + i * CharacterSize;
+            g_weaponsHidden[i] = character[CharLive] && g_phase[i] != PhaseGround && HasWingsWithoutDinorant(character);
+            if (g_weaponsHidden[i])
+            {
+                short* right = reinterpret_cast<short*>(character + CharRightWeapon);
+                short* left = reinterpret_cast<short*>(character + CharLeftWeapon);
+                g_savedWeapons[i][0] = *right;
+                g_savedWeapons[i][1] = *left;
+                *right = -1;
+                *left = -1;
+            }
+        }
+
         // La montura, las mascotas y los efectos (por ejemplo el buff del Elf Soldier) suben igual que su dueno.
         int slot = 0;
         for (const AttachedArray& attached : AttachedArrays)
@@ -1202,6 +1253,13 @@ namespace
             {
                 reinterpret_cast<float*>(characters + i * CharacterSize + CharPosition)[2] = g_savedZ[i];
                 g_lifted[i] = false;
+            }
+
+            if (g_weaponsHidden[i])
+            {
+                *reinterpret_cast<short*>(characters + i * CharacterSize + CharRightWeapon) = g_savedWeapons[i][0];
+                *reinterpret_cast<short*>(characters + i * CharacterSize + CharLeftWeapon) = g_savedWeapons[i][1];
+                g_weaponsHidden[i] = false;
             }
         }
 

@@ -269,8 +269,10 @@ combate ni en la zona segura); `camera3d.dll` carga `flight.dll` si está en la 
 
 Con alas (sin el Dinorant) las poses se arman ajustando los huesos en cada cuadro, sin tocar archivos del juego:
 al despegar se agacha y salta (sube rápido, estirado con los brazos en V), quieto en el aire queda parado,
-moviéndose va como Superman (horizontal, brazos estirados adelante, piernas juntas atrás, con un vaivén lento) y
-al aterrizar frena (cuerpo hacia atrás, piernas y brazos adelante) y baja. Con otra montura (Fenrir, Dark Horse,
+moviéndose va inclinado (60°) con los brazos hacia atrás a lo largo del cuerpo y las piernas juntas, con un vaivén
+lento, y al aterrizar baja planeando hasta la mitad de la altura, frena (cuerpo hacia atrás, piernas y brazos
+adelante) y termina de bajar. Desde el despegue hasta el aterrizaje no se dibujan las armas ni el escudo (`+0x1C0`
+y `+0x1E4` en -1 solo mientras se dibuja la escena). Con otra montura (Fenrir, Dark Horse,
 Uniria) la montura no se dibuja mientras vuela y vuelve al aterrizar. Con el Dinorant queda la pose de jinete de
 Icarus.
 
@@ -284,7 +286,7 @@ y se inclina el cuerpo desde la pelvis. Adelante es `(sen giro, -cos giro, 0)` (
 pantorrillas 4/11, pies 5/12, columna 17/18, cuello 19, cabeza 20, claviculas 25/34, brazos 26/35, antebrazos 27/36,
 manos 28/37. La acción quieto la elige `0x0054EA80` (con Fenrir `0x7A`-`0x7D`); `0x005518F0` es la de atacar.
 
-Las alas (el modelo de `+0x208`) se animan con la misma función justo después del cuerpo, con un `OBJECT` propio de su modelo: se atribuyen al último personaje animado y se elige su cuadro: un solo aletazo grande al despegar, dos al frenar y quietas y abiertas planeando.
+Las alas (el modelo de `+0x208`) se animan con la misma función justo después del cuerpo, con un `OBJECT` propio de su modelo: se atribuyen al último personaje animado y se elige su cuadro: un solo aletazo grande al despegar, aleteos lentos volando hacia adelante, dos aletazos al frenar y la animación normal quieto en el aire.
 
 ```
 [Flight]
