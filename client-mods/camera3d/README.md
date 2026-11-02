@@ -284,6 +284,8 @@ y se inclina el cuerpo desde la pelvis. Adelante es `(sen giro, -cos giro, 0)` (
 pantorrillas 4/11, pies 5/12, columna 17/18, cuello 19, cabeza 20, claviculas 25/34, brazos 26/35, antebrazos 27/36,
 manos 28/37. La acción quieto la elige `0x0054EA80` (con Fenrir `0x7A`-`0x7D`); `0x005518F0` es la de atacar.
 
+Las alas (el modelo de `+0x208`) se animan con la misma función justo después del cuerpo, con un `OBJECT` propio de su modelo: se atribuyen al último personaje animado y se elige su cuadro: un solo aletazo grande al despegar, dos al frenar y quietas y abiertas planeando.
+
 ```
 [Flight]
 Enabled=1           ; 0: no se carga flight.dll

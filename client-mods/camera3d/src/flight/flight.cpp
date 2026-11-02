@@ -986,18 +986,87 @@ namespace
 
     AnimationType volatile g_animationOriginal = &AnimationOriginal;
 
+    // Las alas son otro modelo (el de +0x208 del personaje, BMD de 0x104 bytes en *(*(0x00E8C200) + 8)) que se anima
+    // con la misma funcion. Volando con alas se elige su cuadro: un solo aletazo grande al despegar, dos al frenar
+    // y quietas y abiertas planeando.
+    constexpr DWORD ModelManager = 0x00E8C200, ModelSize = 0x104, BmdActions = 0x30, BmdCurrentAction = 0xA0,
+        ActionSize = 0x10, ActionKeys = 0x08;
+    constexpr float GlideFrame = 0.0f; // cuadro de las alas abiertas planeando
+    int g_animatedCharacter = -1;      // ultimo personaje cuyo cuerpo se animo (sus alas vienen despues)
+
+    bool IsWingsModelOf(const BYTE* bmd, const BYTE* character)
+    {
+        const DWORD manager = *reinterpret_cast<const DWORD*>(ModelManager);
+        const short wings = *reinterpret_cast<const short*>(character + CharWings);
+        return manager != 0 && wings > 0
+            && bmd == *reinterpret_cast<BYTE* const*>(manager + 8) + static_cast<DWORD>(wings) * ModelSize;
+    }
+
+    // Cuadro de las alas segun la fase del vuelo; negativo: el del juego.
+    float WingFrame(const BYTE* bmd, int i)
+    {
+        const BYTE* actions = *reinterpret_cast<BYTE* const*>(bmd + BmdActions);
+        const WORD action = *reinterpret_cast<const WORD*>(bmd + BmdCurrentAction);
+        const short keys = actions != nullptr ? *reinterpret_cast<const short*>(actions + action * ActionSize + ActionKeys) : 0;
+        if (keys < 2)
+        {
+            return -1.0f;
+        }
+
+        const float t = g_phaseTime[i];
+        const float last = keys - 0.01f;
+        switch (g_phase[i])
+        {
+        case PhaseCrouch:
+            return GlideFrame;
+        case PhaseRise:
+            return last * Clamp01(t / RiseSeconds); // un solo aletazo grande mientras sube
+        case PhaseBrake:
+        {
+            const float cycles = 2.0f * Clamp01(t / BrakeSeconds); // dos aletazos para frenar
+            return last * (cycles - floorf(cycles));
+        }
+        case PhaseAir:
+        case PhaseDrop:
+            return GlideFrame;
+        default:
+            return -1.0f;
+        }
+    }
+
     void __fastcall AnimationHook(BYTE* bmd, void* edx, float* boneTransform, float frame, float priorFrame,
         DWORD priorAction, float* angle, float* headAngle, DWORD parent, DWORD translate)
     {
-        g_animationOriginal(bmd, edx, boneTransform, frame, priorFrame, priorAction, angle, headAngle, parent, translate);
-
         // El Angle que recibe es el del OBJECT (+0x108) del personaje que se dibuja.
+        // El Angle que recibe es el del OBJECT (+0x108) del personaje que se dibuja. Las alas se animan con un
+        // OBJECT propio de su modelo (no el del personaje), justo despues del cuerpo: se atribuyen al ultimo
+        // personaje animado.
         BYTE* character = angle != nullptr ? reinterpret_cast<BYTE*>(angle) - 0x108 - CharObject : nullptr;
         const int i = CharacterIndex(character);
+        const int owner = g_animatedCharacter;
+        BYTE* characters = Characters();
+        if (i < 0 && owner >= 0 && characters != nullptr && bmd != nullptr)
+        {
+            BYTE* ownerCharacter = characters + owner * CharacterSize;
+            if (g_phase[owner] != PhaseGround && HasWingsWithoutDinorant(ownerCharacter) && IsWingsModelOf(bmd, ownerCharacter))
+            {
+                const float wingFrame = WingFrame(bmd, owner);
+                if (wingFrame >= 0.0f)
+                {
+                    frame = wingFrame;
+                    priorFrame = wingFrame;
+                }
+            }
+        }
+
+        g_animationOriginal(bmd, edx, boneTransform, frame, priorFrame, priorAction, angle, headAngle, parent, translate);
+
         if (i < 0 || boneTransform == nullptr || bmd == nullptr || !IsPlayerSkeleton(bmd))
         {
             return;
         }
+
+        g_animatedCharacter = i;
 
         const Skeleton skeleton{ reinterpret_cast<float(*)[3][4]>(boneTransform), bmd };
         ApplyPose(skeleton, g_pose[i], angle[2]);
