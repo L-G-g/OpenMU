@@ -91,13 +91,17 @@ namespace
     {
         BYTE* base;
         int count;
+        bool hide; // en vez de subirlos, no se dibujan mientras el dueno vuela
     };
 
     const AttachedArray AttachedArrays[] = {
-        { reinterpret_cast<BYTE*>(0x08791550), 10 },  // bugs (0x00503720)
-        { reinterpret_cast<BYTE*>(0x08967FE8), 200 }, // efectos (0x00721620)
-        { reinterpret_cast<BYTE*>(0x097622F0), 100 }, // efectos (0x0074ABC0)
-        { reinterpret_cast<BYTE*>(0x09778748), 1000 }, // particulas (0x007711C0; 0x007716D0 borra las de un dueno)
+        { reinterpret_cast<BYTE*>(0x08791550), 10, false },  // bugs (0x00503720)
+        { reinterpret_cast<BYTE*>(0x08967FE8), 200, false }, // efectos (0x00721620)
+        { reinterpret_cast<BYTE*>(0x097622F0), 100, false }, // efectos (0x0074ABC0)
+        // Uniones (0x007711C0; 0x007716D0 borra las de un dueno), por ejemplo el remolino del buff del Elf
+        // Soldier (0x7D02): se dibujan con las posiciones anteriores que guardan en el paso de logica, asi que
+        // subir la posicion actual no las mueve. Volando no se dibujan.
+        { reinterpret_cast<BYTE*>(0x09778748), 1000, true },
     };
     constexpr int AttachedCount = 1310;
 
@@ -554,7 +558,13 @@ namespace
 
                 const BYTE* owner = *reinterpret_cast<BYTE* const*>(object + ObjectOwner);
                 const int i = owner != nullptr ? CharacterIndex(owner - CharObject) : -1;
-                if (i >= 0 && g_lifted[i])
+                if (i >= 0 && g_lifted[i] && attached.hide)
+                {
+                    g_attachedSavedZ[slot] = object[ObjectLive]; // aca se guarda el valor de "vivo"
+                    object[ObjectLive] = 0;
+                    g_attachedLifted[slot] = true;
+                }
+                else if (i >= 0 && g_lifted[i])
                 {
                     float* position = reinterpret_cast<float*>(object + ObjectPosition);
                     g_attachedSavedZ[slot] = position[2];
@@ -589,7 +599,16 @@ namespace
             {
                 if (g_attachedLifted[slot])
                 {
-                    reinterpret_cast<float*>(attached.base + a * ObjectSize + ObjectPosition)[2] = g_attachedSavedZ[slot];
+                    BYTE* object = attached.base + a * ObjectSize;
+                    if (attached.hide)
+                    {
+                        object[ObjectLive] = static_cast<BYTE>(g_attachedSavedZ[slot]);
+                    }
+                    else
+                    {
+                        reinterpret_cast<float*>(object + ObjectPosition)[2] = g_attachedSavedZ[slot];
+                    }
+
                     g_attachedLifted[slot] = false;
                 }
             }

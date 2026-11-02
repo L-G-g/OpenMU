@@ -302,7 +302,8 @@ dueño en el paso de lógica (`0x00501790`) y no al dibujar (`0x00503770`), así
 | `0x00542D20` (final) | Escribe el camino: `PATH+2` cantidad de puntos (con el de inicio), `+3` las x, `+0x12` las y (15 como máximo), `+0`/`+1` en 0 | Volando se escribe una línea recta (Bresenham, pasos de 8 direcciones) en vez del A*, que zigzaguea; si la línea pisa una baldosa `0x08` se usa el A* con pared 8 |
 
 | `0x0054F710` | Acción del personaje al caminar: con el Dinorant, en los mundos 8 y 10 no pone la de correr montado (sube y baja) | Salto al principio: si vuela, el mundo es 10 durante la llamada |
-| `0x08967FE8` (200), `0x097622F0` (100), `0x09778748` (1000, partículas) | Efectos (`OBJECT`, mismo dueño en `+0x1D8`), por ejemplo el buff del Elf Soldier | Se suben y se devuelven como la montura |
+| `0x08967FE8` (200), `0x097622F0` (100) | Efectos (`OBJECT`, mismo dueño en `+0x1D8`) | Se suben y se devuelven como la montura |
+| `0x09778748` (1000) | Uniones (`0x007711C0`, dueño en `+0x1D8`), por ejemplo el remolino del buff del Elf Soldier (`0x7D02`): se dibujan con las posiciones anteriores guardadas en el paso de lógica | Mientras el dueño vuela no se dibujan (vivo en 0 durante el dibujo) |
 
 `flight.dll` exporta `float FlightHeroLift()` (la altura dibujada del personaje propio); `camera3d.dll` la usa, si
 está, para agrandar el terreno visible y la distancia de dibujo (+1 vez por cada 500 de altura), así volando no
