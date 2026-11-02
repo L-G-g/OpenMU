@@ -899,6 +899,10 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
         g_command.packetsAtStart = SkillPacketCount();
         pending = true;
     }
+    else if (_stricmp(name, "fx") == 0)
+    {
+        result = EffectsCommand(arguments);
+    }
     else if (_stricmp(name, "party") == 0)
     {
         // Invita al jugador N a la party, como el boton Party de la ventana de comandos (C1 40).
