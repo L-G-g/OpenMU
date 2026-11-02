@@ -25,20 +25,20 @@ public class FlightConfiguration
     /// <summary>
     /// Gets or sets the factor of the movement speed while flying with wings of the first level.
     /// </summary>
-    [Display(Name = "Speed factor (1st wings)", Description = "Factor of the movement speed while flying with wings of the first level (Elf, Heaven, Satan, Curse and the small wings).")]
-    public float FirstWingsSpeedFactor { get; set; } = 1.5f;
+    [Display(Name = "Speed factor (1st wings)", Description = "Factor of the movement speed while flying with wings of the first level (Elf, Heaven, Satan, Curse and the small wings). 0: they can't fly.")]
+    public float FirstWingsSpeedFactor { get; set; }
 
     /// <summary>
     /// Gets or sets the factor of the movement speed while flying with wings of the second level.
     /// </summary>
-    [Display(Name = "Speed factor (2nd wings)", Description = "Factor of the movement speed while flying with wings of the second level (Spirits, Soul, Dragon, Darkness, Despair, the capes of Lord and Fighter).")]
-    public float SecondWingsSpeedFactor { get; set; } = 1.75f;
+    [Display(Name = "Speed factor (2nd wings)", Description = "Factor of the movement speed while flying with wings of the second level (Spirits, Soul, Dragon, Darkness, Despair, the capes of Lord and Fighter). 0: they can't fly.")]
+    public float SecondWingsSpeedFactor { get; set; }
 
     /// <summary>
     /// Gets or sets the factor of the movement speed while flying with wings of the third level.
     /// </summary>
-    [Display(Name = "Speed factor (3rd wings)", Description = "Factor of the movement speed while flying with wings of the third level (Storm, Eternal, Illusion, Ruin, Dimension, the capes of Emperor and Overrule).")]
-    public float ThirdWingsSpeedFactor { get; set; } = 2.0f;
+    [Display(Name = "Speed factor (3rd wings)", Description = "Factor of the movement speed while flying with wings of the third level (Storm, Eternal, Illusion, Ruin, Dimension, the capes of Emperor and Overrule). 0: they can't fly.")]
+    public float ThirdWingsSpeedFactor { get; set; } = 1.5f;
 
     /// <summary>
     /// Gets or sets the seconds after the last hit (given or received) during which a player is in combat

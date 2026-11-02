@@ -260,9 +260,9 @@ al llegar, al cambiar de mapa, al morir o si el jugador mueve al personaje de ot
 
 ## Monturas voladoras (flight.dll)
 
-Con el Dinorant o alas equipadas, Shift+V (o `/volar` en el chat) despega: el personaje sube, vuela por encima de
-paredes, árboles y casas (no por encima del vacío) y va más rápido: x1,5 con el Dinorant o alas de primer nivel,
-x1,75 con las de segundo (y las capas de Lord y Fighter), x2 con las de tercero; con las dos cosas, la más rápida.
+Con el Dinorant o alas de tercer nivel equipadas (y las capas de Emperor y Overrule), Shift+V (o `/volar` en el
+chat) despega: el personaje sube, vuela por encima de paredes, árboles y casas (no por encima del vacío) y va x1,5
+más rápido. Las alas de primer y segundo nivel no vuelan (configurable en el plugin: factor 0).
 Volando no se puede atacar ni usar skills, y los monstruos no lo atacan. Otra vez Shift+V aterriza, solo sobre
 suelo caminable. Quien decide es el servidor (plugin "Flight" de OpenMU: Dinorant o alas, mapas comunes, no en
 combate ni en la zona segura); `camera3d.dll` carga `flight.dll` si está en la misma carpeta (`src/loadflight.cpp`).

@@ -301,7 +301,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
         var factor = GetSpeedFactor(player, configuration);
         if (factor <= 0)
         {
-            await player.ShowBlueMessageAsync("Para volar necesitas alas o el Dinorant equipado.").ConfigureAwait(false);
+            await player.ShowBlueMessageAsync("Solo se puede volar con alas de 3ra generacion o con el Dinorant.").ConfigureAwait(false);
             return;
         }
 
@@ -399,7 +399,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
             await player.MoveAsync(landingTile).ConfigureAwait(false);
         }
 
-        await player.ShowBlueMessageAsync("Sin alas ni Dinorant no podes seguir volando.").ConfigureAwait(false);
+        await player.ShowBlueMessageAsync("Sin alas de 3ra generacion ni Dinorant no podes seguir volando.").ConfigureAwait(false);
     }
 
     private async ValueTask SetSpeedFactorAsync(Player player, float factor)

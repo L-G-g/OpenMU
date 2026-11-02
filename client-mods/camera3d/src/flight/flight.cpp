@@ -764,7 +764,7 @@ namespace
     constexpr DWORD AnimationFunction = 0x005440B0;
     const BYTE AnimationPrologue[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0xA4, 0x00, 0x00, 0x00 }; // ... SUB ESP,0xA4
     constexpr int PlayerBoneCount = 60;
-    constexpr int BoneSpine = 17, BonePelvis = 2, BoneLThigh = 3, BoneLCalf = 4, BoneLFoot = 5, BoneRThigh = 10, BoneRCalf = 11,
+    constexpr int BoneSpine = 17, BoneSpine1 = 18, BoneHead = 20, BonePelvis = 2, BoneLThigh = 3, BoneLCalf = 4, BoneLFoot = 5, BoneRThigh = 10, BoneRCalf = 11,
         BoneRFoot = 12, BoneRClavicle = 25, BoneRUpperArm = 26, BoneRForearm = 27, BoneRHand = 28,
         BoneLClavicle = 34, BoneLUpperArm = 35, BoneLForearm = 36, BoneLHand = 37;
     constexpr DWORD BmdBoneCount = 0x22, BmdBones = 0x2C, BoneSize = 0x8C, BoneParent = 0x20, BoneDummy = 0x22;
@@ -947,7 +947,7 @@ namespace
         // pegado), una pierna un poco adelante y doblada y la otra atras; cada miembro con un vaiven propio y
         // el torso apenas girado. Al inclinar el cuerpo quedan hacia atras. Un poco menos que la pose entera,
         // para que no quede rigida.
-        const float relaxed = pose.super * 0.85f;
+        const float relaxed = pose.super * 0.72f;
         const float s = g_swayTime;
         const float armR = 0.08f * sinf(s * 1.7f), armL = 0.08f * sinf(s * 1.7f + 2.1f);
         const float legR = 0.10f * sinf(s * 1.3f + 0.7f), legL = 0.10f * sinf(s * 1.3f + 3.4f);
@@ -977,6 +977,16 @@ namespace
         // Girar alrededor de "derecha" con angulo positivo lleva arriba hacia atras: se gira al reves.
         skeleton.Rotate(BonePelvis, pelvis, right, -pitch * Pi / 180.0f);
         skeleton.Rotate(BonePelvis, pelvis, Normalize(Cross(right, up)), 6.0f * sway * pose.super * Pi / 180.0f);
+
+        // Volando: la espalda apenas arqueada (con una respiracion lenta) y la cabeza levantada, mirando adelante
+        // y no al piso. Girar alrededor de "derecha" con angulo positivo lleva arriba hacia atras.
+        if (pose.super > 0.0f)
+        {
+            const Vec3 bodyRight = Normalize(skeleton.Position(BoneRClavicle) - skeleton.Position(BoneLClavicle));
+            const float breath = 3.0f * sinf(g_swayTime * 1.1f);
+            skeleton.Rotate(BoneSpine1, skeleton.Position(BoneSpine1), bodyRight, (12.0f + breath) * pose.super * Pi / 180.0f);
+            skeleton.Rotate(BoneHead, skeleton.Position(BoneHead), bodyRight, 32.0f * pose.super * Pi / 180.0f);
+        }
         skeleton.Translate(BonePelvis, up * (-35.0f * pose.crouch));
     }
 

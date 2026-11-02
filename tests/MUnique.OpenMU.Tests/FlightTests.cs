@@ -147,7 +147,7 @@ public class FlightTests
     }
 
     /// <summary>
-    /// Tests that the speed factor follows the level of the wings, and that the higher one wins with the Dinorant.
+    /// Tests that by default only the third wings and the Dinorant fly, both at x1.5.
     /// </summary>
     [Test]
     public async Task SpeedFactorOfWingsAndDinorantAsync()
@@ -156,13 +156,19 @@ public class FlightTests
         var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
         Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.Zero, "Without wings or Dinorant.");
 
-        await player.Inventory!.AddItemAsync(DataModel.InventoryConstants.WingsSlot, CreateItem(12, 36)).ConfigureAwait(false);
-        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.EqualTo(2.0f), "Third wings.");
+        await player.Inventory!.AddItemAsync(DataModel.InventoryConstants.WingsSlot, CreateItem(12, 0)).ConfigureAwait(false);
+        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.Zero, "First wings can't fly.");
 
         await player.Inventory.RemoveItemAsync(player.Inventory.GetItem(DataModel.InventoryConstants.WingsSlot)!).ConfigureAwait(false);
         await player.Inventory.AddItemAsync(DataModel.InventoryConstants.WingsSlot, CreateItem(12, 5)).ConfigureAwait(false);
+        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.Zero, "Second wings can't fly.");
+
         await player.Inventory.AddItemAsync(DataModel.InventoryConstants.PetSlot, CreateItem(13, 3)).ConfigureAwait(false);
-        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.EqualTo(1.75f), "Second wings are faster than the Dinorant.");
+        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.EqualTo(1.5f), "The Dinorant flies with second wings.");
+
+        await player.Inventory.RemoveItemAsync(player.Inventory.GetItem(DataModel.InventoryConstants.WingsSlot)!).ConfigureAwait(false);
+        await player.Inventory.AddItemAsync(DataModel.InventoryConstants.WingsSlot, CreateItem(12, 36)).ConfigureAwait(false);
+        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.EqualTo(1.5f), "Third wings.");
     }
 
     private static Persistence.BasicModel.Item CreateItem(byte group, short number) => new()
