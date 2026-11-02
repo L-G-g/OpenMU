@@ -168,14 +168,13 @@ namespace
     short g_savedWeapons[CharacterCount][2] = {};
 
     // Vuelo con alas: fases del despegue y del aterrizaje y cuanto de cada pose se aplica a los huesos.
-    enum Phase : BYTE { PhaseGround, PhaseCrouch, PhaseRise, PhaseAir, PhaseDescend, PhaseBrake, PhaseDrop };
+    enum Phase : BYTE { PhaseGround, PhaseCrouch, PhaseRise, PhaseAir, PhaseLand, PhaseSquat };
 
     struct Pose
     {
         float crouch = 0.0f;  // agachado antes del salto
         float stretch = 0.0f; // estirado subiendo (brazos arriba en V)
         float super = 0.0f;   // Superman: horizontal, brazos adelante, piernas atras
-        float brake = 0.0f;   // frenando: cuerpo hacia atras, piernas adelante, brazos abiertos
     };
 
     Phase g_phase[CharacterCount] = {};
@@ -617,9 +616,6 @@ namespace
     // --- Vuelo con alas: fases ---
     constexpr float CrouchSeconds = 0.25f; // agachado antes del salto
     constexpr float RiseSeconds = 0.7f;    // subida del salto, rapida al principio
-    constexpr float DescendSeconds = 0.6f; // baja planeando hasta la mitad de la altura antes de frenar
-    constexpr float BrakeSeconds = 0.45f;  // freno a media altura antes de bajar del todo
-    constexpr float DropSeconds = 0.55f;   // bajada al suelo, rapida al final
     constexpr float SuperPerSecond = 3.0f; // rapidez con la que entra y sale la pose de Superman
 
     float Clamp01(float value)
@@ -691,7 +687,7 @@ namespace
             pose.crouch = 1.0f - Clamp01(t / 0.12f);
             if (!flying)
             {
-                g_phase[i] = PhaseDescend;
+                g_phase[i] = PhaseLand;
                 g_dropFrom[i] = g_lift[i];
                 t = 0.0f;
             }
@@ -707,66 +703,51 @@ namespace
             g_lift[i] = g_height;
             if (!flying)
             {
-                g_phase[i] = PhaseDescend;
+                g_phase[i] = PhaseLand;
                 g_dropFrom[i] = g_lift[i];
                 t = 0.0f;
             }
 
             break;
-        case PhaseDescend:
+        case PhaseLand:
         {
-            // Baja planeando (sin pose de freno) hasta la mitad de la altura; ahi empieza el freno.
-            const float half = g_height * 0.5f;
-            const float k = Clamp01(t / DescendSeconds);
-            const float eased = k * k * (3.0f - 2.0f * k);
-            g_lift[i] = g_dropFrom[i] > half ? g_dropFrom[i] + (half - g_dropFrom[i]) * eased : g_dropFrom[i];
+            // El despegue al reves: baja estirado con el aletazo invertido, cada vez mas rapido hacia el suelo.
+            const float u = Clamp01(t / RiseSeconds);
+            g_lift[i] = g_dropFrom[i] * EaseOut(1.0f - u);
+            pose.stretch = 1.0f - EaseIn(1.0f - u);
+            pose.crouch = 1.0f - Clamp01((1.0f - u) / 0.12f);
             if (flying)
             {
                 g_phase[i] = PhaseRise;
-                t = RiseSeconds * 0.5f;
+                t = RiseSeconds * (1.0f - u);
             }
-            else if (k >= 1.0f || g_dropFrom[i] <= half)
+            else if (u >= 1.0f)
             {
-                g_phase[i] = PhaseBrake;
+                g_phase[i] = PhaseSquat;
+                g_lift[i] = 0.0f;
                 t = 0.0f;
             }
 
             break;
         }
-        case PhaseBrake:
-            pose.brake = EaseOut(t / (BrakeSeconds * 0.5f));
+        case PhaseSquat:
+            // Agachado al tocar el suelo, y se para.
+            g_lift[i] = 0.0f;
+            pose.crouch = EaseOut(1.0f - t / CrouchSeconds);
             if (flying)
             {
-                g_phase[i] = PhaseAir;
+                g_phase[i] = PhaseCrouch;
                 t = 0.0f;
             }
-            else if (t >= BrakeSeconds)
-            {
-                g_phase[i] = PhaseDrop;
-                g_dropFrom[i] = g_lift[i];
-                t = 0.0f;
-            }
-
-            break;
-        case PhaseDrop:
-            g_lift[i] = g_dropFrom[i] * (1.0f - EaseIn(t / DropSeconds));
-            pose.brake = 1.0f - EaseIn(t / DropSeconds);
-            if (flying)
-            {
-                g_phase[i] = PhaseRise;
-                t = 0.0f;
-            }
-            else if (t >= DropSeconds)
+            else if (t >= CrouchSeconds)
             {
                 g_phase[i] = PhaseGround;
-                g_lift[i] = 0.0f;
                 t = 0.0f;
                 StandStill(character);
             }
 
             break;
         }
-
         // Superman entra de a poco al moverse en el aire y sale al quedarse quieto.
         const bool super = g_phase[i] == PhaseAir && character[CharMoving];
         pose.super = Approach(g_pose[i].super, super ? 1.0f : 0.0f, seconds * SuperPerSecond);
@@ -783,7 +764,7 @@ namespace
     constexpr DWORD AnimationFunction = 0x005440B0;
     const BYTE AnimationPrologue[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0xA4, 0x00, 0x00, 0x00 }; // ... SUB ESP,0xA4
     constexpr int PlayerBoneCount = 60;
-    constexpr int BonePelvis = 2, BoneLThigh = 3, BoneLCalf = 4, BoneLFoot = 5, BoneRThigh = 10, BoneRCalf = 11,
+    constexpr int BoneSpine = 17, BonePelvis = 2, BoneLThigh = 3, BoneLCalf = 4, BoneLFoot = 5, BoneRThigh = 10, BoneRCalf = 11,
         BoneRFoot = 12, BoneRClavicle = 25, BoneRUpperArm = 26, BoneRForearm = 27, BoneRHand = 28,
         BoneLClavicle = 34, BoneLUpperArm = 35, BoneLForearm = 36, BoneLHand = 37;
     constexpr DWORD BmdBoneCount = 0x22, BmdBones = 0x2C, BoneSize = 0x8C, BoneParent = 0x20, BoneDummy = 0x22;
@@ -950,7 +931,7 @@ namespace
 
     void ApplyPose(const Skeleton& skeleton, const Pose& pose, float yawDegrees)
     {
-        if (pose.crouch <= 0.0f && pose.stretch <= 0.0f && pose.super <= 0.0f && pose.brake <= 0.0f)
+        if (pose.crouch <= 0.0f && pose.stretch <= 0.0f && pose.super <= 0.0f)
         {
             return;
         }
@@ -962,14 +943,19 @@ namespace
         const Vec3 forward = Vec3{ sinf(yaw), -cosf(yaw), 0.0f } * FlightForwardSign;
         const Vec3 right = Cross(forward, up);
 
-        // Volando: brazos hacia atras a lo largo del cuerpo, hacia las caderas, con los codos apenas doblados;
-        // piernas juntas con las rodillas un poco flojas. Al inclinar el cuerpo quedan estirados hacia atras.
-        // Un poco menos que la pose entera, para que no quede rigida.
+        // Volando: brazos hacia atras a lo largo del cuerpo (el derecho mas abierto y doblado, el izquierdo mas
+        // pegado), una pierna un poco adelante y doblada y la otra atras; cada miembro con un vaiven propio y
+        // el torso apenas girado. Al inclinar el cuerpo quedan hacia atras. Un poco menos que la pose entera,
+        // para que no quede rigida.
         const float relaxed = pose.super * 0.85f;
-        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up * -0.8f - forward * 0.45f + right * 0.22f, up * -0.75f - forward * 0.55f + right * 0.12f, relaxed);
-        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, up * -0.8f - forward * 0.45f - right * 0.22f, up * -0.75f - forward * 0.55f - right * 0.12f, relaxed);
-        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -1.0f + forward * 0.12f + right * 0.06f, up * -1.0f - forward * 0.28f, relaxed);
-        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -1.0f + forward * 0.12f - right * 0.06f, up * -1.0f - forward * 0.28f, relaxed);
+        const float s = g_swayTime;
+        const float armR = 0.08f * sinf(s * 1.7f), armL = 0.08f * sinf(s * 1.7f + 2.1f);
+        const float legR = 0.10f * sinf(s * 1.3f + 0.7f), legL = 0.10f * sinf(s * 1.3f + 3.4f);
+        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up * -0.75f - forward * (0.5f + armR) + right * 0.3f, up * -0.55f - forward * (0.65f + armR) + right * 0.15f, relaxed);
+        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, up * -0.85f - forward * (0.35f + armL) - right * 0.18f, up * -0.85f - forward * (0.45f + armL) - right * 0.1f, relaxed);
+        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -1.0f + forward * (0.3f + legR) + right * 0.1f, up * -1.0f - forward * (0.4f - legR), relaxed);
+        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -1.0f - forward * (0.12f - legL) - right * 0.06f, up * -1.0f - forward * (0.15f - legL), relaxed);
+        skeleton.Rotate(BoneSpine, skeleton.Position(BoneSpine), up, (7.0f + 2.0f * sinf(s * 0.8f)) * relaxed * Pi / 180.0f);
 
         // Subiendo: brazos arriba en V, piernas derechas.
         AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up + right * 0.45f, up + right * 0.35f, pose.stretch);
@@ -983,17 +969,11 @@ namespace
         AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, forward * -0.5f - up * 0.7f + right * 0.3f, forward * -0.4f - up * 0.8f, pose.crouch);
         AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, forward * -0.5f - up * 0.7f - right * 0.3f, forward * -0.4f - up * 0.8f, pose.crouch);
 
-        // Frenando: piernas adelante, brazos adelante y abiertos.
-        AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -0.85f + forward * 0.55f + right * 0.08f, up * -1.0f + forward * 0.1f, pose.brake);
-        AimLimb(skeleton, BoneLThigh, BoneLCalf, BoneLFoot, up * -0.85f + forward * 0.55f - right * 0.08f, up * -1.0f + forward * 0.1f, pose.brake);
-        AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, forward * 0.6f + up * 0.25f + right * 0.75f, forward * 0.7f + up * 0.3f + right * 0.6f, pose.brake);
-        AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, forward * 0.6f + up * 0.25f - right * 0.75f, forward * 0.7f + up * 0.3f - right * 0.6f, pose.brake);
-
-        // Todo el cuerpo desde la pelvis: Superman casi horizontal con un vaiven lento, adelante al agacharse,
-        // hacia atras al frenar. Agachado baja la pelvis para que los pies sigan en el suelo.
+        // Todo el cuerpo desde la pelvis: inclinado al volar con un vaiven lento, adelante al agacharse.
+        // Agachado baja la pelvis para que los pies sigan en el suelo.
         const Vec3 pelvis = skeleton.Position(BonePelvis);
         const float sway = sinf(g_swayTime * 1.3f);
-        const float pitch = (60.0f + 4.0f * sinf(g_swayTime * 0.9f)) * pose.super + 25.0f * pose.crouch + 8.0f * pose.stretch - 28.0f * pose.brake;
+        const float pitch = (60.0f + 4.0f * sinf(g_swayTime * 0.9f)) * pose.super + 25.0f * pose.crouch + 8.0f * pose.stretch;
         // Girar alrededor de "derecha" con angulo positivo lleva arriba hacia atras: se gira al reves.
         skeleton.Rotate(BonePelvis, pelvis, right, -pitch * Pi / 180.0f);
         skeleton.Rotate(BonePelvis, pelvis, Normalize(Cross(right, up)), 6.0f * sway * pose.super * Pi / 180.0f);
@@ -1031,12 +1011,12 @@ namespace
             && bmd == *reinterpret_cast<BYTE* const*>(manager + 8) + static_cast<DWORD>(wings) * ModelSize;
     }
 
-    // Cuadro de las alas segun la fase del vuelo; negativo: el del juego.
-    float WingFrame(const BYTE* bmd, int i)
+    // Cuadro de las alas segun la fase del vuelo (continuo, de 0 a la cantidad de claves); negativo: el del juego.
+    float WingFrame(const BYTE* bmd, int i, short& keys)
     {
         const BYTE* actions = *reinterpret_cast<BYTE* const*>(bmd + BmdActions);
         const WORD action = *reinterpret_cast<const WORD*>(bmd + BmdCurrentAction);
-        const short keys = actions != nullptr ? *reinterpret_cast<const short*>(actions + action * ActionSize + ActionKeys) : 0;
+        keys = actions != nullptr ? *reinterpret_cast<const short*>(actions + action * ActionSize + ActionKeys) : 0;
         if (keys < 2)
         {
             return -1.0f;
@@ -1047,14 +1027,12 @@ namespace
         switch (g_phase[i])
         {
         case PhaseCrouch:
+        case PhaseSquat:
             return GlideFrame;
         case PhaseRise:
             return last * Clamp01(t / RiseSeconds); // un solo aletazo grande mientras sube
-        case PhaseBrake:
-        {
-            const float cycles = 2.0f * Clamp01(t / BrakeSeconds); // dos aletazos para frenar
-            return last * (cycles - floorf(cycles));
-        }
+        case PhaseLand:
+            return last * (1.0f - Clamp01(t / RiseSeconds)); // el mismo aletazo al reves mientras baja
         case PhaseAir:
             if (g_pose[i].super > 0.5f)
             {
@@ -1065,14 +1043,13 @@ namespace
 
             return -1.0f; // quieto en el aire: el aleteo normal de las alas
         default:
-            return -1.0f; // bajando: el aleteo normal
+            return -1.0f;
         }
     }
 
     void __fastcall AnimationHook(BYTE* bmd, void* edx, float* boneTransform, float frame, float priorFrame,
         DWORD priorAction, float* angle, float* headAngle, DWORD parent, DWORD translate)
     {
-        // El Angle que recibe es el del OBJECT (+0x108) del personaje que se dibuja.
         // El Angle que recibe es el del OBJECT (+0x108) del personaje que se dibuja. Las alas se animan con un
         // OBJECT propio de su modelo (no el del personaje), justo despues del cuerpo: se atribuyen al ultimo
         // personaje animado.
@@ -1085,11 +1062,16 @@ namespace
             BYTE* ownerCharacter = characters + owner * CharacterSize;
             if (g_phase[owner] != PhaseGround && HasWingsWithoutDinorant(ownerCharacter) && IsWingsModelOf(bmd, ownerCharacter))
             {
-                const float wingFrame = WingFrame(bmd, owner);
+                short keys = 0;
+                const float wingFrame = WingFrame(bmd, owner, keys);
                 if (wingFrame >= 0.0f)
                 {
-                    frame = wingFrame;
-                    priorFrame = wingFrame;
+                    // La funcion mezcla la clave del cuadro anterior con la del cuadro actual segun la parte
+                    // fraccionaria del actual: anterior = la clave de abajo, actual = la siguiente mas la fraccion.
+                    const float base = floorf(wingFrame);
+                    const float next = base + 1.0f >= keys ? 0.0f : base + 1.0f;
+                    priorFrame = base;
+                    frame = next + (wingFrame - base);
                 }
             }
         }
