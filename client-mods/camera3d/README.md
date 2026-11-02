@@ -303,7 +303,7 @@ dueño en el paso de lógica (`0x00501790`) y no al dibujar (`0x00503770`), así
 
 | `0x0054F710` | Acción del personaje al caminar: con el Dinorant, en los mundos 8 y 10 no pone la de correr montado (sube y baja) | Salto al principio: si vuela, el mundo es 10 durante la llamada |
 | `0x08967FE8` (200), `0x097622F0` (100) | Efectos (`OBJECT`, mismo dueño en `+0x1D8`) | Se suben y se devuelven como la montura |
-| `0x09778748` (1000) | Uniones (`0x007711C0`, dueño en `+0x1D8`), por ejemplo el remolino del buff del Elf Soldier (`0x7D02`): se dibujan con las posiciones anteriores guardadas en el paso de lógica | Mientras el dueño vuela no se dibujan (vivo en 0 durante el dibujo) |
+| `0x09778748` (1000), `0x087C5708` (500, `0xA18` bytes: vivo `+0x00`, dueño `+0x54`) | Partículas con estela (`0x007711C0`) y uniones (`0x00735DC0` borra las de un dueño), por ejemplo el remolino del buff del Elf Soldier: se dibujan con las posiciones anteriores guardadas en el paso de lógica | Mientras el dueño vuela no se dibujan (vivo en 0 durante el dibujo) |
 
 `flight.dll` exporta `float FlightHeroLift()` (la altura dibujada del personaje propio); `camera3d.dll` la usa, si
 está, para agrandar el terreno visible y la distancia de dibujo (+1 vez por cada 500 de altura), así volando no

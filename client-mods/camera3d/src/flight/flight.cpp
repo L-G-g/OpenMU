@@ -91,19 +91,24 @@ namespace
     {
         BYTE* base;
         int count;
-        bool hide; // en vez de subirlos, no se dibujan mientras el dueno vuela
+        DWORD size;  // bytes de cada elemento
+        DWORD live;  // byte "vivo"
+        DWORD owner; // puntero al OBJECT del dueno
+        bool hide;   // en vez de subirlos, no se dibujan mientras el dueno vuela
     };
 
     const AttachedArray AttachedArrays[] = {
-        { reinterpret_cast<BYTE*>(0x08791550), 10, false },  // bugs (0x00503720)
-        { reinterpret_cast<BYTE*>(0x08967FE8), 200, false }, // efectos (0x00721620)
-        { reinterpret_cast<BYTE*>(0x097622F0), 100, false }, // efectos (0x0074ABC0)
-        // Uniones (0x007711C0; 0x007716D0 borra las de un dueno), por ejemplo el remolino del buff del Elf
-        // Soldier (0x7D02): se dibujan con las posiciones anteriores que guardan en el paso de logica, asi que
-        // subir la posicion actual no las mueve. Volando no se dibujan.
-        { reinterpret_cast<BYTE*>(0x09778748), 1000, true },
+        { reinterpret_cast<BYTE*>(0x08791550), 10, ObjectSize, ObjectLive, ObjectOwner, false },  // bugs (0x00503720)
+        { reinterpret_cast<BYTE*>(0x08967FE8), 200, ObjectSize, ObjectLive, ObjectOwner, false }, // efectos (0x00721620)
+        { reinterpret_cast<BYTE*>(0x097622F0), 100, ObjectSize, ObjectLive, ObjectOwner, false }, // efectos (0x0074ABC0)
+        // Particulas con estela (0x007711C0; 0x007716D0 borra las de un dueno, tipo 0x7D02 en el buff del Elf
+        // Soldier) y uniones (0x087C5708, 0xA18 bytes; 0x00735DC0 borra las de un dueno): el remolino del buff.
+        // Se dibujan con las posiciones anteriores que guardan en el paso de logica, asi que subir la posicion
+        // actual no las mueve. Volando no se dibujan.
+        { reinterpret_cast<BYTE*>(0x09778748), 1000, ObjectSize, ObjectLive, ObjectOwner, true },
+        { reinterpret_cast<BYTE*>(0x087C5708), 500, 0xA18, 0x00, 0x54, true },
     };
-    constexpr int AttachedCount = 1310;
+    constexpr int AttachedCount = 1810;
 
     // Volando, el suelo dibujado sigue al terreno con esta rapidez (fraccion por segundo).
     constexpr float GroundFollowPerSecond = 3.0f;
@@ -549,19 +554,19 @@ namespace
         {
             for (int a = 0; a < attached.count; a++, slot++)
             {
-                BYTE* object = attached.base + a * ObjectSize;
+                BYTE* object = attached.base + a * attached.size;
                 g_attachedLifted[slot] = false;
-                if (!object[ObjectLive])
+                if (!object[attached.live])
                 {
                     continue;
                 }
 
-                const BYTE* owner = *reinterpret_cast<BYTE* const*>(object + ObjectOwner);
+                const BYTE* owner = *reinterpret_cast<BYTE* const*>(object + attached.owner);
                 const int i = owner != nullptr ? CharacterIndex(owner - CharObject) : -1;
                 if (i >= 0 && g_lifted[i] && attached.hide)
                 {
-                    g_attachedSavedZ[slot] = object[ObjectLive]; // aca se guarda el valor de "vivo"
-                    object[ObjectLive] = 0;
+                    g_attachedSavedZ[slot] = object[attached.live]; // aca se guarda el valor de "vivo"
+                    object[attached.live] = 0;
                     g_attachedLifted[slot] = true;
                 }
                 else if (i >= 0 && g_lifted[i])
@@ -599,10 +604,10 @@ namespace
             {
                 if (g_attachedLifted[slot])
                 {
-                    BYTE* object = attached.base + a * ObjectSize;
+                    BYTE* object = attached.base + a * attached.size;
                     if (attached.hide)
                     {
-                        object[ObjectLive] = static_cast<BYTE>(g_attachedSavedZ[slot]);
+                        object[attached.live] = static_cast<BYTE>(g_attachedSavedZ[slot]);
                     }
                     else
                     {
