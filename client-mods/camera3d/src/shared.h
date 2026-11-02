@@ -204,3 +204,21 @@ struct TabMapHost
 // bool StartTabMap(const TabMapHost* host): se llama una vez, despues de StartEspectros.
 using StartTabMapFunction = bool (*)(const TabMapHost* host);
 constexpr const char* StartTabMapName = "StartTabMap";
+
+// --- Efectos de habilidades (skillfx.dll) ---
+// camera3d.dll carga skillfx.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([SkillFx]
+// Enabled=0), y llama a su funcion exportada StartSkillFx, despues de tabmap.dll. skillfx.dll hace que el
+// efecto de un ataque cortado por otro (casteo seguido con mucha agilidad) se dibuje igual.
+
+constexpr int SkillFxHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a skillfx.dll.
+struct SkillFxHost
+{
+    int version;
+    LogFunction log;
+};
+
+// bool StartSkillFx(const SkillFxHost* host): se llama una vez, despues de StartTabMap.
+using StartSkillFxFunction = bool (*)(const SkillFxHost* host);
+constexpr const char* StartSkillFxName = "StartSkillFx";

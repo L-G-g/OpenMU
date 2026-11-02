@@ -67,6 +67,9 @@ void SetEspectrosKeyTick(KeyTickCallback callback);
 void LoadTabMap(LogFunction log);
 void SetTabMapKeyTick(KeyTickCallback callback);
 
+// Efectos de habilidades: carga skillfx.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadSkillFx(LogFunction log);
+
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y
 // despues de dibujar vuelve a poner las reales.
