@@ -83,6 +83,8 @@ namespace
         CharHelper = 0x22C, CharPath = 0x274, CharObject = 0x308, CharLive = 0x30C, CharPosition = 0x404,
         CharHeading = 0x418;
     constexpr short DinorantHelper = 0x1E96;     // +0x22C con el Dinorant (0x00564B20, 0x0054F710)
+    constexpr short UniriaHelper = 0x1E95, DarkHorseHelper = 0x1E97, FenrirHelper = 0x1EB8;
+    const BYTE StopActionPrologue[] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18 }; // PUSH EBP, MOV EBP,ESP, SUB ESP,0x18
     constexpr DWORD CharRun = 0x25;              // contador de correr (0x0054F710: con alas, 40 o mas vuela)
     constexpr BYTE FlyRun = 0x28;
     constexpr DWORD StopActionFunction = 0x005518F0; // void __cdecl (CHARACTER*): accion quieto
@@ -194,6 +196,57 @@ namespace
         return *reinterpret_cast<const short*>(character + CharWings) != -1
             && *reinterpret_cast<const short*>(character + CharHelper) != DinorantHelper;
     }
+
+    // Monturas que no son el Dinorant (+0x22C: 0x1E93 + numero del item 13/N): con alas, volando no se dibujan
+    // y el personaje usa las poses de volar.
+    bool IsOtherMount(short helper)
+    {
+        return helper == UniriaHelper || helper == DarkHorseHelper || helper == FenrirHelper;
+    }
+
+    int CharacterIndex(const BYTE* character);
+
+    // Con alas y sin el Dinorant, volando o todavia en el aire al aterrizar: usa las poses de volar.
+    bool UsesWingPose(const BYTE* character)
+    {
+        if (!HasWingsWithoutDinorant(character))
+        {
+            return false;
+        }
+
+        const int i = CharacterIndex(character);
+        return IsFlying(character) || (i >= 0 && g_lift[i] > 0.0f);
+    }
+
+    bool HidesMount(const BYTE* character)
+    {
+        return UsesWingPose(character) && IsOtherMount(*reinterpret_cast<const short*>(character + CharHelper));
+    }
+
+    // Mientras existe, el personaje no tiene montura para el juego (las acciones se eligen como sin ella).
+    struct WithoutMount
+    {
+        BYTE* character;
+        short helper;
+
+        explicit WithoutMount(BYTE* target)
+            : character(HidesMount(target) ? target : nullptr),
+              helper(character != nullptr ? *reinterpret_cast<short*>(target + CharHelper) : 0)
+        {
+            if (character != nullptr)
+            {
+                *reinterpret_cast<short*>(character + CharHelper) = -1;
+            }
+        }
+
+        ~WithoutMount()
+        {
+            if (character != nullptr)
+            {
+                *reinterpret_cast<short*>(character + CharHelper) = helper;
+            }
+        }
+    };
 
     // Indice del personaje en la lista, o -1 si el puntero no es el principio de un personaje.
     int CharacterIndex(const BYTE* character)
@@ -492,7 +545,7 @@ namespace
 
     void __cdecl RiderWalkHook(BYTE* character)
     {
-        if (character == nullptr || CharacterIndex(character) < 0 || !IsFlying(character))
+        if (character == nullptr || CharacterIndex(character) < 0 || !UsesWingPose(character) && !IsFlying(character))
         {
             g_riderWalkOriginal(character);
             return;
@@ -500,15 +553,43 @@ namespace
 
         // Con alas, la accion de volar (0x22/0x23, el cuerpo horizontal) se usa recien cuando el contador de
         // correr (+0x25) llega a 40; volando se usa siempre.
-        if (HasWingsWithoutDinorant(character) && character[CharRun] < FlyRun)
+        if (UsesWingPose(character) && character[CharRun] < FlyRun)
         {
             character[CharRun] = FlyRun;
         }
 
+        const WithoutMount withoutMount(character);
         const int world = *World;
         *World = IcarusWorld;
         g_riderWalkOriginal(character);
         *World = world;
+    }
+
+    // 0x005518F0 elige la accion quieto. Con alas y otra montura, volando, se elige como sin montura (parado).
+    __declspec(naked) void __cdecl StopActionOriginal(BYTE*)
+    {
+        __asm
+        {
+            push ebp
+            mov ebp, esp
+            sub esp, 0x18
+            push 0x005518F6 // StopActionFunction + 6
+            ret
+        }
+    }
+
+    RiderWalkType volatile g_stopActionOriginal = &StopActionOriginal;
+
+    void __cdecl StopActionHook(BYTE* character)
+    {
+        if (character == nullptr || CharacterIndex(character) < 0)
+        {
+            g_stopActionOriginal(character);
+            return;
+        }
+
+        const WithoutMount withoutMount(character);
+        g_stopActionOriginal(character);
     }
 
     // --- Altura (solo para dibujar) ---
@@ -615,7 +696,9 @@ namespace
 
                 const BYTE* owner = *reinterpret_cast<BYTE* const*>(object + attached.owner);
                 const int i = owner != nullptr ? CharacterIndex(owner - CharObject) : -1;
-                if (i >= 0 && g_lifted[i] && attached.hide)
+                const bool hide = attached.hide
+                    || (attached.base == AttachedArrays[0].base && i >= 0 && HidesMount(owner - CharObject)); // otra montura
+                if (i >= 0 && g_lifted[i] && hide)
                 {
                     g_attachedSavedZ[slot] = object[attached.live]; // aca se guarda el valor de "vivo"
                     object[attached.live] = 0;
@@ -800,7 +883,8 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
         || !Matches(PathFunction, PathPrologue, sizeof(PathPrologue))
         || !Matches(BugMoveFunction, BugMovePrologue, sizeof(BugMovePrologue))
         || !Matches(PathStepFunction, PathStepPrologue, sizeof(PathStepPrologue))
-        || !Matches(RiderWalkFunction, RiderWalkPrologue, sizeof(RiderWalkPrologue)))
+        || !Matches(RiderWalkFunction, RiderWalkPrologue, sizeof(RiderWalkPrologue))
+        || !Matches(StopActionFunction, StopActionPrologue, sizeof(StopActionPrologue)))
     {
         g_log("Flight: el main.exe no coincide; desactivado.");
         return false;
@@ -812,6 +896,7 @@ extern "C" __declspec(dllexport) bool StartFlight(const FlightHost* host)
         || !JumpAtStart(BugMoveFunction, &BugMoveHook, sizeof(BugMovePrologue))
         || !JumpAtStart(PathStepFunction, &PathStepHook)
         || !JumpAtStart(RiderWalkFunction, &RiderWalkHook)
+        || !JumpAtStart(StopActionFunction, &StopActionHook)
         || !RedirectCall(DispatchCallSite, &PacketHook))
     {
         g_log("Flight: no se pudo instalar.");
