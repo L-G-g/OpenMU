@@ -18,6 +18,7 @@ using MUnique.OpenMU.Pathfinding;
 public class AreaSkillAttackAction
 {
     private const short ElectricSpikeSkillId = 65;
+    private const short DrainLifeSkillId = 214;
 
     /// <summary>
     /// Performs the skill by the player at the specified area. Additionally, to the target area, a target object can be specified.
@@ -60,14 +61,36 @@ public class AreaSkillAttackAction
             return;
         }
 
+        IAttackable? extraTarget = null;
         if (skill.SkillType is SkillType.AreaSkillAutomaticHits or SkillType.AreaSkillExplicitTarget or SkillType.Buff
             || (skill.SkillType is SkillType.AreaSkillExplicitHits && hitImplicitlyForExplicitSkill))
         {
             // todo: delayed automatic hits, like evil spirit, flame, triple shot... when hitImplicitlyForExplicitSkill = true.
-            await this.PerformAutomaticHitsAsync(player, extraTargetId, targetAreaCenter, skillEntry!, skill, rotation).ConfigureAwait(false);
+            extraTarget = await this.PerformAutomaticHitsAsync(player, extraTargetId, targetAreaCenter, skillEntry!, skill, rotation).ConfigureAwait(false);
         }
 
         await player.ForEachWorldObserverAsync<IShowAreaSkillAnimationPlugIn>(p => p.ShowAreaSkillAnimationAsync(player, skill, targetAreaCenter, rotation), true).ConfigureAwait(false);
+
+        if (extraTarget is { } target && NeedsTargetedAnimation(skillEntry!))
+        {
+            // The area skill animation makes the client forget the target of the caster. The targeted animation,
+            // which has to follow it, sets the target again, so that the client can draw the effect towards it.
+            await player.ForEachWorldObserverAsync<IShowSkillAnimationPlugIn>(p => p.ShowSkillAnimationAsync(player, target, skill, true), true).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Determines whether the client needs a targeted skill animation after the area skill animation, to show the effect of the skill.
+    /// </summary>
+    /// <remarks>
+    /// The client draws the effect of Drain Life from the caster to its target when the attack animation reached its end.
+    /// The area skill animation (0x1E) resets the target of the caster in the client, so without the targeted skill
+    /// animation (0x19), which sets it again, the effect was only drawn when the player happened to click on a
+    /// target again in the meantime.
+    /// </remarks>
+    private static bool NeedsTargetedAnimation(SkillEntry skillEntry)
+    {
+        return skillEntry.GetBaseSkill().Number == DrainLifeSkillId;
     }
 
     private static bool AreaSkillSettingsAreDefault([NotNullWhen(true)] AreaSkillSettings? settings)
@@ -161,40 +184,40 @@ public class AreaSkillAttackAction
         }
     }
 
-    private async ValueTask PerformAutomaticHitsAsync(Player player, ushort extraTargetId, Point targetAreaCenter, SkillEntry skillEntry, Skill skill, byte rotation)
+    private async ValueTask<IAttackable?> PerformAutomaticHitsAsync(Player player, ushort extraTargetId, Point targetAreaCenter, SkillEntry skillEntry, Skill skill, byte rotation)
     {
         if (player.Attributes is not { } attributes)
         {
-            return;
+            return null;
         }
 
         if (attributes[Stats.IsStunned] > 0)
         {
             player.Logger.LogWarning("Probably Hacker - player {player} is attacking in stunned state", player);
-            return;
+            return null;
         }
 
         if (attributes[Stats.IsAsleep] > 0)
         {
             player.Logger.LogWarning("Probably Hacker - player {player} is attacking in sleep state", player);
-            return;
+            return null;
         }
 
         if (player.IsAtSafezone())
         {
             player.Logger.LogWarning("Probably Hacker - player {player} is attacking from safezone", player);
-            return;
+            return null;
         }
 
         // Skills that move attacker to target (e.g., Twisting Slash, Death Stab) require a weapon
         if (skill.MovesToTarget && player.Attributes[Stats.EquippedWeaponCount] == 0)
         {
-            return;
+            return null;
         }
 
         if (player.Attributes[Stats.AmmunitionConsumptionRate] > player.Attributes[Stats.AmmunitionAmount])
         {
-            return;
+            return null;
         }
 
         bool isCombo = false;
@@ -230,6 +253,8 @@ public class AreaSkillAttackAction
         {
             await player.ForEachWorldObserverAsync<IShowSkillAnimationPlugIn>(p => p.ShowComboAnimationAsync(player, extraTarget), true).ConfigureAwait(false);
         }
+
+        return extraTarget;
     }
 
     private async Task<IAttackable?> AttackTargetsAsync(Player player, ushort extraTargetId, Point targetAreaCenter, SkillEntry skillEntry, AreaSkillSettings areaSkillSettings, IEnumerable<IAttackable> targets, byte rotation, bool isCombo)
