@@ -74,22 +74,26 @@ void EffectsTick()
 
         if (hero != 0)
         {
+            // El paquete que empieza el ataque puede llegar antes o despues de que el juego sume 1 en el mismo
+            // paso, asi que un ataque nuevo se ve como 1 o como 2, y un reinicio como un valor menor al anterior.
             const int attackTime = Read<BYTE>(hero + CharAttackTime);
-            if (attackTime == 1 && g_lastAttackTime == 0)
-            {
-                g_attackStarts++;
-            }
-            else if (attackTime == 1 && g_lastAttackTime > 1)
-            {
-                g_attackRestarts++;
-            }
-            else if (attackTime == 0 && g_lastAttackTime >= 14)
+            const bool completed = g_lastAttackTime >= 14 && (attackTime == 0 || attackTime == 1);
+            if (completed)
             {
                 g_attackCompleted++;
                 if (g_lastTarget >= 0)
                 {
                     g_completedWithTarget++;
                 }
+            }
+
+            if (attackTime != 0 && (g_lastAttackTime == 0 || (completed && attackTime == 1)))
+            {
+                g_attackStarts++;
+            }
+            else if (attackTime != 0 && attackTime < g_lastAttackTime && !completed)
+            {
+                g_attackRestarts++;
             }
 
             g_lastAttackTime = attackTime;
@@ -126,15 +130,15 @@ std::string EffectsCommand(const char* arguments)
     }
 
     result += "\npropios:";
-    for (const auto& [type, count] : g_own)
+    for (const auto& entry : g_own)
     {
-        result += " " + std::to_string(type) + "x" + std::to_string(count);
+        result += " " + std::to_string(entry.first) + "x" + std::to_string(entry.second);
     }
 
     result += "\ntodos:";
-    for (const auto& [type, count] : g_all)
+    for (const auto& entry : g_all)
     {
-        result += " " + std::to_string(type) + "x" + std::to_string(count);
+        result += " " + std::to_string(entry.first) + "x" + std::to_string(entry.second);
     }
 
     return result;
