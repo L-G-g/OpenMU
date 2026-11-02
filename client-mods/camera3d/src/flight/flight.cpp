@@ -79,8 +79,13 @@ namespace
     constexpr int PathMaxPoints = 15;
     constexpr DWORD PathCount = 2, PathX = 3, PathY = 0x12;
 
-    constexpr DWORD CharKey = 0x7E, CharTargetX = 0xAC, CharTargetY = 0xB0, CharPath = 0x274, CharObject = 0x308,
-        CharLive = 0x30C, CharPosition = 0x404, CharHeading = 0x418;
+    constexpr DWORD CharKey = 0x7E, CharMoving = 0x78, CharTargetX = 0xAC, CharTargetY = 0xB0, CharWings = 0x208,
+        CharHelper = 0x22C, CharPath = 0x274, CharObject = 0x308, CharLive = 0x30C, CharPosition = 0x404,
+        CharHeading = 0x418;
+    constexpr short DinorantHelper = 0x1E96;     // +0x22C con el Dinorant (0x00564B20, 0x0054F710)
+    constexpr DWORD CharRun = 0x25;              // contador de correr (0x0054F710: con alas, 40 o mas vuela)
+    constexpr BYTE FlyRun = 0x28;
+    constexpr DWORD StopActionFunction = 0x005518F0; // void __cdecl (CHARACTER*): accion quieto
 
     // --- Objetos con dueno (OBJECT de 0x288 bytes): montura y mascotas (bugs) y efectos ---
     constexpr DWORD ObjectSize = 0x288;
@@ -135,7 +140,9 @@ namespace
 
     LogFunction g_log = nullptr;
     DispatchType g_nextDispatch = nullptr;
-    bool g_flying[IdMask + 1] = {};
+    // Por numero de objeto: 0 no vuela; si no, el factor de velocidad en porcentaje (150 = x1,5) que manda el
+    // servidor (1: el de [Flight] SpeedFactor, servidores viejos).
+    BYTE g_flying[IdMask + 1] = {};
 
     float g_speedFactor = 1.5f;
     float g_height = 350.0f;      // unidades del mundo (una baldosa son 100)
@@ -150,6 +157,8 @@ namespace
     WORD g_liftKey[CharacterCount] = {};
     float g_savedZ[CharacterCount] = {};
     bool g_lifted[CharacterCount] = {};
+    float g_target[CharacterCount] = {};
+    bool g_transition[CharacterCount] = {};
     float g_ground[CharacterCount] = {};
     float g_offset[CharacterCount] = {};
     float g_attachedSavedZ[AttachedCount] = {};
@@ -170,7 +179,20 @@ namespace
 
     bool IsFlying(const BYTE* character)
     {
-        return character != nullptr && g_flying[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask];
+        return character != nullptr && g_flying[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask] != 0;
+    }
+
+    float SpeedFactorOf(const BYTE* character)
+    {
+        const BYTE percent = g_flying[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask];
+        return percent == 0 ? 1.0f : percent == 1 ? g_speedFactor : percent / 100.0f;
+    }
+
+    // Vuela con alas (no montado en el Dinorant, que tiene su propia pose de jinete).
+    bool HasWingsWithoutDinorant(const BYTE* character)
+    {
+        return *reinterpret_cast<const short*>(character + CharWings) != -1
+            && *reinterpret_cast<const short*>(character + CharHelper) != DinorantHelper;
     }
 
     // Indice del personaje en la lista, o -1 si el puntero no es el principio de un personaje.
@@ -197,7 +219,7 @@ namespace
                 if (packet[0] == 0xC1 && size >= 6)
                 {
                     const WORD id = ReadId(packet + 3);
-                    g_flying[id] = packet[5] != 0;
+                    g_flying[id] = packet[5];
                     const DWORD hero = *Hero;
                     if (packet[5] == 0 && hero != 0 && (*reinterpret_cast<const WORD*>(hero + CharKey) & IdMask) == id)
                     {
@@ -214,7 +236,7 @@ namespace
                 const int count = size > header ? packet[header] : 0;
                 for (int i = 0; i < count && header + 1 + i * 2 + 2 <= size; i++)
                 {
-                    g_flying[ReadId(packet + header + 1 + i * 2)] = false;
+                    g_flying[ReadId(packet + header + 1 + i * 2)] = 0;
                 }
             }
         }
@@ -242,7 +264,7 @@ namespace
     float __cdecl SpeedHook(BYTE* character)
     {
         const float speed = g_speedOriginal(character);
-        return IsFlying(character) ? speed * g_speedFactor : speed;
+        return IsFlying(character) ? speed * SpeedFactorOf(character) : speed;
     }
 
     // --- Camino ---
@@ -476,6 +498,13 @@ namespace
             return;
         }
 
+        // Con alas, la accion de volar (0x22/0x23, el cuerpo horizontal) se usa recien cuando el contador de
+        // correr (+0x25) llega a 40; volando se usa siempre.
+        if (HasWingsWithoutDinorant(character) && character[CharRun] < FlyRun)
+        {
+            character[CharRun] = FlyRun;
+        }
+
         const int world = *World;
         *World = IcarusWorld;
         g_riderWalkOriginal(character);
@@ -519,10 +548,24 @@ namespace
                 // Otro personaje en ese lugar: empieza en el suelo (o ya arriba, si aparecio volando).
                 g_liftKey[i] = key;
                 g_lift[i] = g_flying[key] ? g_height : 0.0f;
+                g_target[i] = g_lift[i];
+                g_transition[i] = false;
                 g_ground[i] = reinterpret_cast<const float*>(character + CharPosition)[2];
             }
 
             const float target = g_flying[key] ? g_height : 0.0f;
+            if (target != g_target[i])
+            {
+                // Despega o aterriza: con alas, quieto, aletea (la accion de caminar, que con alas es la de volar)
+                // mientras sube o baja, y al llegar vuelve a quedarse quieto.
+                g_target[i] = target;
+                g_transition[i] = HasWingsWithoutDinorant(character) && !character[CharMoving];
+                if (g_transition[i])
+                {
+                    reinterpret_cast<RiderWalkType>(RiderWalkFunction)(character);
+                }
+            }
+
             if (g_lift[i] < target)
             {
                 g_lift[i] = g_lift[i] + step > target ? target : g_lift[i] + step;
@@ -530,6 +573,15 @@ namespace
             else if (g_lift[i] > target)
             {
                 g_lift[i] = g_lift[i] - step < target ? target : g_lift[i] - step;
+            }
+
+            if (g_transition[i] && g_lift[i] == target)
+            {
+                g_transition[i] = false;
+                if (!character[CharMoving])
+                {
+                    reinterpret_cast<RiderWalkType>(StopActionFunction)(character);
+                }
             }
 
             float* position = reinterpret_cast<float*>(character + CharPosition);

@@ -13,8 +13,8 @@ using MUnique.OpenMU.Network;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// Sends <c>C1 06 FE [object id, big endian] [1 flying, 0 not]</c> when a player starts or stops flying,
-/// or a flying player comes into view. This packet is not part of the original protocol; it's understood
+/// Sends <c>C1 06 FE [object id, big endian] [speed factor in percent while flying, 0 not]</c> when a player
+/// starts or stops flying, changes its speed (other wings), or a flying player comes into view. This packet is not part of the original protocol; it's understood
 /// by the client mod flight.dll of the PeroniaMU season 6 client. The original client ignores codes above 0xF9.
 /// </summary>
 [PlugIn]
@@ -50,10 +50,13 @@ public class ShowFlightStatePlugIn : IShowFlightStatePlugIn
             span[1] = Length;
             span[2] = Code;
             BinaryPrimitives.WriteUInt16BigEndian(span[3..], id);
-            span[5] = isFlying ? (byte)1 : (byte)0;
+            span[5] = isFlying ? SpeedPercent(player.FlightSpeedFactor) : (byte)0;
             return Length;
         }
 
         await connection.SendAsync(Write).ConfigureAwait(false);
     }
+
+    // The speed factor in percent (150 = x1.5); at least 2, because 1 meant "flying at the factor of camera3d.ini".
+    private static byte SpeedPercent(float factor) => (byte)Math.Clamp((int)Math.Round(factor * 100), 2, byte.MaxValue);
 }

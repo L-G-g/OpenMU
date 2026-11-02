@@ -204,6 +204,11 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     /// </summary>
     public bool IsFlying { get; internal set; }
 
+    /// <summary>
+    /// Gets the factor of the movement speed while flying (Dinorant or wings), see <see cref="Flight.FlightPlugIn"/>.
+    /// </summary>
+    public float FlightSpeedFactor { get; internal set; }
+
     /// <inheritdoc />
     public TimeSpan StepDelay => this._movement.StepDelay;
 

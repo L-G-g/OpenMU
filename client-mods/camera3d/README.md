@@ -260,24 +260,31 @@ al llegar, al cambiar de mapa, al morir o si el jugador mueve al personaje de ot
 
 ## Monturas voladoras (flight.dll)
 
-Con el Dinorant equipado, Shift+V (o `/volar` en el chat) despega: el personaje sube, vuela por encima de
-paredes, árboles y casas (no por encima del vacío) y va un 50 % más rápido. Volando no se puede atacar ni usar
-skills, y los monstruos no lo atacan. Otra vez Shift+V aterriza, solo sobre suelo caminable. Quien decide es el servidor (plugin "Flight" de
-OpenMU: Dinorant, mapas comunes, no en combate ni en la zona segura); `camera3d.dll` carga `flight.dll` si está en la misma carpeta
-(`src/loadflight.cpp`):
+Con el Dinorant o alas equipadas, Shift+V (o `/volar` en el chat) despega: el personaje sube, vuela por encima de
+paredes, árboles y casas (no por encima del vacío) y va más rápido: x1,5 con el Dinorant o alas de primer nivel,
+x1,75 con las de segundo (y las capas de Lord y Fighter), x2 con las de tercero; con las dos cosas, la más rápida.
+Volando no se puede atacar ni usar skills, y los monstruos no lo atacan. Otra vez Shift+V aterriza, solo sobre
+suelo caminable. Quien decide es el servidor (plugin "Flight" de OpenMU: Dinorant o alas, mapas comunes, no en
+combate ni en la zona segura); `camera3d.dll` carga `flight.dll` si está en la misma carpeta (`src/loadflight.cpp`).
+
+Con alas (sin el Dinorant): al despegar y aterrizar aletea en el lugar (la acción de volar) mientras sube o baja,
+quieto en el aire queda en la pose de parado, y moviéndose usa la acción de volar (`0x22`/`0x23`, el cuerpo
+horizontal). Con el Dinorant queda la pose de jinete de Icarus.
 
 ```
 [Flight]
 Enabled=1           ; 0: no se carga flight.dll
-SpeedFactor=1.5     ; igual que "Speed factor" del plugin del servidor
+SpeedFactor=1.5     ; solo con servidores que no mandan el factor de cada uno
 Height=350          ; altura de vuelo (una baldosa son 100)
 ClimbPerSecond=250  ; velocidad al despegar y aterrizar
 Key=V               ; letra, número o código de tecla en hexadecimal (0x56); 0 sin tecla
 KeyShift=1          ; 1: Shift + la tecla
 ```
 
-El servidor manda `C1 06 FE [número del objeto, 2 bytes big endian] [1 vuela, 0 no]` cuando alguien despega o
-aterriza y cuando uno que vuela entra a la vista; el `main.exe` original lo ignora.
+El servidor manda `C1 06 FE [número del objeto, 2 bytes big endian] [factor de velocidad en %, 0 no vuela]`
+cuando alguien despega, aterriza o cambia de alas, y cuando uno que vuela entra a la vista; el `main.exe` original
+lo ignora. Un 1 (servidores viejos) usa `SpeedFactor`.
+
 
 `src/flight/flight.cpp`:
 
@@ -301,7 +308,7 @@ dueño en el paso de lógica (`0x00501790`) y no al dibujar (`0x00503770`), así
 | `0x00501790` | Paso de un bug (`OBJECT*`, flag): el Dinorant (bug `0x143`) usa las acciones de vuelo (1, 3, 5, 7, alas abiertas) si el mundo (`0x00E61E18`) es 8 o 10 | Salto al principio (9 bytes al trampolín): si el dueño vuela, el mundo es 10 durante la llamada |
 | `0x00542D20` (final) | Escribe el camino: `PATH+2` cantidad de puntos (con el de inicio), `+3` las x, `+0x12` las y (15 como máximo), `+0`/`+1` en 0 | Volando se escribe una línea recta (Bresenham, pasos de 8 direcciones) en vez del A*, que zigzaguea; si la línea pisa una baldosa `0x08` se usa el A* con pared 8 |
 
-| `0x0054F710` | Acción del personaje al caminar: con el Dinorant, en los mundos 8 y 10 no pone la de correr montado (sube y baja) | Salto al principio: si vuela, el mundo es 10 durante la llamada |
+| `0x0054F710` | Acción del personaje al caminar: con el Dinorant, en los mundos 8 y 10 no pone la de correr montado (sube y baja); con alas (`+0x208`) fuera de la zona segura usa la de volar (`0x22`/`0x23`) cuando el contador de correr (`+0x25`) llega a 40 | Salto al principio: si vuela, el mundo es 10 durante la llamada y, con alas, el contador queda en 40. Al despegar y aterrizar con alas se la llama quieto (aletea) y al llegar arriba o al suelo se llama a `0x005518F0` (acción quieto) |
 | `0x08967FE8` (200), `0x097622F0` (100) | Efectos (`OBJECT`, mismo dueño en `+0x1D8`) | Se suben y se devuelven como la montura |
 | `0x09778748` (1000), `0x087C5708` (500, `0xA18` bytes: vivo `+0x00`, dueño `+0x54`) | Partículas con estela (`0x007711C0`) y uniones (`0x00735DC0` borra las de un dueño), por ejemplo el remolino del buff del Elf Soldier: se dibujan con las posiciones anteriores guardadas en el paso de lógica | Mientras el dueño vuela no se dibujan (vivo en 0 durante el dibujo) |
 

@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using MUnique.OpenMU.AttributeSystem;
+using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.GameLogic.Views.World;
@@ -15,13 +16,14 @@ using MUnique.OpenMU.Pathfinding;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// Lets players fly on their Dinorant (<c>/volar</c>, or the key of the flight.dll client mod):
+/// Lets players fly on their Dinorant or with their wings (<c>/volar</c>, or the key of the flight.dll client mod):
 /// a flying player walks over blocked tiles (walls, trees, houses), but not over tiles without ground,
-/// and moves faster by <see cref="FlightConfiguration.SpeedFactor"/>. Flying is movement only: no attacks
+/// and moves faster by the factor of the Dinorant or of the level of the wings, the higher one
+/// (<see cref="GetSpeedFactor"/>). Flying is movement only: no attacks
 /// and no skills, and monsters don't attack a flying player. It can't be started in combat or in a safezone
 /// (entering one lands the player), and only on the allowed regular maps, never in a mini game.
-/// A player lands only on a walkable tile; when the flight is ended by force (the Dinorant is taken off or
-/// breaks), the player is put on the nearest walkable tile.
+/// A player lands only on a walkable tile; when the flight is ended by force (the Dinorant or the wings are
+/// taken off or break), the player is put on the nearest walkable tile.
 /// </summary>
 [PlugIn]
 [Display(Name = nameof(PlugInResources.FlightPlugIn_Name), Description = nameof(PlugInResources.FlightPlugIn_Description), ResourceType = typeof(PlugInResources))]
@@ -46,6 +48,12 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
 
     private const byte DinorantNumber = 3;
 
+    private const byte WingsGroup = 12;
+
+    private const byte CapeOfLordGroup = 13;
+
+    private const byte CapeOfLordNumber = 30;
+
     // The plugin manager creates an instance for each plugin point (hits, map removal, moves...) besides the
     // feature instance of /volar, so the state of the players is shared by all of them.
     private static readonly ConditionalWeakTable<Player, StrongBox<long>> LastCombatTicks = new();
@@ -68,6 +76,37 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
     public static bool IsFlyableTile(GameMapTerrain terrain, Point point)
     {
         return (terrain.AttributeMap[point.X, point.Y] & (byte)TerrainAttributeType.NoGround) == 0;
+    }
+
+    /// <summary>
+    /// Gets the level of the wings: 1 for the first wings (and the small ones), 2 for the second wings and the
+    /// capes of Lord and Fighter, 3 for the third wings and the capes of Emperor and Overrule.
+    /// </summary>
+    /// <param name="definition">The item definition.</param>
+    /// <returns>The level of the wings; 0, if the item is no wing.</returns>
+    public static int GetWingLevel(ItemDefinition? definition) => definition switch
+    {
+        { Group: WingsGroup, Number: 0 or 1 or 2 or 41 or (>= 130 and <= 135) } => 1,
+        { Group: WingsGroup, Number: 3 or 4 or 5 or 6 or 42 or 49 } or { Group: CapeOfLordGroup, Number: CapeOfLordNumber } => 2,
+        { Group: WingsGroup, Number: (>= 36 and <= 40) or 43 or 50 } => 3,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Gets the speed factor with which the player flies: the one of the Dinorant or of the wings, the higher one.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <returns>The speed factor; 0, if the player has neither the Dinorant nor wings equipped.</returns>
+    public static float GetSpeedFactor(Player player, FlightConfiguration configuration)
+    {
+        var factor = HasDinorant(player) ? configuration.SpeedFactor : 0;
+        if (player.Inventory?.GetItem(InventoryConstants.WingsSlot) is { Durability: > 0.0 } wings)
+        {
+            factor = Math.Max(factor, configuration.GetWingsSpeedFactor(GetWingLevel(wings.Definition)));
+        }
+
+        return factor;
     }
 
     /// <inheritdoc />
@@ -149,23 +188,35 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
     /// <inheritdoc />
     public async ValueTask ItemMovedAsync(Player player, Item item)
     {
-        if (player.IsFlying && !HasDinorant(player))
+        if (!player.IsFlying)
+        {
+            return;
+        }
+
+        var factor = GetSpeedFactor(player, this.CurrentConfiguration);
+        if (factor <= 0)
         {
             await this.ForceLandingAsync(player).ConfigureAwait(false);
+        }
+        else if (Math.Abs(factor - player.FlightSpeedFactor) > 0.001f)
+        {
+            // Other wings (or the Dinorant instead of the wings): the speed follows them.
+            await this.SetSpeedFactorAsync(player, factor).ConfigureAwait(false);
+            await player.ForEachWorldObserverAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(player, true), true).ConfigureAwait(false);
         }
     }
 
     /// <inheritdoc />
     public void ItemDestroyed(Item item)
     {
-        if (item.Definition is not { Group: DinorantGroup, Number: DinorantNumber })
+        if (item.Definition is not ({ Group: DinorantGroup, Number: DinorantNumber } or { Group: WingsGroup } or { Group: CapeOfLordGroup, Number: CapeOfLordNumber }))
         {
             return;
         }
 
         foreach (var player in SpeedElements.Keys)
         {
-            if (!HasDinorant(player))
+            if (GetSpeedFactor(player, this.CurrentConfiguration) <= 0)
             {
                 _ = this.ForceLandingSafeAsync(player);
             }
@@ -247,9 +298,10 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
             return;
         }
 
-        if (!HasDinorant(player))
+        var factor = GetSpeedFactor(player, configuration);
+        if (factor <= 0)
         {
-            await player.ShowBlueMessageAsync("Para volar necesitas el Dinorant equipado.").ConfigureAwait(false);
+            await player.ShowBlueMessageAsync("Para volar necesitas alas o el Dinorant equipado.").ConfigureAwait(false);
             return;
         }
 
@@ -271,21 +323,9 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
             return;
         }
 
-        if (SpeedElements.TryRemove(player, out var staleElement))
-        {
-            // Left over by a flight which didn't end cleanly; it must not block the new one.
-            player.Logger.LogWarning("Removing a stale flight speed element of {Player}", player);
-            attributes.RemoveElement(staleElement, Stats.MovementSpeedFactor);
-        }
-
-        var speedElement = new ConstantElement(configuration.SpeedFactor > 0 ? configuration.SpeedFactor : 1, AggregateType.Multiplicate);
-        SpeedElements[player] = speedElement;
-
-        attributes.AddElement(speedElement, Stats.MovementSpeedFactor);
+        // A stale element (of a flight which didn't end cleanly) is replaced, so it can't block the new one.
+        await this.SetSpeedFactorAsync(player, factor).ConfigureAwait(false);
         player.IsFlying = true;
-
-        // The speed check of the anti-cheat starts fresh with the new speed.
-        await ResetSpeedCheckAsync(player).ConfigureAwait(false);
         await player.ForEachWorldObserverAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(player, true), true).ConfigureAwait(false);
         await player.ShowBlueMessageAsync("Estas volando. Escribi /volar de nuevo para aterrizar.").ConfigureAwait(false);
     }
@@ -359,7 +399,28 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
             await player.MoveAsync(landingTile).ConfigureAwait(false);
         }
 
-        await player.ShowBlueMessageAsync("Sin el Dinorant no podes seguir volando.").ConfigureAwait(false);
+        await player.ShowBlueMessageAsync("Sin alas ni Dinorant no podes seguir volando.").ConfigureAwait(false);
+    }
+
+    private async ValueTask SetSpeedFactorAsync(Player player, float factor)
+    {
+        if (player.Attributes is not { } attributes)
+        {
+            return;
+        }
+
+        if (SpeedElements.TryRemove(player, out var oldElement))
+        {
+            attributes.RemoveElement(oldElement, Stats.MovementSpeedFactor);
+        }
+
+        var speedElement = new ConstantElement(factor, AggregateType.Multiplicate);
+        SpeedElements[player] = speedElement;
+        attributes.AddElement(speedElement, Stats.MovementSpeedFactor);
+        player.FlightSpeedFactor = factor;
+
+        // The speed check of the anti-cheat starts fresh with the new speed.
+        await ResetSpeedCheckAsync(player).ConfigureAwait(false);
     }
 
     private async ValueTask EndFlightAsync(Player player, bool notifyObservers)
@@ -375,6 +436,7 @@ public sealed class FlightPlugIn : IFeaturePlugIn,
         }
 
         player.IsFlying = false;
+        player.FlightSpeedFactor = 0;
         await ResetSpeedCheckAsync(player).ConfigureAwait(false);
         if (notifyObservers && player.CurrentMap is not null)
         {

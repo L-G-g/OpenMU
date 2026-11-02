@@ -122,6 +122,55 @@ public class FlightTests
         Assert.That(player.IsFlying, Is.True, "The flight starts again after the warp.");
     }
 
+    /// <summary>
+    /// Tests the levels of the wings, including the capes and the small wings.
+    /// </summary>
+    /// <param name="group">The item group.</param>
+    /// <param name="number">The item number.</param>
+    /// <param name="expectedLevel">The expected level.</param>
+    [TestCase(12, 0, 1)] // Wings of Elf
+    [TestCase(12, 41, 1)] // Wings of Curse
+    [TestCase(12, 130, 1)] // Small Cape of Lord
+    [TestCase(12, 5, 2)] // Wings of Dragon
+    [TestCase(12, 42, 2)] // Wings of Despair
+    [TestCase(12, 49, 2)] // Cape of Fighter
+    [TestCase(13, 30, 2)] // Cape of Lord
+    [TestCase(12, 36, 3)] // Wing of Storm
+    [TestCase(12, 43, 3)] // Wing of Dimension
+    [TestCase(12, 50, 3)] // Cape of Overrule
+    [TestCase(12, 15, 0)] // Jewel of Chaos
+    [TestCase(13, 3, 0)] // Dinorant
+    public void WingLevels(int group, int number, int expectedLevel)
+    {
+        var definition = new Persistence.BasicModel.ItemDefinition { Group = (byte)group, Number = (short)number };
+        Assert.That(FlightPlugIn.GetWingLevel(definition), Is.EqualTo(expectedLevel));
+    }
+
+    /// <summary>
+    /// Tests that the speed factor follows the level of the wings, and that the higher one wins with the Dinorant.
+    /// </summary>
+    [Test]
+    public async Task SpeedFactorOfWingsAndDinorantAsync()
+    {
+        var configuration = new FlightConfiguration();
+        var player = await PlayerTestHelper.CreatePlayerAsync().ConfigureAwait(false);
+        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.Zero, "Without wings or Dinorant.");
+
+        await player.Inventory!.AddItemAsync(DataModel.InventoryConstants.WingsSlot, CreateItem(12, 36)).ConfigureAwait(false);
+        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.EqualTo(2.0f), "Third wings.");
+
+        await player.Inventory.RemoveItemAsync(player.Inventory.GetItem(DataModel.InventoryConstants.WingsSlot)!).ConfigureAwait(false);
+        await player.Inventory.AddItemAsync(DataModel.InventoryConstants.WingsSlot, CreateItem(12, 5)).ConfigureAwait(false);
+        await player.Inventory.AddItemAsync(DataModel.InventoryConstants.PetSlot, CreateItem(13, 3)).ConfigureAwait(false);
+        Assert.That(FlightPlugIn.GetSpeedFactor(player, configuration), Is.EqualTo(1.75f), "Second wings are faster than the Dinorant.");
+    }
+
+    private static Persistence.BasicModel.Item CreateItem(byte group, short number) => new()
+    {
+        Durability = 255,
+        Definition = new Persistence.BasicModel.ItemDefinition { Group = group, Number = number },
+    };
+
     private static async ValueTask<Monster> CreateMonsterAsync(IGameContext gameContext)
     {
         var map = await gameContext.GetMapAsync(0).ConfigureAwait(false);

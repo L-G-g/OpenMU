@@ -16,11 +16,29 @@ public class FlightConfiguration
     public const string DefaultAllowedMapNumbers = "0,1,2,3,4,7,8,33,34,37,38,51,56,57,63,80,81";
 
     /// <summary>
-    /// Gets or sets the factor which is applied to the movement speed while flying.
-    /// The flight.dll client mod applies the same factor, so the client and the server stay in step.
+    /// Gets or sets the factor which is applied to the movement speed while flying on the Dinorant.
+    /// The server sends the factor of each flying player to the flight.dll client mod, so they stay in step.
     /// </summary>
-    [Display(Name = "Speed factor", Description = "Factor of the movement speed while flying. flight.dll uses the same value (camera3d.ini [Flight] SpeedFactor).")]
+    [Display(Name = "Speed factor (Dinorant)", Description = "Factor of the movement speed while flying on the Dinorant.")]
     public float SpeedFactor { get; set; } = 1.5f;
+
+    /// <summary>
+    /// Gets or sets the factor of the movement speed while flying with wings of the first level.
+    /// </summary>
+    [Display(Name = "Speed factor (1st wings)", Description = "Factor of the movement speed while flying with wings of the first level (Elf, Heaven, Satan, Curse and the small wings).")]
+    public float FirstWingsSpeedFactor { get; set; } = 1.5f;
+
+    /// <summary>
+    /// Gets or sets the factor of the movement speed while flying with wings of the second level.
+    /// </summary>
+    [Display(Name = "Speed factor (2nd wings)", Description = "Factor of the movement speed while flying with wings of the second level (Spirits, Soul, Dragon, Darkness, Despair, the capes of Lord and Fighter).")]
+    public float SecondWingsSpeedFactor { get; set; } = 1.75f;
+
+    /// <summary>
+    /// Gets or sets the factor of the movement speed while flying with wings of the third level.
+    /// </summary>
+    [Display(Name = "Speed factor (3rd wings)", Description = "Factor of the movement speed while flying with wings of the third level (Storm, Eternal, Illusion, Ruin, Dimension, the capes of Emperor and Overrule).")]
+    public float ThirdWingsSpeedFactor { get; set; } = 2.0f;
 
     /// <summary>
     /// Gets or sets the seconds after the last hit (given or received) during which a player is in combat
@@ -34,6 +52,19 @@ public class FlightConfiguration
     /// </summary>
     [Display(Name = "Allowed map numbers", Description = "Comma separated map numbers on which players can fly. Never inside a mini game (events, dungeons).")]
     public string AllowedMapNumbers { get; set; } = DefaultAllowedMapNumbers;
+
+    /// <summary>
+    /// Gets the speed factor of the wings of the specified level.
+    /// </summary>
+    /// <param name="wingLevel">The level of the wings (1 to 3), see <see cref="FlightPlugIn.GetWingLevel"/>.</param>
+    /// <returns>The speed factor; 0, if the level can't fly.</returns>
+    public float GetWingsSpeedFactor(int wingLevel) => wingLevel switch
+    {
+        1 => this.FirstWingsSpeedFactor,
+        2 => this.SecondWingsSpeedFactor,
+        3 => this.ThirdWingsSpeedFactor,
+        _ => 0,
+    };
 
     /// <summary>
     /// Determines whether flying is allowed on the specified map.
