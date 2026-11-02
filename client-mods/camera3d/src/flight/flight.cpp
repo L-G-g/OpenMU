@@ -64,6 +64,7 @@ namespace
     constexpr DWORD TurnFunction = 0x00540EA0;      // float __cdecl (angulo, destino, paso)
     constexpr float TileSize = 100.0f;              // como 0x005428B0: (baldosa + 0,5) * 100
     constexpr float ArriveDistance = 20.0f;         // 0x00D23600
+    constexpr DWORD SendPathFunction = 0x005A3C70;  // void __cdecl (CHARACTER*, OBJECT*): manda el PATH al servidor (C1 D4)
     constexpr float TurnLimit = 45.0f;              // 0x00D2AF68
     constexpr DWORD SendChatFunction = 0x005BDE40;  // void __cdecl (const char* texto)
     int* const ChatWait = reinterpret_cast<int*>(0x08793728);
@@ -138,12 +139,15 @@ namespace
     using BugMoveType = char(__cdecl*)(BYTE*, char);
     using RiderWalkType = void(__cdecl*)(BYTE*);
     using PathStepType = char(__cdecl*)(BYTE*, char);
+    using SendPathType = void(__cdecl*)(BYTE*, BYTE*);
     using AngleToType = float(__cdecl*)(float, float, float, float);
     using AngleDiffType = float(__cdecl*)(float, float, int);
     using TurnType = float(__cdecl*)(float, float, float);
     using SendChatType = void(__cdecl*)(const char*);
 
     LogFunction g_log = nullptr;
+    bool g_pendingDestination = false; // el propio vuela hacia un destino mas lejos que el tramo actual
+    BYTE g_destinationX = 0, g_destinationY = 0;
     DispatchType g_nextDispatch = nullptr;
     // Por numero de objeto: 0 no vuela; si no, el factor de velocidad en porcentaje (150 = x1,5) que manda el
     // servidor (1: el de [Flight] SpeedFactor, servidores viejos).
@@ -179,6 +183,8 @@ namespace
 
     Phase g_phase[CharacterCount] = {};
     float g_phaseTime[CharacterCount] = {};
+    float g_sinceMoving[CharacterCount] = {};
+    constexpr float MovingPoseHoldSeconds = 0.7f;
     float g_dropFrom[CharacterCount] = {};
     Pose g_pose[CharacterCount] = {};
     float g_swayTime = 0.0f;
@@ -422,6 +428,16 @@ namespace
             {
                 if (StraightPath(sx, sy, tx, ty, path))
                 {
+                    // El camino (y el paquete de caminar, 0x005BD4C0) llega a 15 puntos: si el destino queda mas
+                    // lejos, el propio sigue con otro tramo al llegar (ver PathStepHook).
+                    if (reinterpret_cast<DWORD>(character) == *Hero)
+                    {
+                        const int count = path[PathCount];
+                        g_pendingDestination = path[PathX + count - 1] != tx || path[PathY + count - 1] != ty;
+                        g_destinationX = static_cast<BYTE>(tx);
+                        g_destinationY = static_cast<BYTE>(ty);
+                    }
+
                     return true;
                 }
 
@@ -493,6 +509,22 @@ namespace
         const float toEndY = position[1] - endY;
         if (toEndX * toEndX + toEndY * toEndY < ArriveDistance * ArriveDistance)
         {
+            const BYTE lastX = path[PathX + count - 1];
+            const BYTE lastY = path[PathY + count - 1];
+            if (g_pendingDestination && reinterpret_cast<DWORD>(character) == *Hero
+                && StraightPath(lastX, lastY, g_destinationX, g_destinationY, path))
+            {
+                // Sigue sin pararse con el tramo siguiente hacia el destino, y se lo manda al servidor como el juego
+                // (0x005A3C70 arma el paquete con el PATH y deja al personaje caminando).
+                const int nextCount = path[PathCount];
+                g_pendingDestination = path[PathX + nextCount - 1] != g_destinationX || path[PathY + nextCount - 1] != g_destinationY;
+                *reinterpret_cast<DWORD*>(character + CharTargetX) = path[PathX + 1];
+                *reinterpret_cast<DWORD*>(character + CharTargetY) = path[PathY + 1];
+                reinterpret_cast<SendPathType>(SendPathFunction)(character, character + CharObject);
+                return 0;
+            }
+
+            g_pendingDestination = false;
             path[0] = static_cast<BYTE>(count - 1);
             *reinterpret_cast<DWORD*>(character + CharTargetX) = path[PathX + count - 1];
             *reinterpret_cast<DWORD*>(character + CharTargetY) = path[PathY + count - 1];
@@ -749,7 +781,10 @@ namespace
             break;
         }
         // Superman entra de a poco al moverse en el aire y sale al quedarse quieto.
-        const bool super = g_phase[i] == PhaseAir && character[CharMoving];
+        // Se mantiene un momento al pararse: los trayectos largos son tramos de 15 baldosas y entre uno y otro el
+        // personaje se para un instante; asi la pose no se corta.
+        g_sinceMoving[i] = character[CharMoving] ? 0.0f : g_sinceMoving[i] + seconds;
+        const bool super = g_phase[i] == PhaseAir && g_sinceMoving[i] < MovingPoseHoldSeconds;
         pose.super = Approach(g_pose[i].super, super ? 1.0f : 0.0f, seconds * SuperPerSecond);
         g_pose[i] = pose;
     }
@@ -949,8 +984,8 @@ namespace
         // para que no quede rigida.
         const float relaxed = pose.super * 0.72f;
         const float s = g_swayTime;
-        const float armR = 0.08f * sinf(s * 1.7f), armL = 0.08f * sinf(s * 1.7f + 2.1f);
-        const float legR = 0.10f * sinf(s * 1.3f + 0.7f), legL = 0.10f * sinf(s * 1.3f + 3.4f);
+        const float armR = 0.12f * sinf(s * 1.7f), armL = 0.12f * sinf(s * 1.7f + 2.1f);
+        const float legR = 0.15f * sinf(s * 1.3f + 0.7f), legL = 0.15f * sinf(s * 1.3f + 3.4f);
         AimLimb(skeleton, BoneRUpperArm, BoneRForearm, BoneRHand, up * -0.75f - forward * (0.5f + armR) + right * 0.3f, up * -0.55f - forward * (0.65f + armR) + right * 0.15f, relaxed);
         AimLimb(skeleton, BoneLUpperArm, BoneLForearm, BoneLHand, up * -0.85f - forward * (0.35f + armL) - right * 0.18f, up * -0.85f - forward * (0.45f + armL) - right * 0.1f, relaxed);
         AimLimb(skeleton, BoneRThigh, BoneRCalf, BoneRFoot, up * -1.0f + forward * (0.3f + legR) + right * 0.1f, up * -1.0f - forward * (0.4f - legR), relaxed);
@@ -973,10 +1008,10 @@ namespace
         // Agachado baja la pelvis para que los pies sigan en el suelo.
         const Vec3 pelvis = skeleton.Position(BonePelvis);
         const float sway = sinf(g_swayTime * 1.3f);
-        const float pitch = (60.0f + 4.0f * sinf(g_swayTime * 0.9f)) * pose.super + 25.0f * pose.crouch + 8.0f * pose.stretch;
+        const float pitch = (60.0f + 6.0f * sinf(g_swayTime * 0.9f)) * pose.super + 25.0f * pose.crouch + 8.0f * pose.stretch;
         // Girar alrededor de "derecha" con angulo positivo lleva arriba hacia atras: se gira al reves.
         skeleton.Rotate(BonePelvis, pelvis, right, -pitch * Pi / 180.0f);
-        skeleton.Rotate(BonePelvis, pelvis, Normalize(Cross(right, up)), 6.0f * sway * pose.super * Pi / 180.0f);
+        skeleton.Rotate(BonePelvis, pelvis, Normalize(Cross(right, up)), 9.0f * sway * pose.super * Pi / 180.0f);
 
         // Volando: la espalda apenas arqueada (con una respiracion lenta) y la cabeza levantada, mirando adelante
         // y no al piso. Girar alrededor de "derecha" con angulo positivo lleva arriba hacia atras.
