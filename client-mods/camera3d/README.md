@@ -487,7 +487,7 @@ Enabled=1               ; 0: no se carga cinematicas.dll
 
 El servidor (la misma vista `ShowSpectresViewPlugIn`) marca a los rivales con `C1 06 FD 05 [objeto]` cada
 pocos segundos; un click sobre uno manda `/espectro hablar [objeto]`. El diálogo llega en
-`C2 [largo] FD 04 [objeto] [se puede pelear] [clase]` con tres textos Latin-1 terminados en 0 (nombre, lo
+`C2 [largo] FD 04 [objeto] [se puede pelear] [clase] [bit 0: con montura]` con tres textos Latin-1 terminados en 0 (nombre, lo
 que dice y por qué no se puede pelear); "Duelo" manda `/espectro duelo [objeto]`. Los demás paquetes `FD`
 siguen a `espectros.dll`.
 

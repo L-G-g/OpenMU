@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameServer.RemoteView.World;
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Text;
+using MUnique.OpenMU.DataModel;
 using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.GameLogic.Spectres;
@@ -35,7 +36,7 @@ using MUnique.OpenMU.PlugIns;
 ///   <item><c>C1 [length] FD 03 [object id, 2 bytes big endian]</c> and a name (Latin-1, ends with 0, up to <see cref="MaximumTitleLength"/>
 ///         characters): the client shows the object with this name instead of the name of at most 10 characters of the original protocol.
 ///         It's repeated every few seconds while the object is in view.</item>
-///   <item><c>C2 [length, 2 bytes big endian] FD 04 [object id, 2 bytes big endian] [can duel, 0 or 1] [kind]</c> and three texts
+///   <item><c>C2 [length, 2 bytes big endian] FD 04 [object id, 2 bytes big endian] [can duel, 0 or 1] [kind] [flags, bit 0 = mounted]</c> and three texts
 ///         (Latin-1, each ends with 0): the name of a rival of the spectre hub, what it says, and why the player may not duel it now
 ///         (empty if it may). cinematicas.dll shows it in a scene in which the camera looks at the rival, with the buttons
 ///         Duelo (sends <c>/espectro duelo [object id]</c>) and Volver mas tarde.</item>
@@ -222,8 +223,9 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
             return;
         }
 
-        const int headerLength = PanelHeaderLength + 4;
+        const int headerLength = PanelHeaderLength + 5;
         var id = rival.GetId(this._player);
+        var isMounted = rival.Inventory?.GetItem(InventoryConstants.PetSlot)?.Definition is { Group: 13, Number: 2 or 3 or 4 or 37 };
         var titleBytes = Encoding.Latin1.GetBytes(title.Length > MaximumTitleLength ? title[..MaximumTitleLength] : title);
         var textBytes = Encoding.Latin1.GetBytes(text.Length > MaximumDialogueLength ? text[..MaximumDialogueLength] : text);
         var reasonBytes = Encoding.Latin1.GetBytes(reason ?? string.Empty);
@@ -240,6 +242,7 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
             BinaryPrimitives.WriteUInt16BigEndian(span[5..], id);
             span[7] = canDuel ? (byte)1 : (byte)0;
             span[8] = (byte)rival.Kind;
+            span[9] = isMounted ? (byte)1 : (byte)0;
             var offset = headerLength;
             foreach (var bytes in new[] { titleBytes, textBytes, reasonBytes })
             {

@@ -74,7 +74,7 @@ namespace
     constexpr DWORD CharacterSize = 0x598;
     constexpr DWORD CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
     constexpr DWORD CharVisible = 0x314; // el juego solo dibuja a los personajes con este byte en 1
-    constexpr DWORD ObjLive = 0x04, ObjAlpha = 0x98, ObjPosition = 0xFC;
+    constexpr DWORD ObjLive = 0x04, ObjAlpha = 0x98, ObjPosition = 0xFC, ObjAngle = 0x108;
 
     // Monturas y mascotas: se dibujan aparte del personaje y no miran su byte Visible, pero si el alfa de su objeto.
     BYTE* const PetList = reinterpret_cast<BYTE*>(0x08791550);
@@ -94,8 +94,8 @@ namespace
     constexpr float EyeHeight = 135.0f;    // altura de la camara sobre los pies del espectro
     constexpr float FrameHeight = 97.0f;   // altura del espectro a la que apunta la camara (con aire para el vuelo)
     constexpr float ViewDistance = 690.0f; // distancia de la camara al espectro
-    constexpr float LordFrameHeight = 113.0f, LordViewDistance = 820.0f; // el lord va a caballo y es mas alto
-    constexpr BYTE KindLord = 4;
+    constexpr float MountedFrameHeight = 113.0f, MountedViewDistance = 820.0f; // con montura es mas alto
+    constexpr float MountedTurn = 45.0f;   // y mira a un costado, asi la cabeza de la montura no lo tapa
     constexpr float CharsPerSecond = 45.0f; // el texto aparece de a poco
     constexpr DWORD MaxSceneDuration = 10 * 60 * 1000;
 
@@ -142,7 +142,9 @@ namespace
     float g_revealed = 0.0f;          // caracteres visibles del texto
     DWORD g_lastDraw = 0;
     bool g_loggedCamera = false;
-    BYTE g_rivalKind = 0;
+    bool g_rivalMounted = false;
+    bool g_turnedRival = false;
+    float g_rivalAngle = 0.0f;        // el giro de un espectro con montura, cuando empezo la escena
 
     BYTE* g_hiddenHero = nullptr;
     BYTE g_heroVisible = 1;
@@ -346,16 +348,17 @@ namespace
 
     void OnDialogue(const BYTE* packet, int size)
     {
-        if (size < 12)
+        if (size < 13)
         {
             return;
         }
 
         const WORD id = static_cast<WORD>(((packet[5] << 8) | packet[6]) & IdMask);
         const bool canDuel = packet[7] != 0;
-        g_rivalKind = packet[8];
+        g_rivalMounted = (packet[9] & 1) != 0;
+        g_turnedRival = false;
         const char* strings[3] = { "", "", "" };
-        int offset = 9;
+        int offset = 10;
         for (int i = 0; i < 3 && offset < size; i++)
         {
             strings[i] = reinterpret_cast<const char*>(packet + offset);
@@ -583,8 +586,21 @@ namespace
         dx /= distance;
         dy /= distance;
 
-        const float viewDistance = g_rivalKind == KindLord ? LordViewDistance : ViewDistance;
-        const float frameHeight = g_rivalKind == KindLord ? LordFrameHeight : FrameHeight;
+        const float viewDistance = g_rivalMounted ? MountedViewDistance : ViewDistance;
+        const float frameHeight = g_rivalMounted ? MountedFrameHeight : FrameHeight;
+        if (g_rivalMounted)
+        {
+            // En cada cuadro: el casteo del espectro lo vuelve a girar hacia el personaje.
+            float* rivalAngle = reinterpret_cast<float*>(rival + CharObject + ObjAngle);
+            if (!g_turnedRival)
+            {
+                g_turnedRival = true;
+                g_rivalAngle = rivalAngle[2];
+            }
+
+            rivalAngle[2] = g_rivalAngle + MountedTurn;
+        }
+
         const float eye[3] = {
             rivalPosition[0] + dx * viewDistance,
             rivalPosition[1] + dy * viewDistance,

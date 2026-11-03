@@ -46,6 +46,11 @@ public sealed class SpectreHubContext : MiniGameContext
     private const int StandingTier = 3;
 
     /// <summary>
+    /// The emote of a rival when it talks: it gets a sitting rival up and ends by itself, in the normal idle animation.
+    /// </summary>
+    private const byte StandUpAnimation = 0x83;
+
+    /// <summary>
     /// How long the hub waits after the rivals appeared before a rival tells the end of its story, so that the client loaded the map.
     /// </summary>
     private static readonly TimeSpan FinaleDelay = TimeSpan.FromSeconds(3);
@@ -420,18 +425,11 @@ public sealed class SpectreHubContext : MiniGameContext
 
         var canDuel = victories < SpectreProgress.MaximumVictories && reason is null;
 
-        // The rival stands up (an instant move to its own spot) and faces the player, so the scene frames it the same way always.
+        // The rival stands up and faces the player, so the scene frames it the same way always.
         this._talkingUntil[rival.Kind] = DateTime.UtcNow + TalkDuration;
         rival.Pose = default;
-        await rival.MoveAsync(rival.Position).ConfigureAwait(false);
         rival.Rotation = rival.GetDirectionTo(owner);
-        if (rival.Kind == SpectreKind.Lord)
-        {
-            // One step (45 degrees) to the side, so that the head of the horse doesn't hide the lord.
-            rival.Rotation = (Direction)(((int)rival.Rotation % 8) + 1);
-        }
-
-        await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, 0, null, rival.Rotation), false).ConfigureAwait(false);
+        await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, StandUpAnimation, null, rival.Rotation), false).ConfigureAwait(false);
         await owner.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowRivalDialogueAsync(rival, rival.Title, text, canDuel, reason)).ConfigureAwait(false);
         if (victories == SpectreProgress.MaximumVictories - 1)
         {
@@ -471,9 +469,6 @@ public sealed class SpectreHubContext : MiniGameContext
 
             // Toward the player: with itself as target, the client turns the rival to any direction.
             await rival.ForEachWorldObserverAsync<IShowSkillAnimationPlugIn>(p => p.ShowSkillAnimationAsync(rival, rival.Owner, skill, true), true).ConfigureAwait(false);
-
-            // The cast turned the rival to the player: back to its direction of the scene.
-            await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, 0, null, rival.Rotation), false).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
