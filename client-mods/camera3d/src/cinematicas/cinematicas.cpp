@@ -89,12 +89,11 @@ namespace
 
     // --- Escena ---
     constexpr DWORD FadeDuration = 400;    // ms de cada fundido a negro
-    constexpr float EyeHeight = 135.0f;    // altura de los ojos sobre el suelo
-    constexpr float FaceHeight = 125.0f;   // altura de la cara del espectro
-    constexpr float MinViewDistance = 110.0f, MaxViewDistance = 230.0f; // distancia de la camara al espectro
-    constexpr float HeroClearance = 70.0f; // la camara queda por lo menos a esta distancia delante del personaje
-    constexpr float NearHeroDistance = 180.0f; // con el personaje mas cerca del espectro, la camara se corre a un costado
-    constexpr float SideOffset = 40.0f;
+    // El encuadre es siempre el mismo: el espectro de pie, con casi todo el cuerpo entre las bandas y la caja. El personaje
+    // propio no se dibuja, asi que la distancia no depende de donde esta.
+    constexpr float EyeHeight = 135.0f;    // altura de la camara sobre los pies del espectro
+    constexpr float FrameHeight = 58.0f;   // altura del espectro a la que apunta la camara
+    constexpr float ViewDistance = 580.0f; // distancia de la camara al espectro
     constexpr float CharsPerSecond = 45.0f; // el texto aparece de a poco
     constexpr DWORD MaxSceneDuration = 10 * 60 * 1000;
 
@@ -580,21 +579,15 @@ namespace
         dx /= distance;
         dy /= distance;
 
-        // La camara va entre el personaje y el espectro, asi el personaje no lo tapa.
-        const float viewDistance = min(max(distance - HeroClearance, MinViewDistance), MaxViewDistance);
-        const float side = distance < NearHeroDistance ? SideOffset : 0.0f;
         const float eye[3] = {
-            rivalPosition[0] + dx * viewDistance - dy * side,
-            rivalPosition[1] + dy * viewDistance + dx * side,
-            heroPosition[2] + EyeHeight,
+            rivalPosition[0] + dx * ViewDistance,
+            rivalPosition[1] + dy * ViewDistance,
+            rivalPosition[2] + EyeHeight,
         };
 
-        // Mira hacia el espectro.
-        const float lookX = rivalPosition[0] - eye[0];
-        const float lookY = rivalPosition[1] - eye[1];
-        const float yaw = atan2f(lookX, lookY) * 180.0f / 3.14159265f;
-        const float drop = eye[2] - (rivalPosition[2] + FaceHeight);
-        const float pitch = -90.0f + atan2f(drop, sqrtf(lookX * lookX + lookY * lookY)) * 180.0f / 3.14159265f;
+        // Mira hacia el espectro: la direccion es -d.
+        const float yaw = atan2f(-dx, -dy) * 180.0f / 3.14159265f;
+        const float pitch = -90.0f + atan2f(EyeHeight - FrameHeight, ViewDistance) * 180.0f / 3.14159265f;
         position[0] = eye[0];
         position[1] = eye[1];
         position[2] = eye[2];
