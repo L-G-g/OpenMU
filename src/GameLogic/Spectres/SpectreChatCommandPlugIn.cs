@@ -16,8 +16,9 @@ using MUnique.OpenMU.PlugIns;
 /// <c>/espectro equipar &lt;kind&gt; &lt;inventory slot&gt;</c> equips an item of the inventory on it,
 /// <c>/espectro quitar &lt;kind&gt; &lt;equipment slot&gt;</c> takes an item off, <c>/espectro panel</c>
 /// sends the state of the spectres to the spectre window of the client, <c>/espectro refugio</c> enters the spectre hub
-/// after talking to its guardian (see <see cref="SpectreHub"/>; game masters don't need to), <c>/espectro duelo</c>
-/// challenges the nearest rival there, and <c>/espectro salir</c> leaves it.
+/// after talking to its guardian (see <see cref="SpectreHub"/>; game masters don't need to), <c>/espectro hablar &lt;object id&gt;</c>
+/// talks to a rival there (cinematicas.dll sends it when the player clicks on the rival), <c>/espectro duelo [&lt;object id&gt;]</c>
+/// challenges that rival or the nearest one, and <c>/espectro salir</c> leaves it.
 /// </summary>
 [Guid("8E2F4A6C-1B3D-4C5E-8F7A-9B0C1D2E3F40")]
 [PlugIn]
@@ -65,10 +66,17 @@ public sealed class SpectreChatCommandPlugIn : IChatCommandPlugIn
             case "refugio":
                 await EnterHubAsync(player).ConfigureAwait(false);
                 return;
-            case "duelo":
+            case "duelo" when arguments.Count <= 2:
                 if (player.CurrentMiniGame is SpectreHubContext hub)
                 {
-                    await hub.ChallengeNearestRivalAsync(player).ConfigureAwait(false);
+                    await hub.ChallengeAsync(player, arguments.Count == 2 && ushort.TryParse(arguments[1], out var rivalId) ? rivalId : null).ConfigureAwait(false);
+                }
+
+                return;
+            case "hablar" when arguments.Count == 2 && ushort.TryParse(arguments[1], out var objectId):
+                if (player.CurrentMiniGame is SpectreHubContext talkHub)
+                {
+                    await talkHub.TalkAsync(player, objectId).ConfigureAwait(false);
                 }
 
                 return;

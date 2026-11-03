@@ -58,9 +58,10 @@ public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
     public override string DisplayName => SpectreHub.GetRivalName(this.Kind);
 
     /// <summary>
-    /// Gets the name of the rival as the client of the PeroniaMU shows it, e.g. "Guerrero Olvidado".
+    /// Gets the name of the rival as the client of the PeroniaMU shows it, e.g. "Guerrero Olvidado", or the name of the spectre
+    /// when its story is finished, e.g. "Godofredo el Legendario".
     /// </summary>
-    public string Title => SpectreEvolution.GetTitle(this.Kind, this.Tier);
+    public string Title => SpectreHub.GetTitle(this.Owner, this.Kind, this.Tier);
 
     /// <inheritdoc />
     public override bool RespawnAndContinue => true;

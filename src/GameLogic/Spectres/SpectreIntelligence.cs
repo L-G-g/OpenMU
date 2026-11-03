@@ -219,7 +219,7 @@ internal sealed class SpectreIntelligence : AsyncDisposable
         await spectre.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowSpectreAsync(spectre), false).ConfigureAwait(false);
         if (spectre.Owner.SelectedCharacter is { } ownerCharacter && SpectreProgress.GetVictories(ownerCharacter, spectre.Kind) is > 0 and var victories)
         {
-            var title = SpectreEvolution.GetTitle(spectre.Kind, victories - 1);
+            var title = SpectreHub.GetTitle(spectre.Owner, spectre.Kind, victories - 1);
             await spectre.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(spectre, title), false).ConfigureAwait(false);
         }
 

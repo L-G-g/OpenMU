@@ -244,7 +244,19 @@ public sealed class SpectreDuelContext : MiniGameContext
             return;
         }
 
+        SpectreProgress.CountVictoryOfToday(owner);
         var kindName = SpectreClasses.GetName(this._kind);
+        if (victories + 1 >= SpectreProgress.MaximumVictories)
+        {
+            var configuration = owner.GameContext.FeaturePlugIns.GetPlugIn<SpectreFeaturePlugIn>()?.Configuration;
+            if (SpectreNames.Assign(owner, this._kind, configuration) is { } name)
+            {
+                await owner.ShowBlueMessageAsync($"Tu espectro {kindName} recordo su nombre: {name}.").ConfigureAwait(false);
+            }
+
+            SpectreHub.RememberFinale(owner, this._kind);
+        }
+
         if (this._tier == 0)
         {
             await owner.ShowGoldenMessageAsync($"Venciste {defeated}! Ahora te sigue").ConfigureAwait(false);

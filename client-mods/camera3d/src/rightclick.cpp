@@ -64,6 +64,7 @@ namespace
     RightClickFilter g_filter = nullptr; // espectros.dll: equipar al espectro en lugar de al personaje
     KeyTickCallback g_keyTick = nullptr; // espectros.dll: su tecla (Shift+S)
     KeyTickCallback g_tabMapTick = nullptr; // tabmap.dll: camina hacia el punto elegido en el mapa
+    KeyTickCallback g_cinematicasTick = nullptr; // cinematicas.dll: click en un espectro del refugio
 
     // Lo que hace un click derecho.
     enum Action
@@ -510,6 +511,11 @@ namespace
             g_tabMapTick(keyStates);
         }
 
+        if (g_cinematicasTick != nullptr)
+        {
+            g_cinematicasTick(keyStates);
+        }
+
         const BYTE right = keyStates[VK_RBUTTON];
         if (g_rightConsumed)
         {
@@ -590,6 +596,11 @@ void SetEspectrosKeyTick(KeyTickCallback callback)
 void SetTabMapKeyTick(KeyTickCallback callback)
 {
     g_tabMapTick = callback;
+}
+
+void SetCinematicasKeyTick(KeyTickCallback callback)
+{
+    g_cinematicasTick = callback;
 }
 
 bool InstallRightClick(LogFunction log)

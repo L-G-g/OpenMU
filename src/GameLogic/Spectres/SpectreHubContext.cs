@@ -8,20 +8,21 @@ using System.Collections.Concurrent;
 using System.Threading;
 using MUnique.OpenMU.GameLogic.MiniGames;
 using MUnique.OpenMU.GameLogic.Views;
-using MUnique.OpenMU.GameLogic.Views.Duel;
 using MUnique.OpenMU.GameLogic.Views.World;
 using MUnique.OpenMU.Pathfinding;
 
 /// <summary>
 /// The hub of the spectres of a player (see <see cref="SpectreHub"/>): the rivals of the seven kinds wait at their spots,
-/// sad and abandoned, and challenge the player when it comes close. When the player accepts, both go to the duel.
+/// sad and abandoned. When the player clicks on one (cinematicas.dll sends <c>/espectro hablar</c>), the rival tells a part
+/// of its story (<see cref="SpectreDialogues"/>) and offers a duel, if the player may duel it (<see cref="SpectreDuelRules"/>).
+/// When the player accepts, both go to the duel.
 /// </summary>
 public sealed class SpectreHubContext : MiniGameContext
 {
     /// <summary>
-    /// The distance to a rival at which it challenges the player.
+    /// The distance to a rival up to which <c>/espectro duelo</c> without a rival challenges the nearest one.
     /// </summary>
-    private const int ChallengeDistance = 3;
+    private const int ChallengeDistance = 5;
 
     /// <summary>
     /// The spots of the rivals in the room of the Duel Arena, by kind, around the entry.
@@ -36,18 +37,19 @@ public sealed class SpectreHubContext : MiniGameContext
     /// </summary>
     private static readonly byte[] IdleAnimations = [0x80, 0x89, 0x8F, 0x80, 0x8B, 0x89, 0x80];
 
-    private static readonly TimeSpan ChallengeCooldown = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan AnyChallengeCooldown = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan IdleAnimationInterval = TimeSpan.FromSeconds(4);
 
+    /// <summary>
+    /// How long the hub waits after the rivals appeared before a rival tells the end of its story, so that the client loaded the map.
+    /// </summary>
+    private static readonly TimeSpan FinaleDelay = TimeSpan.FromSeconds(3);
+
     private readonly ConcurrentDictionary<SpectreKind, RivalPlayer> _rivals = new();
-    private readonly ConcurrentDictionary<SpectreKind, DateTime> _nextChallenges = new();
     private readonly CancellationTokenSource _cts = new();
     private Player? _owner;
     private int _duelStarting;
     private int _closing;
     private DateTime _nextIdleAnimation = DateTime.UtcNow;
-    private DateTime _nextAnyChallenge = DateTime.UtcNow;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpectreHubContext"/> class.
@@ -102,14 +104,14 @@ public sealed class SpectreHubContext : MiniGameContext
             return;
         }
 
-        if (player.SelectedCharacter is not { } character)
+        if (player.SelectedCharacter is null)
         {
             return;
         }
 
-        if (SpectreProgress.GetVictories(character, rival.Kind) >= SpectreProgress.MaximumVictories)
+        if (SpectreDuelRules.GetBlockReason(player, rival.Kind, GetConfiguration(player)) is { } reason)
         {
-            await this.SayAsync(rival, "Ya recorde todo lo que fui. No tengo nada mas para ensenarte.").ConfigureAwait(false);
+            await this.SayAsync(rival, reason).ConfigureAwait(false);
             return;
         }
 
@@ -125,23 +127,37 @@ public sealed class SpectreHubContext : MiniGameContext
     }
 
     /// <summary>
-    /// Lets the player challenge the nearest rival, e.g. when it closed the request of the rival.
+    /// Lets the player challenge a rival: the one with the object id, as the client of the player knows it, or the nearest one.
     /// </summary>
     /// <param name="player">The player.</param>
+    /// <param name="objectId">The object id of the rival, or <c>null</c> for the nearest rival.</param>
     /// <returns>The task.</returns>
-    internal async ValueTask ChallengeNearestRivalAsync(Player player)
+    internal async ValueTask ChallengeAsync(Player player, ushort? objectId)
     {
-        var rival = this._rivals.Values
-            .Where(r => r.CurrentMap == this.Map)
-            .OrderBy(r => r.GetDistanceTo(player))
-            .FirstOrDefault();
-        if (rival is null || rival.GetDistanceTo(player) > ChallengeDistance + 2)
+        var rival = objectId is { } id ? this.FindRival(player, id) : this.FindNearestRival(player);
+        if (rival is null)
         {
             await player.ShowBlueMessageAsync("Acercate a un espectro para desafiarlo.").ConfigureAwait(false);
             return;
         }
 
         await this.AnswerChallengeAsync(player, rival, true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Lets the player talk to a rival, which the player clicked on: the rival tells the next part of its story and offers a duel.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="objectId">The object id of the rival, as the client of the player knows it.</param>
+    /// <returns>The task.</returns>
+    internal async ValueTask TalkAsync(Player player, ushort objectId)
+    {
+        if (!ReferenceEquals(player, this._owner) || this.FindRival(player, objectId) is not { } rival)
+        {
+            return;
+        }
+
+        await this.TalkAsync(player, rival).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -197,6 +213,9 @@ public sealed class SpectreHubContext : MiniGameContext
         this._cts.Dispose();
     }
 
+    private static SpectreConfiguration? GetConfiguration(Player player)
+        => player.GameContext.FeaturePlugIns.GetPlugIn<SpectreFeaturePlugIn>()?.Configuration;
+
     private static async ValueTask StopRivalAsync(RivalPlayer rival)
     {
         try
@@ -246,8 +265,12 @@ public sealed class SpectreHubContext : MiniGameContext
         try
         {
             await owner.ShowGoldenMessageAsync("Refugio de los espectros").ConfigureAwait(false);
-            await owner.ShowBlueMessageAsync("Acercate a un espectro para que te desafie. Para salir: /espectro salir o el menu M.").ConfigureAwait(false);
+            await owner.ShowBlueMessageAsync("Hace click en un espectro para hablarle. Para salir: /espectro salir o el menu M.").ConfigureAwait(false);
             await this.SpawnRivalsAsync(owner, cancellationToken).ConfigureAwait(false);
+            if (SpectreHub.TakePendingFinale(owner) is { } finishedKind)
+            {
+                _ = Task.Run(() => this.ShowFinaleAsync(owner, finishedKind, cancellationToken));
+            }
 
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
             while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
@@ -293,6 +316,7 @@ public sealed class SpectreHubContext : MiniGameContext
             }
 
             rival.Rotation = Direction.South;
+            await rival.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowRivalAsync(rival), false).ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested && this._rivals.TryRemove(kind, out var lateRival))
             {
                 await StopRivalAsync(lateRival).ConfigureAwait(false);
@@ -308,13 +332,12 @@ public sealed class SpectreHubContext : MiniGameContext
         }
 
         var now = DateTime.UtcNow;
-        var showIdleAnimations = now >= this._nextIdleAnimation;
-        if (showIdleAnimations)
+        if (now < this._nextIdleAnimation)
         {
-            this._nextIdleAnimation = now + IdleAnimationInterval;
+            return;
         }
 
-        RivalPlayer? challenger = null;
+        this._nextIdleAnimation = now + IdleAnimationInterval;
         foreach (var rival in this._rivals.Values)
         {
             if (rival.CurrentMap != this.Map)
@@ -322,26 +345,9 @@ public sealed class SpectreHubContext : MiniGameContext
                 continue;
             }
 
-            if (showIdleAnimations)
-            {
-                await this.ShowIdleAnimationAsync(rival).ConfigureAwait(false);
-                await rival.ShowTitleAsync().ConfigureAwait(false);
-            }
-
-            if (rival.GetDistanceTo(owner) <= ChallengeDistance
-                && (challenger is null || rival.GetDistanceTo(owner) < challenger.GetDistanceTo(owner))
-                && (!this._nextChallenges.TryGetValue(rival.Kind, out var nextChallenge) || now >= nextChallenge))
-            {
-                challenger = rival;
-            }
-        }
-
-        // One challenge at a time: the client shows one duel request.
-        if (challenger is not null && this._duelStarting == 0 && now >= this._nextAnyChallenge)
-        {
-            this._nextChallenges[challenger.Kind] = now + ChallengeCooldown;
-            this._nextAnyChallenge = now + AnyChallengeCooldown;
-            await this.ChallengeAsync(owner, challenger).ConfigureAwait(false);
+            await this.ShowIdleAnimationAsync(rival).ConfigureAwait(false);
+            await rival.ShowTitleAsync().ConfigureAwait(false);
+            await rival.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowRivalAsync(rival), false).ConfigureAwait(false);
         }
     }
 
@@ -352,28 +358,58 @@ public sealed class SpectreHubContext : MiniGameContext
         await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, animation, null, rival.Rotation), false).ConfigureAwait(false);
     }
 
-    private async ValueTask ChallengeAsync(Player owner, RivalPlayer rival)
+    private RivalPlayer? FindRival(Player player, ushort objectId)
+        => this._rivals.Values.FirstOrDefault(r => r.CurrentMap == this.Map && r.GetId(player) == objectId);
+
+    private RivalPlayer? FindNearestRival(Player player)
+        => this._rivals.Values
+            .Where(r => r.CurrentMap == this.Map && r.GetDistanceTo(player) <= ChallengeDistance)
+            .OrderBy(r => r.GetDistanceTo(player))
+            .FirstOrDefault();
+
+    private async ValueTask TalkAsync(Player owner, RivalPlayer rival)
     {
-        var victories = owner.SelectedCharacter is { } character ? SpectreProgress.GetVictories(character, rival.Kind) : 0;
-        rival.Rotation = rival.GetDirectionTo(owner);
-        string line;
-        if (victories >= SpectreProgress.MaximumVictories)
+        if (owner.SelectedCharacter is not { } character)
         {
-            line = "Ya recorde todo lo que fui. Gracias por no olvidarme.";
-        }
-        else if (victories == 0)
-        {
-            line = "...hace mucho que nadie me elige. Si me vences en duelo, te sigo.";
-        }
-        else
-        {
-            line = $"Empiezo a recordar quien fui ({rival.Tier}/{SpectreEvolution.EvolutionCount}). Peleame otra vez.";
+            return;
         }
 
-        await this.SayAsync(rival, line).ConfigureAwait(false);
-        if (victories < SpectreProgress.MaximumVictories)
+        var configuration = GetConfiguration(owner);
+        var victories = SpectreProgress.GetVictories(character, rival.Kind);
+        var name = SpectreNames.GetName(character, rival.Kind, configuration);
+        var text = SpectreDialogues.GetText(rival.Kind, victories, name ?? SpectreClasses.GetName(rival.Kind));
+        var reason = SpectreDuelRules.GetBlockReason(owner, rival.Kind, configuration);
+
+        // At the end of its story, the rival has nothing left to say than its text: no reason.
+        if (victories >= SpectreProgress.MaximumVictories)
         {
-            await owner.InvokeViewPlugInAsync<IShowDuelRequestPlugIn>(p => p.ShowDuelRequestAsync(rival)).ConfigureAwait(false);
+            reason = null;
+        }
+
+        var canDuel = victories < SpectreProgress.MaximumVictories && reason is null;
+        rival.Rotation = rival.GetDirectionTo(owner);
+        rival.Pose = default;
+        await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, 0, null, rival.Rotation), false).ConfigureAwait(false);
+        await owner.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowRivalDialogueAsync(rival, rival.Title, text, canDuel, reason)).ConfigureAwait(false);
+    }
+
+    private async Task ShowFinaleAsync(Player owner, SpectreKind kind, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(FinaleDelay, cancellationToken).ConfigureAwait(false);
+            if (this._rivals.TryGetValue(kind, out var rival) && rival.CurrentMap == this.Map && owner.CurrentMap == this.Map)
+            {
+                await this.TalkAsync(owner, rival).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The owner left the hub.
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Error while showing the end of the story of a rival.", this);
         }
     }
 

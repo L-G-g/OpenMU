@@ -53,6 +53,8 @@ public static class SpectreHub
 
     private static readonly ConditionalWeakTable<Player, StrongBox<DateTime>> GuardianVisits = new();
 
+    private static readonly ConditionalWeakTable<Player, StrongBox<SpectreKind>> PendingFinales = new();
+
     /// <summary>
     /// Gets where the player enters the hub.
     /// </summary>
@@ -78,8 +80,9 @@ public static class SpectreHub
         "Con el tiempo pierde su equipo, su nombre y las ganas de pelear. Asi nace un espectro.",
         "Yo cuido el refugio donde esperan: un guerrero, un mago, una elfa, un gladiador, un lord, una invocadora y un peleador.",
         "Si vences a uno en duelo, recupera las ganas de pelear y te sigue como espectro.",
-        "Si lo volves a vencer, despierta un poco mas de lo que fue: se pone su equipo y recuerda sus habilidades, y tu espectro aprende lo mismo.",
-        "Acercate a ellos en el refugio y te van a desafiar. Queres entrar?",
+        "Si lo volves a vencer, despierta un poco mas de lo que fue: se pone su equipo y recuerda sus habilidades, y tu espectro aprende lo mismo. Despues de nueve duelos recuerda su nombre.",
+        "Cuantos mas resets tengas, mas duelos vas a poder ganar, y hay un limite de duelos por dia.",
+        "Hace click en ellos en el refugio para hablarles. Queres entrar?",
     ];
 
     /// <summary>
@@ -98,6 +101,44 @@ public static class SpectreHub
     /// <returns><c>true</c>, if the player may enter the hub.</returns>
     internal static bool HasVisitedGuardian(Player player)
         => GuardianVisits.TryGetValue(player, out var visit) && DateTime.UtcNow - visit.Value < GuardianInvitationDuration;
+
+    /// <summary>
+    /// Remembers that the rival of a kind tells the end of its story when the player is back in its hub.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="kind">The kind.</param>
+    internal static void RememberFinale(Player player, SpectreKind kind)
+    {
+        PendingFinales.AddOrUpdate(player, new StrongBox<SpectreKind>(kind));
+    }
+
+    /// <summary>
+    /// Gets and forgets the kind of the rival which tells the end of its story when the player is back in its hub.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <returns>The kind, or <c>null</c>.</returns>
+    internal static SpectreKind? TakePendingFinale(Player player)
+        => PendingFinales.TryGetValue(player, out var kind) && PendingFinales.Remove(player) ? kind.Value : null;
+
+    /// <summary>
+    /// Gets the title of the spectre or the rival of a kind of a player, as the clients show it: e.g. "Guerrero Olvidado"
+    /// at a tier, or the name of the spectre when the story is finished, e.g. "Godofredo el Legendario".
+    /// </summary>
+    /// <param name="owner">The owner.</param>
+    /// <param name="kind">The kind.</param>
+    /// <param name="tier">The tier.</param>
+    /// <returns>The title.</returns>
+    internal static string GetTitle(Player owner, SpectreKind kind, int tier)
+    {
+        if (owner.SelectedCharacter is { } character
+            && SpectreProgress.GetVictories(character, kind) >= SpectreProgress.MaximumVictories
+            && SpectreNames.GetName(character, kind, owner.GameContext.FeaturePlugIns.GetPlugIn<SpectreFeaturePlugIn>()?.Configuration) is { } name)
+        {
+            return SpectreNames.GetTitle(kind, name);
+        }
+
+        return SpectreEvolution.GetTitle(kind, tier);
+    }
 
     /// <summary>
     /// Lets a player enter its hub, from the town or from the duel.
