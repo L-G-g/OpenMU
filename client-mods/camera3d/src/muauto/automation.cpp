@@ -587,6 +587,7 @@ void AutomationTick(BYTE* keyStates)
         return;
     }
 
+    EffectsTick();
     *WindowActive = 1;
     g_keyStates = keyStates;
     if (g_fakeFocusTicks > 0)

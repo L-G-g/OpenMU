@@ -258,6 +258,28 @@ no se camina, `0x08` sin suelo) y se manda por tramos de 10 baldosas, uno cada v
 frena, en el paso de lógica (lo llama `camera3d.dll` después de actualizar las teclas). La caminata se corta
 al llegar, al cambiar de mapa, al morir o si el jugador mueve al personaje de otra forma.
 
+## Efectos de habilidades al castear seguido (skillfx.dll)
+
+El juego crea el efecto principal de un ataque cuando el contador `AttackTime` del personaje (byte en
+`+0x22`) llega a su límite (`0x00E616C4`, 15 casi siempre): 14 pasos de lógica (560 ms) después de empezar.
+Cada paquete de ataque nuevo lo vuelve a poner en 1, así que con mucha agilidad, casteando seguido, el ataque
+anterior no llega nunca al límite y su efecto no se dibuja, aunque el daño sí entra (la Summoner con Drain
+Life pierde 8 de cada 10 efectos desde ~3000 de agilidad). Con `skillfx.dll` el ataque cortado se completa en
+el mismo paso en que empieza el nuevo. `camera3d.dll` la carga si está en la misma carpeta
+(`src/loadskillfx.cpp`):
+
+```
+[SkillFx]
+Enabled=1       ; 0: como el juego original
+```
+
+`src/skillfx/skillfx.cpp` engancha dos lugares de `MoveCharacter` (`0x0055AF20`): la comparación con el
+límite (`0x0055B3F1`) y el final del bloque de fin de ataque (`0x00560471`). Si `AttackTime` bajó mientras el
+ataque anterior todavía no había llegado al límite, pone la habilidad, el objetivo y el lugar del anterior,
+ejecuta el bloque de fin de ataque del juego (el switch que crea el efecto) y vuelve a poner el ataque nuevo.
+Todo pasa dentro de la misma llamada, así que la animación y la posición no avanzan de más. No completa las
+habilidades cuyo fin cambia la animación (78 y 518).
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -328,6 +350,10 @@ Todo se activa además con `camera3d.ini`:
   baldosa, `+0x308` objeto (`+0x30C` vivo, `+0x31A` acción, `+0x320` tipo: 1 jugador, 2 monstruo,
   4 NPC, `+0x338` modelo, `+0x404` posición). Atributos: `+0x0B` clase, `+0x0E` nivel, `+0x22`/`+0x26`
   vida, `+0x24`/`+0x28` mana, `+0x2A`/`+0x2C` SD, `+0x40`/`+0x42` AG, `+0x78` lista de habilidades.
+- **Contador de efectos** (comando `fx`, `src/muauto/effects.cpp`): `fx reset` pone en cero; `fx` devuelve
+  cuántos efectos de cada tipo creó el juego (todos y los del personaje propio) y cuántos ataques propios
+  llegaron a crear su efecto principal, cuántos se reiniciaron antes y cuántos terminaron con objetivo.
+  Sirve para probar si una habilidad dibuja su efecto (Drain Life es el tipo 220).
 - **Diagnóstico** (`[Debug] RenderDiff=1|2`, `src/muauto/fpsdiag.cpp`): anota qué cambia el dibujo.
 - **Scripts** de `skill/` (ver `skill/SKILL.md`):
   - abrir el cliente de prueba sin administrador;
@@ -486,8 +512,9 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/loadespectros.cpp`: carga de `espectros.dll` si está junto a la DLL.
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
+- `src/loadskillfx.cpp`: carga de `skillfx.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
-  `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`.
+  `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `tabmap.dll` y `skillfx.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
 - `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
@@ -495,6 +522,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/espectros/`: `espectros.dll`, ventana de espectros (Shift+S) y espectros transparentes.
 - `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
+- `src/skillfx/`: `skillfx.dll`, efectos de habilidades que no se pierden al castear seguido.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -510,7 +538,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp src\loadskillfx.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -518,7 +546,8 @@ cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
-cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\skillfx\skillfx.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp src\muauto\effects.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
 ```
@@ -529,7 +558,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `tabmap.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `tabmap.dll` y `skillfx.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

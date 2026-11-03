@@ -33,3 +33,12 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
 
 // Continua el comando de juego en curso en este paso de logica; true cuando termino (con su resultado).
 bool ContinueGameCommand(std::string& result);
+
+// Contador de efectos (effects.cpp): EffectsTick se llama en cada paso de logica; EffectsCommand atiende
+// el comando "fx" ("fx reset" o "fx").
+void EffectsTick();
+std::string EffectsCommand(const char* arguments);
+
+// Comando "skillfx on|off|reset" o "skillfx": prende o apaga skillfx.dll y cuenta los ataques del personaje
+// propio que completo (los que el juego habria cortado).
+std::string SkillFxCommand(const char* arguments);
