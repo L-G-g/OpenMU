@@ -406,8 +406,8 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     }
 
     /// <summary>
-    /// For tests of game masters: finishes the story of all spectres of the owner (all victories, with their names) and
-    /// gives the summoned spectres the maximum level.
+    /// For tests of game masters: puts all rivals of the owner at the last duel (8 victories each, the rivals at the
+    /// highest tier), so the owner can see how they cast their buff in the scene and fight them.
     /// </summary>
     /// <param name="owner">The owner.</param>
     /// <returns>The task.</returns>
@@ -415,23 +415,11 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     {
         foreach (var kind in SpectreClasses.AllKinds)
         {
-            SpectreProgress.SetVictories(owner, kind, SpectreProgress.MaximumVictories);
-            SpectreNames.Assign(owner, kind, this.Configuration);
-        }
-
-        var maximumLevel = owner.GameContext.Configuration.MaximumLevel;
-        foreach (var spectre in GetSpectres(owner))
-        {
-            for (var i = 0; i < 1000 && spectre.Level < maximumLevel; i++)
-            {
-                await spectre.AddExperienceAsync(int.MaxValue, null).ConfigureAwait(false);
-            }
-
-            await SpendStatPointsAsync(spectre).ConfigureAwait(false);
+            SpectreProgress.SetVictories(owner, kind, SpectreProgress.MaximumVictories - 1);
         }
 
         await SendPanelAsync(owner).ConfigureAwait(false);
-        await owner.ShowBlueMessageAsync("Espectros al maximo: todos desbloqueados con la historia terminada y los invocados en el nivel maximo. Para los demas: invocalos y volve a usar /espectro max.").ConfigureAwait(false);
+        await owner.ShowBlueMessageAsync("Todos los rivales estan en la ultima pelea. Entra (o volve a entrar) al refugio para verlos.").ConfigureAwait(false);
     }
 
     /// <summary>

@@ -18,8 +18,8 @@ using MUnique.OpenMU.PlugIns;
 /// sends the state of the spectres to the spectre window of the client, <c>/espectro refugio</c> enters the spectre hub
 /// after talking to its guardian (see <see cref="SpectreHub"/>; game masters don't need to), <c>/espectro hablar &lt;object id&gt;</c>
 /// talks to a rival there (cinematicas.dll sends it when the player clicks on the rival), <c>/espectro duelo [&lt;object id&gt;]</c>
-/// challenges that rival or the nearest one, and <c>/espectro salir</c> leaves it. Game masters can use <c>/espectro max</c> for tests: all spectres
-/// with their story finished, and the summoned ones at the maximum level.
+/// challenges that rival or the nearest one, and <c>/espectro salir</c> leaves it. Game masters can use <c>/espectro max</c> for tests: all rivals at
+/// the last duel.
 /// </summary>
 [Guid("8E2F4A6C-1B3D-4C5E-8F7A-9B0C1D2E3F40")]
 [PlugIn]
