@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic.Spectres;
 using System.Collections.Concurrent;
 using System.Threading;
 using MUnique.OpenMU.GameLogic.MiniGames;
+using MUnique.OpenMU.GameLogic.PlayerActions.Skills;
 using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.GameLogic.Views.World;
 using MUnique.OpenMU.Pathfinding;
@@ -44,7 +45,23 @@ public sealed class SpectreHubContext : MiniGameContext
     /// </summary>
     private static readonly TimeSpan FinaleDelay = TimeSpan.FromSeconds(3);
 
+    /// <summary>
+    /// How long a rival which talks to the player keeps standing, without its idle animation.
+    /// </summary>
+    private static readonly TimeSpan TalkDuration = TimeSpan.FromSeconds(90);
+
+    /// <summary>
+    /// When the rival casts its buff in the scene before the last duel: after the fade of the client.
+    /// </summary>
+    private static readonly TimeSpan LastDuelCastDelay = TimeSpan.FromSeconds(1.2);
+
+    /// <summary>
+    /// The time between the casts of Gigantic Storm of the gladiator, which has no buff, in the scene before the last duel.
+    /// </summary>
+    private static readonly TimeSpan GladiatorCastInterval = TimeSpan.FromSeconds(1);
+
     private readonly ConcurrentDictionary<SpectreKind, RivalPlayer> _rivals = new();
+    private readonly ConcurrentDictionary<SpectreKind, DateTime> _talkingUntil = new();
     private readonly CancellationTokenSource _cts = new();
     private Player? _owner;
     private int _duelStarting;
@@ -345,7 +362,11 @@ public sealed class SpectreHubContext : MiniGameContext
                 continue;
             }
 
-            await this.ShowIdleAnimationAsync(rival).ConfigureAwait(false);
+            if (!this._talkingUntil.TryGetValue(rival.Kind, out var talkingUntil) || now >= talkingUntil)
+            {
+                await this.ShowIdleAnimationAsync(rival).ConfigureAwait(false);
+            }
+
             await rival.ShowTitleAsync().ConfigureAwait(false);
             await rival.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowRivalAsync(rival), false).ConfigureAwait(false);
         }
@@ -387,10 +408,59 @@ public sealed class SpectreHubContext : MiniGameContext
         }
 
         var canDuel = victories < SpectreProgress.MaximumVictories && reason is null;
-        rival.Rotation = rival.GetDirectionTo(owner);
+        // The rival stands up (an instant move to its own spot) and faces the player, so the scene frames it the same way always.
+        this._talkingUntil[rival.Kind] = DateTime.UtcNow + TalkDuration;
         rival.Pose = default;
+        await rival.MoveAsync(rival.Position).ConfigureAwait(false);
+        rival.Rotation = rival.GetDirectionTo(owner);
         await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, 0, null, rival.Rotation), false).ConfigureAwait(false);
         await owner.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowRivalDialogueAsync(rival, rival.Title, text, canDuel, reason)).ConfigureAwait(false);
+        if (victories == SpectreProgress.MaximumVictories - 1)
+        {
+            _ = Task.Run(() => this.CastBeforeLastDuelAsync(rival, this._cts.Token));
+        }
+    }
+
+    /// <summary>
+    /// In the scene before the last duel, the rival shows its power: it casts its buff (the skill of its last tier),
+    /// or Gigantic Storm three times in a row for the gladiator, which has no buff. Only the animation is shown.
+    /// </summary>
+    /// <param name="rival">The rival.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The task.</returns>
+    private async Task CastBeforeLastDuelAsync(RivalPlayer rival, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(LastDuelCastDelay, cancellationToken).ConfigureAwait(false);
+            var number = SpectreEvolution.GetSkillsOfTier(rival.Kind, SpectreEvolution.EvolutionCount).FirstOrDefault();
+            if (rival.CurrentMap != this.Map
+                || this.GameContext.Configuration.Skills.FirstOrDefault(s => s.Number == number) is not { } skill)
+            {
+                return;
+            }
+
+            if (rival.Kind == SpectreKind.Gladiator)
+            {
+                for (var i = 0; i < 3; i++)
+                {
+                    await rival.ForEachWorldObserverAsync<IShowAreaSkillAnimationPlugIn>(p => p.ShowAreaSkillAnimationAsync(rival, skill, rival.Position, AreaSkillTargetSelector.ConvertAngleToRotation((float)rival.Position.GetAngleDegreeTo(rival.Owner.Position))), true).ConfigureAwait(false);
+                    await Task.Delay(GladiatorCastInterval, cancellationToken).ConfigureAwait(false);
+                }
+
+                return;
+            }
+
+            await rival.ForEachWorldObserverAsync<IShowSkillAnimationPlugIn>(p => p.ShowSkillAnimationAsync(rival, rival, skill, true), true).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The owner left the hub.
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Error while the rival casts before the last duel.", this);
+        }
     }
 
     private async Task ShowFinaleAsync(Player owner, SpectreKind kind, CancellationToken cancellationToken)
