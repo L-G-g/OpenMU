@@ -903,6 +903,21 @@ bool StartGameCommand(const char* name, const char* arguments, std::string& resu
     {
         result = EffectsCommand(arguments);
     }
+    else if (_stricmp(name, "skillfx") == 0)
+    {
+        result = SkillFxCommand(arguments);
+    }
+    else if (_stricmp(name, "skills") == 0)
+    {
+        result = "skills:";
+        for (int i = 0; i < MaxSkills; i++)
+        {
+            if (SkillAt(i) != 0)
+            {
+                result += " " + std::to_string(SkillAt(i));
+            }
+        }
+    }
     else if (_stricmp(name, "party") == 0)
     {
         // Invita al jugador N a la party, como el boton Party de la ventana de comandos (C1 40).

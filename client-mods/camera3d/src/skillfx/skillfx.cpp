@@ -28,7 +28,9 @@
 //   - Como todo pasa dentro de la misma llamada a MoveCharacter, las variables locales que usan los casos del
 //     switch ya estan calculadas para ese personaje, y la animacion y la posicion no avanzan de mas.
 //   - No se completan los ataques cuyo fin cambia la animacion del personaje (switch caso 0x4E: habilidades
-//     78 y 518): pisaria la animacion del ataque nuevo.
+//     78 y 518): pisaria la animacion del ataque nuevo. Lo demas que el fin de ataque toca del personaje
+//     (el angulo y OBJECT +0x208 de las habilidades de Rage Fighter) se guarda y se vuelve a poner. Tampoco
+//     Dark Side (263, 559) ni Pollution (225), que reinician AttackTime dentro del mismo casteo.
 //   - Los efectos intermedios de 0x00556C10 (los que salen en un AttackTime fijo antes del limite) no se
 //     repiten: del ataque anterior solo se crea el efecto final.
 //
@@ -53,6 +55,10 @@ namespace
 
     constexpr DWORD AttackFlag = 0x21, AttackTime = 0x22, Skill = 0x26, SkillX = 0x2F, SkillY = 0x30;
     constexpr DWORD TargetCharacter = 0x80, AttackExtra = 0x86;
+    // +0x06: el bit alto del objetivo de 0x19 (algunos casos llaman a 0x004C8AB0 con el); +0x418 (OBJECT +0x110)
+    // el angulo, que el fin de las habilidades de Rage Fighter (260, 551, 552, 554, 555) vuelve a calcular
+    // hacia el objetivo; +0x510 (OBJECT +0x208): esas mismas habilidades copian ahi el objetivo.
+    constexpr DWORD SkillHitFlag = 0x06, Angle = 0x418, ObjectTarget = 0x510;
 
     // Un dato guardado vale si es del paso anterior (con margen por tirones).
     constexpr DWORD MaxAgeMs = 300;
@@ -66,6 +72,9 @@ namespace
         BYTE skillY;
         short target;
         WORD extra;
+        BYTE hitFlag;
+        float angle;
+        WORD objectTarget;
     };
 
     struct Tracked
@@ -77,9 +86,10 @@ namespace
 
     LogFunction g_log = nullptr;
     std::unordered_map<DWORD, Tracked> g_tracked;
+    std::unordered_map<DWORD, int> g_completed; // ataques completados por personaje (para pruebas)
     DWORD g_pendingCharacter = 0; // personaje cuyo ataque anterior se esta completando
     AttackState g_newAttack{};
-    int g_completed = 0;
+    bool g_enabled = true;
 
     AttackState Read(const BYTE* c)
     {
@@ -91,6 +101,9 @@ namespace
         s.skillY = c[SkillY];
         s.target = *reinterpret_cast<const short*>(c + TargetCharacter);
         s.extra = *reinterpret_cast<const WORD*>(c + AttackExtra);
+        s.hitFlag = c[SkillHitFlag];
+        s.angle = *reinterpret_cast<const float*>(c + Angle);
+        s.objectTarget = *reinterpret_cast<const WORD*>(c + ObjectTarget);
         return s;
     }
 
@@ -103,12 +116,19 @@ namespace
         c[SkillY] = s.skillY;
         *reinterpret_cast<short*>(c + TargetCharacter) = s.target;
         *reinterpret_cast<WORD*>(c + AttackExtra) = s.extra;
+        c[SkillHitFlag] = s.hitFlag;
+        *reinterpret_cast<float*>(c + Angle) = s.angle;
+        *reinterpret_cast<WORD*>(c + ObjectTarget) = s.objectTarget;
     }
 
-    // El fin de estas habilidades cambia la animacion del personaje (switch caso 0x4E).
-    bool ChangesAction(WORD skill)
+    // Habilidades que no se completan:
+    //   - 78 y 518 (Fire Scream): su fin cambia la animacion del personaje (switch caso 0x4E).
+    //   - 263 y 559 (Dark Side): cada golpe llega con su propio paquete y vuelve a poner AttackTime en 1 dentro
+    //     del mismo casteo (medido: 35 reinicios en 9 casteos sin skillfx); completarlos agregaba efectos de mas.
+    //   - 225 (Pollution): el juego ya termina dos ataques por casteo; completar el que se corta agregaba efectos.
+    bool IsExcluded(WORD skill)
     {
-        return skill == 78 || skill == 518;
+        return skill == 78 || skill == 518 || skill == 263 || skill == 559 || skill == 225;
     }
 
     // Gancho 1: true para crear ahora el efecto del ataque anterior (salta al bloque de fin de ataque).
@@ -119,8 +139,13 @@ namespace
         Tracked& tracked = g_tracked[reinterpret_cast<DWORD>(c)];
         const AttackState& last = tracked.last;
         const bool recent = now - tracked.time <= MaxAgeMs;
-        if (g_pendingCharacter == 0 && recent && current.attackTime != 0 && current.attackTime <= last.attackTime
-            && last.attackTime >= 2 && last.attackTime < tracked.limit && !ChangesAction(last.skill))
+        // Un ataque cortado: AttackTime bajo de verdad (el paquete nuevo lo puso en 1 y el juego le sumo 1) y el
+        // anterior ya llevaba al menos dos pasos. Con "igual" o con el anterior en 2 se confundian con un ataque
+        // que no se corto: habilidades que dejan AttackTime quieto unos pasos (Death Stab, Dark Side) o 0x1E y
+        // 0x19 del mismo ataque llegando en pasos seguidos.
+        if (g_enabled && g_pendingCharacter == 0 && recent && current.attackTime != 0
+            && current.attackTime < last.attackTime && last.attackTime >= 3 && last.attackTime < tracked.limit
+            && !IsExcluded(last.skill))
         {
             // El ataque anterior se corto antes de llegar al limite: completarlo primero.
             g_newAttack = current;
@@ -128,7 +153,7 @@ namespace
             previous.attackTime = static_cast<BYTE>(tracked.limit);
             Write(c, previous);
             g_pendingCharacter = reinterpret_cast<DWORD>(c);
-            g_completed++;
+            g_completed[reinterpret_cast<DWORD>(c)]++;
             return true;
         }
 
@@ -237,8 +262,15 @@ extern "C" __declspec(dllexport) bool StartSkillFx(const SkillFxHost* host)
     return true;
 }
 
-// Para pruebas: cuantos ataques cortados se completaron.
-extern "C" __declspec(dllexport) int SkillFxCompleted()
+// Para pruebas (comando "skillfx" de muauto): cuantos ataques cortados de un personaje se completaron.
+extern "C" __declspec(dllexport) int SkillFxCompletedFor(const void* character)
 {
-    return g_completed;
+    const auto found = g_completed.find(reinterpret_cast<DWORD>(character));
+    return found != g_completed.end() ? found->second : 0;
+}
+
+// Para pruebas: prende o apaga la DLL sin sacar los ganchos (apagada, el juego hace lo de siempre).
+extern "C" __declspec(dllexport) void SkillFxSetEnabled(bool enabled)
+{
+    g_enabled = enabled;
 }

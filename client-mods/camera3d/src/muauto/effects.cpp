@@ -143,3 +143,42 @@ std::string EffectsCommand(const char* arguments)
 
     return result;
 }
+
+std::string SkillFxCommand(const char* arguments)
+{
+    using SetEnabledType = void (*)(bool enabled);
+    using CompletedForType = int (*)(const void* character);
+    const HMODULE skillFx = GetModuleHandleA("skillfx.dll");
+    const auto setEnabled = skillFx != nullptr
+        ? reinterpret_cast<SetEnabledType>(GetProcAddress(skillFx, "SkillFxSetEnabled"))
+        : nullptr;
+    const auto completedFor = skillFx != nullptr
+        ? reinterpret_cast<CompletedForType>(GetProcAddress(skillFx, "SkillFxCompletedFor"))
+        : nullptr;
+    if (setEnabled == nullptr || completedFor == nullptr)
+    {
+        return "error: skillfx: skillfx.dll no esta cargada";
+    }
+
+    static int s_baseline = 0;
+    const void* hero = reinterpret_cast<const void*>(*Hero);
+    if (arguments != nullptr && _strnicmp(arguments, "on", 2) == 0)
+    {
+        setEnabled(true);
+        return "skillfx: on";
+    }
+
+    if (arguments != nullptr && _strnicmp(arguments, "off", 3) == 0)
+    {
+        setEnabled(false);
+        return "skillfx: off";
+    }
+
+    if (arguments != nullptr && _strnicmp(arguments, "reset", 5) == 0)
+    {
+        s_baseline = completedFor(hero);
+        return "skillfx: reset";
+    }
+
+    return "skillfx: completados=" + std::to_string(completedFor(hero) - s_baseline);
+}

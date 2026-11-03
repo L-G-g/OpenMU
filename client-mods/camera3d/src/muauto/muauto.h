@@ -38,3 +38,7 @@ bool ContinueGameCommand(std::string& result);
 // el comando "fx" ("fx reset" o "fx").
 void EffectsTick();
 std::string EffectsCommand(const char* arguments);
+
+// Comando "skillfx on|off|reset" o "skillfx": prende o apaga skillfx.dll y cuenta los ataques del personaje
+// propio que completo (los que el juego habria cortado).
+std::string SkillFxCommand(const char* arguments);
