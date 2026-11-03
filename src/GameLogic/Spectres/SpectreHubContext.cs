@@ -41,6 +41,11 @@ public sealed class SpectreHubContext : MiniGameContext
     private static readonly TimeSpan IdleAnimationInterval = TimeSpan.FromSeconds(4);
 
     /// <summary>
+    /// From this tier on, the rivals wait on their feet (or in the air, with wings) instead of sitting.
+    /// </summary>
+    private const int StandingTier = 3;
+
+    /// <summary>
     /// How long the hub waits after the rivals appeared before a rival tells the end of its story, so that the client loaded the map.
     /// </summary>
     private static readonly TimeSpan FinaleDelay = TimeSpan.FromSeconds(3);
@@ -374,6 +379,12 @@ public sealed class SpectreHubContext : MiniGameContext
 
     private async ValueTask ShowIdleAnimationAsync(RivalPlayer rival)
     {
+        if (rival.Tier >= StandingTier)
+        {
+            rival.Pose = default;
+            return;
+        }
+
         var animation = rival.Tier == 0 ? IdleAnimations[(int)rival.Kind] : (byte)0x80;
         rival.Pose = animation == 0x80 ? CharacterPose.Sitting : default;
         await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, animation, null, rival.Rotation), false).ConfigureAwait(false);

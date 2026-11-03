@@ -74,6 +74,8 @@ namespace
     constexpr DWORD CharacterSize = 0x598;
     constexpr DWORD CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
     constexpr DWORD CharVisible = 0x314; // el juego solo dibuja a los personajes con este byte en 1
+    constexpr DWORD CharRun = 0x25;      // contador de correr: con alas, desde FlyRun el personaje vuela
+    constexpr BYTE FlyRun = 0x28;
     constexpr DWORD ObjLive = 0x04, ObjAlpha = 0x98, ObjPosition = 0xFC;
 
     // Monturas y mascotas: se dibujan aparte del personaje y no miran su byte Visible, pero si el alfa de su objeto.
@@ -92,8 +94,10 @@ namespace
     // El encuadre es siempre el mismo: el espectro de pie, con casi todo el cuerpo entre las bandas y la caja. El personaje
     // propio no se dibuja, asi que la distancia no depende de donde esta.
     constexpr float EyeHeight = 135.0f;    // altura de la camara sobre los pies del espectro
-    constexpr float FrameHeight = 58.0f;   // altura del espectro a la que apunta la camara
-    constexpr float ViewDistance = 580.0f; // distancia de la camara al espectro
+    constexpr float FrameHeight = 97.0f;   // altura del espectro a la que apunta la camara (con aire para el vuelo)
+    constexpr float ViewDistance = 690.0f; // distancia de la camara al espectro
+    constexpr float LordFrameHeight = 113.0f, LordViewDistance = 820.0f; // el lord va a caballo y es mas alto
+    constexpr BYTE KindLord = 4;
     constexpr float CharsPerSecond = 45.0f; // el texto aparece de a poco
     constexpr DWORD MaxSceneDuration = 10 * 60 * 1000;
 
@@ -140,6 +144,7 @@ namespace
     float g_revealed = 0.0f;          // caracteres visibles del texto
     DWORD g_lastDraw = 0;
     bool g_loggedCamera = false;
+    BYTE g_rivalKind = 0;
 
     BYTE* g_hiddenHero = nullptr;
     BYTE g_heroVisible = 1;
@@ -350,6 +355,7 @@ namespace
 
         const WORD id = static_cast<WORD>(((packet[5] << 8) | packet[6]) & IdMask);
         const bool canDuel = packet[7] != 0;
+        g_rivalKind = packet[8];
         const char* strings[3] = { "", "", "" };
         int offset = 9;
         for (int i = 0; i < 3 && offset < size; i++)
@@ -579,15 +585,17 @@ namespace
         dx /= distance;
         dy /= distance;
 
+        const float viewDistance = g_rivalKind == KindLord ? LordViewDistance : ViewDistance;
+        const float frameHeight = g_rivalKind == KindLord ? LordFrameHeight : FrameHeight;
         const float eye[3] = {
-            rivalPosition[0] + dx * ViewDistance,
-            rivalPosition[1] + dy * ViewDistance,
+            rivalPosition[0] + dx * viewDistance,
+            rivalPosition[1] + dy * viewDistance,
             rivalPosition[2] + EyeHeight,
         };
 
         // Mira hacia el espectro: la direccion es -d.
         const float yaw = atan2f(-dx, -dy) * 180.0f / 3.14159265f;
-        const float pitch = -90.0f + atan2f(EyeHeight - FrameHeight, ViewDistance) * 180.0f / 3.14159265f;
+        const float pitch = -90.0f + atan2f(EyeHeight - frameHeight, viewDistance) * 180.0f / 3.14159265f;
         position[0] = eye[0];
         position[1] = eye[1];
         position[2] = eye[2];
@@ -686,10 +694,30 @@ namespace
         return character[CharLive] && IsRival(id) ? id : -1;
     }
 
+    // Los rivales con alas vuelan en el lugar en vez de estar parados.
+    void KeepRivalsFlying()
+    {
+        BYTE* characters = Characters();
+        if (characters == nullptr)
+        {
+            return;
+        }
+
+        for (int i = 0; i < CharacterCount; i++)
+        {
+            BYTE* character = characters + i * CharacterSize;
+            if (character[CharLive] && IsRival(*reinterpret_cast<const WORD*>(character + CharKey) & IdMask))
+            {
+                character[CharRun] = FlyRun;
+            }
+        }
+    }
+
     void __cdecl KeyTick(BYTE* keyStates)
     {
         __try
         {
+            KeepRivalsFlying();
             if (g_suppressedKey != 0)
             {
                 if (IsDown(keyStates, g_suppressedKey))
