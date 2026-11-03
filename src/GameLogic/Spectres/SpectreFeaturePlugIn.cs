@@ -406,6 +406,35 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     }
 
     /// <summary>
+    /// For tests of game masters: finishes the story of all spectres of the owner (all victories, with their names) and
+    /// gives the summoned spectres the maximum level.
+    /// </summary>
+    /// <param name="owner">The owner.</param>
+    /// <returns>The task.</returns>
+    internal async ValueTask MaxOutAsync(Player owner)
+    {
+        foreach (var kind in SpectreClasses.AllKinds)
+        {
+            SpectreProgress.SetVictories(owner, kind, SpectreProgress.MaximumVictories);
+            SpectreNames.Assign(owner, kind, this.Configuration);
+        }
+
+        var maximumLevel = owner.GameContext.Configuration.MaximumLevel;
+        foreach (var spectre in GetSpectres(owner))
+        {
+            for (var i = 0; i < 1000 && spectre.Level < maximumLevel; i++)
+            {
+                await spectre.AddExperienceAsync(int.MaxValue, null).ConfigureAwait(false);
+            }
+
+            await SpendStatPointsAsync(spectre).ConfigureAwait(false);
+        }
+
+        await SendPanelAsync(owner).ConfigureAwait(false);
+        await owner.ShowBlueMessageAsync("Espectros al maximo: todos desbloqueados con la historia terminada y los invocados en el nivel maximo. Para los demas: invocalos y volve a usar /espectro max.").ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Shows the summoned spectres of a player, with their level, resets and stat percentages.
     /// </summary>
     /// <param name="owner">The owner.</param>

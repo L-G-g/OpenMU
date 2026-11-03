@@ -408,6 +408,7 @@ public sealed class SpectreHubContext : MiniGameContext
         }
 
         var canDuel = victories < SpectreProgress.MaximumVictories && reason is null;
+
         // The rival stands up (an instant move to its own spot) and faces the player, so the scene frames it the same way always.
         this._talkingUntil[rival.Kind] = DateTime.UtcNow + TalkDuration;
         rival.Pose = default;
