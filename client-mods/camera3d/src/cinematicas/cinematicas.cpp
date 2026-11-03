@@ -73,6 +73,8 @@ namespace
     constexpr int CharacterCount = 400;
     constexpr DWORD CharacterSize = 0x598;
     constexpr DWORD CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
+    constexpr DWORD CharClass = 0x13;    // en los 3 bits de abajo, la clase
+    constexpr BYTE ClassElf = 2, ClassFighter = 6;
     constexpr DWORD CharVisible = 0x314; // el juego solo dibuja a los personajes con este byte en 1
     constexpr DWORD CharRun = 0x25;      // contador de correr: con alas, desde FlyRun el personaje vuela
     constexpr BYTE FlyRun = 0x28;
@@ -694,7 +696,7 @@ namespace
         return character[CharLive] && IsRival(id) ? id : -1;
     }
 
-    // Los rivales con alas vuelan en el lugar en vez de estar parados.
+    // Los rivales con alas vuelan en el lugar en vez de estar parados. La elfa y el peleador no: asi quedan congelados.
     void KeepRivalsFlying()
     {
         BYTE* characters = Characters();
@@ -706,7 +708,9 @@ namespace
         for (int i = 0; i < CharacterCount; i++)
         {
             BYTE* character = characters + i * CharacterSize;
-            if (character[CharLive] && IsRival(*reinterpret_cast<const WORD*>(character + CharKey) & IdMask))
+            const BYTE characterClass = character[CharClass] & 7;
+            if (character[CharLive] && characterClass != ClassElf && characterClass != ClassFighter
+                && IsRival(*reinterpret_cast<const WORD*>(character + CharKey) & IdMask))
             {
                 character[CharRun] = FlyRun;
             }

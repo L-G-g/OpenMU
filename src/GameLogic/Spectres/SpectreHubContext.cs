@@ -425,6 +425,12 @@ public sealed class SpectreHubContext : MiniGameContext
         rival.Pose = default;
         await rival.MoveAsync(rival.Position).ConfigureAwait(false);
         rival.Rotation = rival.GetDirectionTo(owner);
+        if (rival.Kind == SpectreKind.Lord)
+        {
+            // One step (45 degrees) to the side, so that the head of the horse doesn't hide the lord.
+            rival.Rotation = (Direction)(((int)rival.Rotation % 8) + 1);
+        }
+
         await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, 0, null, rival.Rotation), false).ConfigureAwait(false);
         await owner.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowRivalDialogueAsync(rival, rival.Title, text, canDuel, reason)).ConfigureAwait(false);
         if (victories == SpectreProgress.MaximumVictories - 1)
@@ -465,6 +471,9 @@ public sealed class SpectreHubContext : MiniGameContext
 
             // Toward the player: with itself as target, the client turns the rival to any direction.
             await rival.ForEachWorldObserverAsync<IShowSkillAnimationPlugIn>(p => p.ShowSkillAnimationAsync(rival, rival.Owner, skill, true), true).ConfigureAwait(false);
+
+            // The cast turned the rival to the player: back to its direction of the scene.
+            await rival.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(rival, 0, null, rival.Rotation), false).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
