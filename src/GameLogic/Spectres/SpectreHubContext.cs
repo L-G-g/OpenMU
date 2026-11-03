@@ -451,7 +451,8 @@ public sealed class SpectreHubContext : MiniGameContext
                 return;
             }
 
-            await rival.ForEachWorldObserverAsync<IShowSkillAnimationPlugIn>(p => p.ShowSkillAnimationAsync(rival, rival, skill, true), true).ConfigureAwait(false);
+            // Toward the player: with itself as target, the client turns the rival to any direction.
+            await rival.ForEachWorldObserverAsync<IShowSkillAnimationPlugIn>(p => p.ShowSkillAnimationAsync(rival, rival.Owner, skill, true), true).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
