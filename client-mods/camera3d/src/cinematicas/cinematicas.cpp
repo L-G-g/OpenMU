@@ -23,7 +23,7 @@
 //   - El click: camera3d.dll avisa en cada paso de logica, despues de que el juego actualiza su tabla de teclas. Si se
 //     aprieta el boton izquierdo con el mouse sobre un rival marcado (el personaje elegido bajo el mouse, 0x00E61730),
 //     se manda /espectro hablar y el personaje no ve el click (no camina ni ataca).
-//   - Durante la escena el personaje propio no se dibuja (alfa 0) y el mouse es de la caja de dialogo.
+//   - Durante la escena el personaje propio no se dibuja (byte Visible en 0) y el mouse es de la caja de dialogo.
 
 #include "../shared.h"
 
@@ -73,7 +73,13 @@ namespace
     constexpr int CharacterCount = 400;
     constexpr DWORD CharacterSize = 0x598;
     constexpr DWORD CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
-    constexpr DWORD ObjAlpha = 0x98, ObjPosition = 0xFC;
+    constexpr DWORD CharVisible = 0x314; // el juego solo dibuja a los personajes con este byte en 1
+    constexpr DWORD ObjLive = 0x04, ObjAlpha = 0x98, ObjPosition = 0xFC;
+
+    // Monturas y mascotas: se dibujan aparte del personaje y no miran su byte Visible, pero si el alfa de su objeto.
+    BYTE* const PetList = reinterpret_cast<BYTE*>(0x08791550);
+    constexpr int PetCount = 10;
+    constexpr DWORD PetSize = 0x288, PetOwner = 0x1D8; // PetOwner: el OBJECT del dueno
     constexpr WORD IdMask = 0x7FFF;
 
     // --- Paquetes ---
@@ -85,7 +91,10 @@ namespace
     constexpr DWORD FadeDuration = 400;    // ms de cada fundido a negro
     constexpr float EyeHeight = 135.0f;    // altura de los ojos sobre el suelo
     constexpr float FaceHeight = 125.0f;   // altura de la cara del espectro
-    constexpr float ViewDistance = 230.0f; // distancia de la camara al espectro
+    constexpr float MinViewDistance = 110.0f, MaxViewDistance = 230.0f; // distancia de la camara al espectro
+    constexpr float HeroClearance = 70.0f; // la camara queda por lo menos a esta distancia delante del personaje
+    constexpr float NearHeroDistance = 180.0f; // con el personaje mas cerca del espectro, la camara se corre a un costado
+    constexpr float SideOffset = 40.0f;
     constexpr float CharsPerSecond = 45.0f; // el texto aparece de a poco
     constexpr DWORD MaxSceneDuration = 10 * 60 * 1000;
 
@@ -134,7 +143,9 @@ namespace
     bool g_loggedCamera = false;
 
     BYTE* g_hiddenHero = nullptr;
-    float g_heroAlpha = 1.0f;
+    BYTE g_heroVisible = 1;
+    float g_petAlpha[PetCount] = {};
+    bool g_petHidden[PetCount] = {};
 
     // --- Caja (coordenadas de 640x480) ---
     constexpr float BarHeight = 46.0f;
@@ -486,8 +497,16 @@ namespace
     {
         if (g_hiddenHero != nullptr)
         {
-            *reinterpret_cast<float*>(g_hiddenHero + ObjAlpha) = g_heroAlpha;
+            g_hiddenHero[CharVisible] = g_heroVisible;
             g_hiddenHero = nullptr;
+            for (int i = 0; i < PetCount; i++)
+            {
+                if (g_petHidden[i])
+                {
+                    *reinterpret_cast<float*>(PetList + i * PetSize + ObjAlpha) = g_petAlpha[i];
+                    g_petHidden[i] = false;
+                }
+            }
         }
     }
 
@@ -499,16 +518,31 @@ namespace
             return;
         }
 
-        BYTE* object = reinterpret_cast<BYTE*>(hero + CharObject);
-        float* alpha = reinterpret_cast<float*>(object + ObjAlpha);
-        if (g_hiddenHero != object)
+        BYTE* character = reinterpret_cast<BYTE*>(hero);
+        if (g_hiddenHero != character)
         {
             RestoreHero();
-            g_hiddenHero = object;
-            g_heroAlpha = *alpha; // si no se dibujo la interfaz desde el cuadro anterior, ya estaba guardado
+            g_hiddenHero = character;
+            g_heroVisible = character[CharVisible]; // si no se dibujo la interfaz desde el cuadro anterior, ya estaba guardado
+            for (int i = 0; i < PetCount; i++)
+            {
+                BYTE* pet = PetList + i * PetSize;
+                if (pet[ObjLive] && *reinterpret_cast<const DWORD*>(pet + PetOwner) == hero + CharObject)
+                {
+                    g_petHidden[i] = true;
+                    g_petAlpha[i] = *reinterpret_cast<const float*>(pet + ObjAlpha);
+                }
+            }
         }
 
-        *alpha = 0.0f;
+        character[CharVisible] = 0;
+        for (int i = 0; i < PetCount; i++)
+        {
+            if (g_petHidden[i])
+            {
+                *reinterpret_cast<float*>(PetList + i * PetSize + ObjAlpha) = 0.0f;
+            }
+        }
     }
 
     // Forma de los angulos de la camara del juego (deducida de su matriz de vista): inclinacion 0 mira hacia abajo y -90
@@ -545,16 +579,22 @@ namespace
 
         dx /= distance;
         dy /= distance;
+
+        // La camara va entre el personaje y el espectro, asi el personaje no lo tapa.
+        const float viewDistance = min(max(distance - HeroClearance, MinViewDistance), MaxViewDistance);
+        const float side = distance < NearHeroDistance ? SideOffset : 0.0f;
         const float eye[3] = {
-            rivalPosition[0] + dx * ViewDistance,
-            rivalPosition[1] + dy * ViewDistance,
+            rivalPosition[0] + dx * viewDistance - dy * side,
+            rivalPosition[1] + dy * viewDistance + dx * side,
             heroPosition[2] + EyeHeight,
         };
 
-        // Mira hacia el espectro: la direccion es -d.
-        const float yaw = atan2f(-dx, -dy) * 180.0f / 3.14159265f;
+        // Mira hacia el espectro.
+        const float lookX = rivalPosition[0] - eye[0];
+        const float lookY = rivalPosition[1] - eye[1];
+        const float yaw = atan2f(lookX, lookY) * 180.0f / 3.14159265f;
         const float drop = eye[2] - (rivalPosition[2] + FaceHeight);
-        const float pitch = -90.0f + atan2f(drop, ViewDistance) * 180.0f / 3.14159265f;
+        const float pitch = -90.0f + atan2f(drop, sqrtf(lookX * lookX + lookY * lookY)) * 180.0f / 3.14159265f;
         position[0] = eye[0];
         position[1] = eye[1];
         position[2] = eye[2];
@@ -565,7 +605,7 @@ namespace
     }
 
     // Sin objetos con destructor: puede usar __try.
-    bool __cdecl CameraOverride(float* position, float* angle)
+    bool __cdecl OverrideCamera(float* position, float* angle)
     {
         __try
         {
@@ -903,6 +943,7 @@ namespace
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
             g_hiddenHero = nullptr;
+            memset(g_petHidden, 0, sizeof(g_petHidden));
         }
     }
 
@@ -974,7 +1015,7 @@ extern "C" __declspec(dllexport) bool StartCinematicas(const CinematicasHost* ho
         return false;
     }
 
-    host->setCameraOverride(&CameraOverride);
+    host->setCameraOverride(&OverrideCamera);
     host->setKeyTick(&KeyTick);
     g_log("Cinematicas listas (click en un espectro del refugio).");
     return true;
