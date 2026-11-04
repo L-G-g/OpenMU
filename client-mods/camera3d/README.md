@@ -401,6 +401,9 @@ FontSize=13.5  ; alto de las letras en coordenadas de 480 (0: la fuente negrita 
 [PeroniaUi]
 ; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)
 StoneTexture=Data\Interface\newui_msgbox_back.OZJ
+; marco original de los botones (el de Devil Square, 3 estados uno debajo del otro); vacio: marco dibujado
+ButtonTexture=Data\Interface\newui_btn_empty_big.OZT
+ButtonStates=3
 ```
 
 El servidor (plugins "Reset button", que revisa cada segundo, y "Show Reset Button (resetbutton.dll)") manda
@@ -410,7 +413,7 @@ las ventanas y botones de PeroniaMU (subcódigo `0x00`: el botón de reset). El 
 después de un click se esconde 4 segundos esperando la respuesta.
 
 El estilo está en `src/ui/peroniaui.h` / `peroniaui.cpp`, que se compila dentro de cada DLL que lo usa:
-`MetalButton` (marco con la cara de piedra de la interfaz original: lee el `.OZJ` del cliente, que es un JPEG con una cabecera adelante, lo decodifica con WIC y lo repite a su tamaño real; sin el archivo queda metal liso), `Glow` (resplandor), `Shine` (reflejo) y `ButtonText` (texto dorado con la fuente del
+`MetalButton` (el marco original de los botones de Devil Square, `newui_btn_empty_big.OZT`: un TGA con 4 bytes de cabecera, dibujado en tres partes para que las puntas no se deformen; sin ese archivo, un marco dibujado con la cara de piedra de la interfaz original: lee el `.OZJ` del cliente, que es un JPEG con una cabecera adelante, lo decodifica con WIC y lo repite a su tamaño real; sin el archivo queda metal liso), `Glow` (resplandor), `Shine` (reflejo) y `ButtonText` (texto dorado con la fuente del
 juego). La idea es pasar después a este estilo las ventanas y botones de las otras DLL (`loot.dll`,
 `espectros.dll`, etc.). Las llamadas que encadena son las mismas que `espectros.dll`: reparto de paquetes
 (`0x0065FD79`), dibujo después de la interfaz (`0x004D9CCC`), mouse de las ventanas (`0x00860998`) y el salto en

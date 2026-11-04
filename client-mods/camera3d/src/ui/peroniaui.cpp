@@ -304,6 +304,195 @@ namespace
         glDisable(GL_TEXTURE_2D);
         return true;
     }
+
+    // --- Marco original de los botones (Devil Square) ---
+    // newui_btn_empty_big.OZT: un TGA con 4 bytes de cabecera propia adelante, con los estados del boton uno debajo del
+    // otro (normal, mouse encima, apretado). Se dibuja en tres partes: las puntas a su ancho proporcional y el medio
+    // estirado, asi el bisel no se deforma.
+    char g_framePath[MAX_PATH] = "Data\\Interface\\newui_btn_empty_big.OZT";
+    int g_frameStates = 3;
+    GLuint g_frame = 0;
+    int g_frameWidth = 0;
+    int g_frameHeight = 0;
+    bool g_frameTried = false;
+
+    bool ReadWholeFile(const char* path, std::vector<BYTE>& data)
+    {
+        FILE* file = nullptr;
+        if (fopen_s(&file, path, "rb") != 0 || file == nullptr)
+        {
+            return false;
+        }
+
+        BYTE buffer[4096];
+        size_t read;
+        while ((read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+        {
+            data.insert(data.end(), buffer, buffer + read);
+        }
+
+        fclose(file);
+        return true;
+    }
+
+    // TGA sin compresion o con RLE (tipos 2 y 10), de 24 o 32 bits, a RGBA con la fila de arriba primero.
+    bool DecodeTga(const BYTE* data, size_t size, std::vector<BYTE>& pixels, int& width, int& height)
+    {
+        if (size < 18 || (data[2] != 2 && data[2] != 10) || (data[16] != 24 && data[16] != 32) || data[1] != 0)
+        {
+            return false;
+        }
+
+        width = data[12] | (data[13] << 8);
+        height = data[14] | (data[15] << 8);
+        const int bytes = data[16] / 8;
+        const bool topFirst = (data[17] & 0x20) != 0;
+        if (width <= 0 || height <= 0 || width > 4096 || height > 4096)
+        {
+            return false;
+        }
+
+        const size_t count = static_cast<size_t>(width) * height;
+        std::vector<BYTE> raw(count * 4);
+        size_t at = 18 + data[0];
+        size_t done = 0;
+        auto take = [&](size_t index) {
+            BYTE* out = &raw[index * 4];
+            out[0] = data[at + 2];
+            out[1] = data[at + 1];
+            out[2] = data[at];
+            out[3] = bytes == 4 ? data[at + 3] : 255;
+        };
+        while (done < count)
+        {
+            if (data[2] == 2)
+            {
+                if (at + bytes > size) return false;
+                take(done++);
+                at += bytes;
+                continue;
+            }
+
+            if (at >= size) return false;
+            const BYTE packet = data[at++];
+            const size_t run = (packet & 0x7F) + 1u;
+            if (done + run > count) return false;
+            if (packet & 0x80)
+            {
+                if (at + bytes > size) return false;
+                for (size_t k = 0; k < run; k++) take(done++);
+                at += bytes;
+            }
+            else
+            {
+                for (size_t k = 0; k < run; k++)
+                {
+                    if (at + bytes > size) return false;
+                    take(done++);
+                    at += bytes;
+                }
+            }
+        }
+
+        pixels.resize(count * 4);
+        const size_t row = static_cast<size_t>(width) * 4;
+        for (int y = 0; y < height; y++)
+        {
+            const int from = topFirst ? y : height - 1 - y;
+            memcpy(&pixels[y * row], &raw[from * row], row);
+        }
+
+        return true;
+    }
+
+    void LoadFrame()
+    {
+        g_frameTried = true;
+        std::vector<BYTE> data;
+        std::vector<BYTE> pixels;
+        if (!ReadWholeFile(g_framePath, data))
+        {
+            if (g_uiLog) g_uiLog("Estilo: no se encontro el marco %s; marco dibujado.", g_framePath);
+            return;
+        }
+
+        // Cabecera propia de 4 bytes del .OZT; si no esta, el archivo es un TGA comun.
+        const bool loaded = (data.size() > 4 && DecodeTga(data.data() + 4, data.size() - 4, pixels, g_frameWidth, g_frameHeight))
+            || DecodeTga(data.data(), data.size(), pixels, g_frameWidth, g_frameHeight);
+        if (!loaded)
+        {
+            if (g_uiLog) g_uiLog("Estilo: no se pudo leer el marco %s.", g_framePath);
+            return;
+        }
+
+        GLint previous = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+        glGenTextures(1, &g_frame);
+        glBindTexture(GL_TEXTURE_2D, g_frame);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_frameWidth, g_frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous));
+        if (g_uiLog) g_uiLog("Estilo: marco %s (%dx%d, %d estados).", g_framePath, g_frameWidth, g_frameHeight, g_frameStates);
+    }
+
+    void TexturedQuad(float left, float top, float right, float bottom, float u0, float v0, float u1, float v1)
+    {
+        glTexCoord2f(u0, v0);
+        Vertex(left, top);
+        glTexCoord2f(u1, v0);
+        Vertex(right, top);
+        glTexCoord2f(u1, v1);
+        Vertex(right, bottom);
+        glTexCoord2f(u0, v1);
+        Vertex(left, bottom);
+    }
+
+    // Boton con el marco original; false si no hay marco (se dibuja el propio).
+    bool FrameButton(const PeroniaUi::Rect& rect, int state, float shade)
+    {
+        if (!g_frameTried)
+        {
+            LoadFrame();
+        }
+
+        if (g_frame == 0 || g_frameStates <= 0)
+        {
+            return false;
+        }
+
+        const int stateHeight = g_frameHeight / g_frameStates;
+        const int row = state < g_frameStates ? state : 0;
+        const float v0 = static_cast<float>(row * stateHeight) / g_frameHeight;
+        const float v1 = static_cast<float>((row + 1) * stateHeight) / g_frameHeight;
+
+        // Puntas: 0,6 del alto del estado en la textura, al ancho que les toca segun el alto en pantalla.
+        const float capTexture = stateHeight * 0.6f;
+        const float uCap = capTexture / g_frameWidth;
+        float cap = rect.height * capTexture / stateHeight * (*WindowHeight / 480.0f) / (*WindowWidth / 640.0f);
+        if (cap * 2 > rect.width)
+        {
+            cap = rect.width / 2;
+        }
+
+        GLint previous = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, g_frame);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+        glColor4f(shade, shade, shade, 1.0f);
+        const float l = rect.left, t = rect.top, r = rect.Right(), b = rect.Bottom();
+        glBegin(GL_QUADS);
+        TexturedQuad(l, t, l + cap, b, 0.0f, v0, uCap, v1);
+        TexturedQuad(l + cap, t, r - cap, b, uCap, v0, 1.0f - uCap, v1);
+        TexturedQuad(r - cap, t, r, b, 1.0f - uCap, v0, 1.0f, v1);
+        glEnd();
+        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous));
+        glDisable(GL_TEXTURE_2D);
+        return true;
+    }
 }
 
 namespace PeroniaUi
@@ -317,6 +506,10 @@ namespace PeroniaUi
         {
             strcpy_s(g_stonePath, path);
         }
+
+        GetPrivateProfileStringA("PeroniaUi", "ButtonTexture", g_framePath, path, sizeof(path), iniPath);
+        strcpy_s(g_framePath, path); // vacio: sin marco original, se dibuja el propio
+        g_frameStates = GetPrivateProfileIntA("PeroniaUi", "ButtonStates", g_frameStates, iniPath);
     }
     float MouseX()
     {
@@ -421,6 +614,12 @@ namespace PeroniaUi
         const bool hover = state == ButtonState::Hover;
         const bool pressed = state == ButtonState::Pressed;
         const float light = state == ButtonState::Disabled ? 0.6f : hover ? 1.18f : 1.0f;
+        if (g_framePath[0] != '\0'
+            && FrameButton(rect, pressed ? 2 : hover ? 1 : 0, state == ButtonState::Disabled ? 0.6f : 1.0f))
+        {
+            return;
+        }
+
 
         // Contorno: negro, con un filo gris tenue por fuera, como los marcos de la barra de habilidades.
         Fill(l - line, t - line, r + line, b + line, 0.32f, 0.31f, 0.29f, 0.45f);

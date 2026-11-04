@@ -69,7 +69,9 @@ namespace PeroniaUi
     // strength: 0 a 1 (por ejemplo, mas fuerte con el mouse encima).
     void Glow(const Rect& rect, float strength);
 
-    // Marco de metal oscuro con bisel, como los botones del juego.
+    // Boton con el marco original del juego ([PeroniaUi] ButtonTexture, por defecto newui_btn_empty_big.OZT, el de
+    // Devil Square, con ButtonStates estados uno debajo del otro). Sin ese archivo: marco de metal oscuro con bisel
+    // y cara de piedra.
     void MetalButton(const Rect& rect, ButtonState state);
 
     // Reflejo de luz que cruza la cara del boton cada tanto (encima del marco, debajo del texto).
