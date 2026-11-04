@@ -454,7 +454,6 @@ namespace PeroniaUi
 
         // Linea de luz bajo el borde de arriba de la cara.
         Fill(cl, ct, cr, ct + line, 1.0f, 0.95f, 0.85f, pressed ? 0.03f : 0.08f);
-
     }
 
     void Shine(const Rect& rect)
