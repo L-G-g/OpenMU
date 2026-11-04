@@ -461,6 +461,45 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 | `0x0077F9B7` | `JNZ` en los textos de la ventana (`0x0077F990`): si la clase es de tercera clase (`0x005878E0`) escribe "Master" (texto 1745) | Pasa a `JMP`: siempre "Level: %d" (texto 200) y la experiencia (texto 201) |
 | `0x0077FA10` | CALL a `sprintf` (`0x0050D100`) del texto del nivel, de 32 bytes en `[EBP-0x128]` | Escribe el nivel y le agrega `Format` con los resets |
 
+## Botón de reset (resetbutton.dll) y estilo de PeroniaMU (src/ui)
+
+Cuando el personaje puede resetear (nivel, zen, límite de resets e items: lo mismo que pide `/reset`), aparece
+un botón **Reset** abajo en el centro de la pantalla, arriba de la barra de habilidades. Tiene el estilo nuevo
+de PeroniaMU: marco de metal oscuro con bisel (como los botones de la entrada a Devil Square), letras doradas con
+borde oscuro y un resplandor dorado detrás que late, con rayos que giran despacio y un reflejo que cruza el botón.
+El click manda el chat `/reset`. `camera3d.dll` la carga si está en la misma carpeta, después de `tabmap.dll`
+(`src/loadresetbutton.cpp`):
+
+```
+[ResetButton]
+Enabled=1      ; 0: no se carga resetbutton.dll
+Bottom=420     ; borde de abajo del botón, en coordenadas de 640x480 (la barra empieza en 429)
+Width=120
+Height=24
+Text=RESET
+FontSize=13.5  ; alto de las letras en coordenadas de 480 (0: la fuente negrita del juego, más chica)
+
+[PeroniaUi]
+; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)
+StoneTexture=Data\Interface\newui_msgbox_back.OZJ
+; marco original de los botones (el de Devil Square, 3 estados uno debajo del otro); vacio: marco dibujado
+ButtonTexture=Data\Interface\newui_btn_empty_big.OZT
+ButtonStates=3
+```
+
+El servidor (plugins "Reset button", que revisa cada segundo, y "Show Reset Button (resetbutton.dll)") manda
+`C1 05 FF 00 [0 o 1]` cuando cambia y, mientras se puede resetear, cada 3 segundos. El código `0xFF` queda para
+las ventanas y botones de PeroniaMU (subcódigo `0x00`: el botón de reset). El `main.exe` original lo ignora. Con
+`C3 F3 03` (entrar al juego, otro personaje, después de un reset) el botón se esconde hasta el próximo aviso, y
+después de un click se esconde 4 segundos esperando la respuesta.
+
+El estilo está en `src/ui/peroniaui.h` / `peroniaui.cpp`, que se compila dentro de cada DLL que lo usa:
+`MetalButton` (el marco original de los botones de Devil Square, `newui_btn_empty_big.OZT`: un TGA con 4 bytes de cabecera, dibujado en tres partes para que las puntas no se deformen; sin ese archivo, un marco dibujado con la cara de piedra de la interfaz original: lee el `.OZJ` del cliente, que es un JPEG con una cabecera adelante, lo decodifica con WIC y lo repite a su tamaño real; sin el archivo queda metal liso), `Glow` (resplandor), `Shine` (reflejo) y `ButtonText` (texto dorado con la fuente del
+juego). La idea es pasar después a este estilo las ventanas y botones de las otras DLL (`loot.dll`,
+`espectros.dll`, etc.). Las llamadas que encadena son las mismas que `espectros.dll`: reparto de paquetes
+(`0x0065FD79`), dibujo después de la interfaz (`0x004D9CCC`), mouse de las ventanas (`0x00860998`) y el salto en
+"mouse sobre la interfaz" (`0x00860910`).
+
 ## Ventana de botín de las dungeons (loot.dll)
 
 En una dungeon de OpenMU (plugin "Dungeon") los drops se reparten con una tirada: cada jugador de la
@@ -597,6 +636,7 @@ juego (`0x08793384`) para que el personaje no camine ni ataque.
 - `src/loadcinematicas.cpp`: carga de `cinematicas.dll` si está junto a la DLL, y su cámara.
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
 - `src/loadflight.cpp`: carga de `flight.dll` si está junto a la DLL.
+- `src/loadresetbutton.cpp`: carga de `resetbutton.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `cinematicas.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
@@ -608,6 +648,8 @@ juego (`0x08793384`) para que el personaje no camine ni ataque.
 - `src/cinematicas/`: `cinematicas.dll`, escenas de diálogo con los espectros del refugio.
 - `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
 - `src/flight/`: `flight.dll`, monturas voladoras.
+- `src/resetbutton/`: `resetbutton.dll`, botón Reset cuando el personaje puede resetear.
+- `src/ui/`: estilo de PeroniaMU para ventanas y botones nuevos (marco de metal, letras doradas, resplandor).
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -623,7 +665,7 @@ juego (`0x08793384`) para que el personaje no camine ni ataque.
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -633,6 +675,7 @@ cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib

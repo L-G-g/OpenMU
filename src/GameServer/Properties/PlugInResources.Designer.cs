@@ -7943,6 +7943,12 @@ namespace MUnique.OpenMU.GameServer.Properties {
         /// <summary>Gets the localized ShowLootRollViewPlugIn_Description text.</summary>
         public static string ShowLootRollViewPlugIn_Description => ResourceManager.GetString("ShowLootRollViewPlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized ShowResetAvailableViewPlugIn_Name text.</summary>
+        public static string ShowResetAvailableViewPlugIn_Name => ResourceManager.GetString("ShowResetAvailableViewPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowResetAvailableViewPlugIn_Description text.</summary>
+        public static string ShowResetAvailableViewPlugIn_Description => ResourceManager.GetString("ShowResetAvailableViewPlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized ShowSpectresViewPlugIn_Name text.</summary>
         public static string ShowSpectresViewPlugIn_Name => ResourceManager.GetString("ShowSpectresViewPlugIn_Name", resourceCulture)!;
 

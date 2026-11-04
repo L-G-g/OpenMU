@@ -2765,4 +2765,10 @@
   <data name="ShowFlightStatePlugIn_Description" xml:space="preserve">
     <value>Sends the custom packet C1 06 FE when a player starts or stops flying, or a flying player comes into view. Understood by the flight.dll client mod; the original client ignores it.</value>
   </data>
+  <data name="ShowResetAvailableViewPlugIn_Name" xml:space="preserve">
+    <value>Show Reset Button (resetbutton.dll)</value>
+  </data>
+  <data name="ShowResetAvailableViewPlugIn_Description" xml:space="preserve">
+    <value>Tells the reset button of resetbutton.dll of the PeroniaMU client whether the character can reset (packet C1 FF 00). The original client ignores it.</value>
+  </data>
 </root>

@@ -2207,4 +2207,10 @@
   <data name="SpectreConfiguration_FemaleNames_Description" xml:space="preserve">
     <value>The names, separated by commas, of which a female spectre (elf and summoner) gets a random one when its story is finished. Add new names at the end: the spectres keep the position of their name.</value>
   </data>
+  <data name="ResetButtonPlugIn_Name" xml:space="preserve">
+    <value>Reset button</value>
+  </data>
+  <data name="ResetButtonPlugIn_Description" xml:space="preserve">
+    <value>Tells the clients every second whether their character meets the requirements of the next reset (level, zen, reset limit, items), so that the reset button of the PeroniaMU client (resetbutton.dll) is shown only then. Needs the reset feature.</value>
+  </data>
 </root>

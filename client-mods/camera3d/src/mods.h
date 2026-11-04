@@ -81,6 +81,8 @@ void FlightBeforeRender();
 void FlightAfterRender();
 void SetFlightKeyTick(KeyTickCallback callback);
 float FlightViewLift(); // altura de vuelo del personaje propio, 0 sin flight.dll
+// Boton de reset: carga resetbutton.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadResetButton(LogFunction log);
 
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y

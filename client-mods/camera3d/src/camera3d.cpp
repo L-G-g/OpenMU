@@ -421,6 +421,7 @@ namespace
         LoadCinematicas(&Log);
         LoadTabMap(&Log);
         LoadFlight(&Log);
+        LoadResetButton(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())
