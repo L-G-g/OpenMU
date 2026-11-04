@@ -551,6 +551,34 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 `camera3d.dll` le avisa al empezar cada cuadro, le pasa el teclado en cada paso de lógica y le pregunta antes de equipar un item con click derecho
 (`src/rightclick.cpp`): con la ventana abierta, el item va al espectro.
 
+## Escenas con los espectros del refugio (cinematicas.dll)
+
+En el refugio de los espectros no hay duelo por cercanía: un click sobre un espectro rival empieza una
+escena. La pantalla se va a negro, la cámara pasa a primera persona mirando al espectro (el personaje
+propio no se dibuja), aparecen bandas de cine arriba y abajo y el espectro cuenta su parte de la historia
+en una caja de diálogo, letra por letra (un click la muestra entera). Abajo, "Duelo" (solo si el servidor
+dice que se puede ahora; si no, el espectro dice por qué) y "Volver más tarde" (o Esc). Al elegir, la
+pantalla se va a negro y la cámara vuelve a la normal. `camera3d.dll` la carga si está en la misma
+carpeta, después de `espectros.dll` (`src/loadcinematicas.cpp`):
+
+```ini
+[Cinematicas]
+Enabled=1               ; 0: no se carga cinematicas.dll
+```
+
+El servidor (la misma vista `ShowSpectresViewPlugIn`) marca a los rivales con `C1 06 FD 05 [objeto]` cada
+pocos segundos; un click sobre uno manda `/espectro hablar [objeto]`. El diálogo llega en
+`C2 [largo] FD 04 [objeto] [se puede pelear] [clase] [bit 0: con montura]` con tres textos Latin-1 terminados en 0 (nombre, lo
+que dice y por qué no se puede pelear); "Duelo" manda `/espectro duelo [objeto]`. Los demás paquetes `FD`
+siguen a `espectros.dll`.
+
+La cámara: `camera3d.dll` llama a `cinematicas.dll` después de calcular la suya en cada cuadro; durante la
+escena la DLL pone la posición (a 230 unidades del espectro, del lado del personaje, a la altura de los
+ojos) y los ángulos (inclinación -90 = horizonte, giro hacia el espectro), y `camera3d.dll` no aplica su
+zoom ni su inclinación y agranda el terreno visible. El click: en el paso de lógica (`camera3d.dll`), si
+se aprieta el botón izquierdo con un rival marcado bajo el mouse (`0x00E61730`), se borran los botones del
+juego (`0x08793384`) para que el personaje no camine ni ataque.
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -566,16 +594,18 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loadstacks.cpp`: carga de `stacks.dll` si está junto a la DLL.
 - `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/loadespectros.cpp`: carga de `espectros.dll` si está junto a la DLL.
+- `src/loadcinematicas.cpp`: carga de `cinematicas.dll` si está junto a la DLL, y su cámara.
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
 - `src/loadflight.cpp`: carga de `flight.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
-  `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`.
+  `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `cinematicas.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
 - `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
 - `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/espectros/`: `espectros.dll`, ventana de espectros (Shift+S) y espectros transparentes.
+- `src/cinematicas/`: `cinematicas.dll`, escenas de diálogo con los espectros del refugio.
 - `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
 - `src/flight/`: `flight.dll`, monturas voladoras.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
@@ -593,13 +623,14 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp src\loadflight.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
@@ -613,7 +644,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `tabmap.dll` y `flight.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll` y `flight.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

@@ -63,6 +63,12 @@ void EspectrosBeforeRender();
 void SetRightClickFilter(RightClickFilter filter);
 void SetEspectrosKeyTick(KeyTickCallback callback);
 
+// Escenas de dialogo con los espectros: carga cinematicas.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+// La camara llama a CinematicasCamera despues de calcular la suya (true: la cambio cinematicas.dll).
+void LoadCinematicas(LogFunction log);
+void SetCinematicasKeyTick(KeyTickCallback callback);
+bool CinematicasCamera(float* position, float* angle);
+
 // Mapa del TAB completo: carga tabmap.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadTabMap(LogFunction log);
 void SetTabMapKeyTick(KeyTickCallback callback);

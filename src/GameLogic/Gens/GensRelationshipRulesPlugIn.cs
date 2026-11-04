@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic.Gens;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.GameLogic.Views.Guild;
 using MUnique.OpenMU.PlugIns;
@@ -132,7 +133,7 @@ public class GensRelationshipRulesPlugIn : IPartyRequestingPlugIn, IGuildJoinReq
             return false;
         }
 
-        var members = requester.Party?.PartyList.OfType<Player>().ToList() ?? [requester];
+        var members = requester.GetPlayerParty()?.PartyList.OfType<Player>().ToList() ?? [requester];
         foreach (var member in members)
         {
             var memberGens = (await member.GetGensMemberAsync().ConfigureAwait(false))?.Gens ?? GensType.None;

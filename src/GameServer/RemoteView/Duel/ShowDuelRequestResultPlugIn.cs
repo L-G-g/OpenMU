@@ -30,7 +30,7 @@ public class ShowDuelRequestResultPlugIn : IShowDuelRequestResultPlugIn
     /// <inheritdoc/>
     public async ValueTask ShowDuelRequestResultAsync(GameLogic.Views.Duel.DuelStartResult result, Player opponent)
     {
-        await this._player.Connection.SendDuelStartResultAsync(Convert(result), opponent.GetId(this._player), opponent.Name).ConfigureAwait(false);
+        await this._player.Connection.SendDuelStartResultAsync(Convert(result), opponent.GetId(this._player), opponent.DisplayName).ConfigureAwait(false);
     }
 
     private static Network.Packets.ServerToClient.DuelStartResult.DuelStartResultType Convert(GameLogic.Views.Duel.DuelStartResult result)

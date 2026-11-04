@@ -24,6 +24,12 @@ public class ShowMessageToAllWhenPlayerEnteredWorldPlugIn : IPlayerStateChangedP
             return;
         }
 
+        if (player is Spectres.ISpectreCharacter)
+        {
+            // Spectres and the rivals of the spectre hub aren't players which come online.
+            return;
+        }
+
         await player.GameContext.ShowGlobalLocalizedMessageAsync(MessageType.BlueNormal, nameof(PlayerMessage.PlayerEnteredGameMessage), selectedCharacter.Name).ConfigureAwait(false);
     }
 }

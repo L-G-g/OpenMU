@@ -4444,6 +4444,48 @@ namespace MUnique.OpenMU.GameLogic.Properties {
                 return ResourceManager.GetString("CastleSiegeLifeStoneConsumeHandlerPlugIn_Name", resourceCulture);
             }
         }
+        /// <summary>Gets the localized SpectreConfiguration_RivalHealthMultiplier_Description text.</summary>
+        public static string SpectreConfiguration_RivalHealthMultiplier_Description => ResourceManager.GetString("SpectreConfiguration_RivalHealthMultiplier_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_RivalHealthMultiplier_Name text.</summary>
+        public static string SpectreConfiguration_RivalHealthMultiplier_Name => ResourceManager.GetString("SpectreConfiguration_RivalHealthMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_FemaleNames_Description text.</summary>
+        public static string SpectreConfiguration_FemaleNames_Description => ResourceManager.GetString("SpectreConfiguration_FemaleNames_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_FemaleNames_Name text.</summary>
+        public static string SpectreConfiguration_FemaleNames_Name => ResourceManager.GetString("SpectreConfiguration_FemaleNames_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaleNames_Description text.</summary>
+        public static string SpectreConfiguration_MaleNames_Description => ResourceManager.GetString("SpectreConfiguration_MaleNames_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaleNames_Name text.</summary>
+        public static string SpectreConfiguration_MaleNames_Name => ResourceManager.GetString("SpectreConfiguration_MaleNames_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumVictoriesPerDay_Description text.</summary>
+        public static string SpectreConfiguration_MaximumVictoriesPerDay_Description => ResourceManager.GetString("SpectreConfiguration_MaximumVictoriesPerDay_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumVictoriesPerDay_Name text.</summary>
+        public static string SpectreConfiguration_MaximumVictoriesPerDay_Name => ResourceManager.GetString("SpectreConfiguration_MaximumVictoriesPerDay_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_VictoriesPerReset_Description text.</summary>
+        public static string SpectreConfiguration_VictoriesPerReset_Description => ResourceManager.GetString("SpectreConfiguration_VictoriesPerReset_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_VictoriesPerReset_Name text.</summary>
+        public static string SpectreConfiguration_VictoriesPerReset_Name => ResourceManager.GetString("SpectreConfiguration_VictoriesPerReset_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Description text.</summary>
+        public static string SpectreGuardianTalkPlugIn_Description => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Name text.</summary>
+        public static string SpectreGuardianTalkPlugIn_Name => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_GuardianDesignation_Description text.</summary>
+        public static string SpectreConfiguration_GuardianDesignation_Description => ResourceManager.GetString("SpectreConfiguration_GuardianDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_GuardianDesignation_Name text.</summary>
+        public static string SpectreConfiguration_GuardianDesignation_Name => ResourceManager.GetString("SpectreConfiguration_GuardianDesignation_Name", resourceCulture)!;
+
         /// <summary>Gets the localized BotConfiguration_Enabled_Name text.</summary>
         public static string BotConfiguration_Enabled_Name => ResourceManager.GetString("BotConfiguration_Enabled_Name", resourceCulture)!;
 

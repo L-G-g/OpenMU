@@ -803,7 +803,7 @@ public sealed class CombatHandler
                 // which unlocked them, and the cast is refused deep inside, silently. A single-target
                 // skill picked here would simply not go off - the basic attack only steps in when NO
                 // skill was selected, not when the selected one fails.
-                || !BotProgression.MeetsRequirements(skill, attribute => this._player.Attributes?[attribute])
+                || !this._player.CompliesRequirements(skill)
                 || !this._player.HasEnoughResources(entry))
             {
                 continue;
