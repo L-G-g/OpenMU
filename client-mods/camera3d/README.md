@@ -386,7 +386,7 @@ Cuando el personaje puede resetear (nivel, zen, límite de resets e items: lo mi
 un botón **Reset** abajo en el centro de la pantalla, arriba de la barra de habilidades. Tiene el estilo nuevo
 de PeroniaMU: marco de metal oscuro con bisel (como los botones de la entrada a Devil Square), letras doradas con
 borde oscuro y un resplandor dorado detrás que late, con rayos que giran despacio y un reflejo que cruza el botón.
-El click manda el chat `/reset`. `camera3d.dll` la carga si está en la misma carpeta, después de `tabmap.dll`
+El click manda el chat `/reset` (con `Confirm=1`, el primer click pide confirmar y el segundo, dentro de 3 segundos, resetea). `camera3d.dll` la carga si está en la misma carpeta, después de `tabmap.dll`
 (`src/loadresetbutton.cpp`):
 
 ```
@@ -397,6 +397,8 @@ Width=120
 Height=24
 Text=RESET
 FontSize=13.5  ; alto de las letras en coordenadas de 480 (0: la fuente negrita del juego, más chica)
+Confirm=1      ; 1: el primer click muestra ConfirmText 3 segundos y el segundo resetea; 0: resetea con un click
+ConfirmText=CONFIRMAR?
 
 [PeroniaUi]
 ; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)
