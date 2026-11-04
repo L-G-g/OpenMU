@@ -3,8 +3,7 @@
 // Cuando el personaje puede resetear (nivel, zen, limite de resets e items, lo mismo que pide /reset), aparece un
 // boton "Reset" abajo en el centro de la pantalla, arriba de la barra de habilidades, con el estilo de PeroniaMU
 // (src\ui\peroniaui.h): marco de metal oscuro, letras doradas y un resplandor dorado detras. El click manda el chat
-// "/reset", como si el jugador lo escribiera; con [ResetButton] Confirm=1 (por defecto) el primer click cambia el texto a
-// "CONFIRMAR?" por 3 segundos y recien el segundo resetea, asi un click sin querer al caminar no resetea.
+// "/reset", como si el jugador lo escribiera.
 //
 // El servidor (OpenMU, plugins "Reset button" y "Show Reset Button (resetbutton.dll)") manda C1 05 FF 00 [0 o 1]
 // cuando cambia y, mientras se puede, cada pocos segundos. El main.exe original lo ignora (su reparto de paquetes
@@ -54,10 +53,6 @@ namespace
     float g_height = 24.0f;
     float g_bottom = 420.0f;
     char g_text[32] = "RESET";
-    char g_confirmText[32] = "CONFIRMAR?";
-    bool g_confirm = true;             // [ResetButton] Confirm: el primer click pide confirmar
-    constexpr DWORD ConfirmWait = 3000; // tiempo para el segundo click
-    DWORD g_confirmTick = 0;           // 0: sin pedido de confirmacion
     float g_fontSize = 13.5f; // 0: fuente negrita del juego
     constexpr DWORD ClickWait = 4000; // despues del click, esconderlo hasta que el servidor conteste
 
@@ -74,11 +69,6 @@ namespace
     PeroniaUi::Rect ButtonRect()
     {
         return { (640.0f - g_width) / 2, g_bottom - g_height, g_width, g_height };
-    }
-
-    bool Confirming()
-    {
-        return g_confirmTick != 0 && GetTickCount() - g_confirmTick < ConfirmWait;
     }
 
     bool Visible()
@@ -115,7 +105,6 @@ namespace
             {
                 g_available = false;
                 g_clickTick = 0;
-                g_confirmTick = 0;
             }
         }
 
@@ -144,15 +133,6 @@ namespace
         *reinterpret_cast<DWORD*>(manager + WindowManagerMouse) = 0;
         if (reinterpret_cast<IsReleaseType>(IsReleaseFunction)(VK_LBUTTON))
         {
-            // Primer click: pide confirmar; un segundo click dentro de ConfirmWait manda /reset.
-            if (g_confirm && !Confirming())
-            {
-                g_confirmTick = GetTickCount();
-                if (g_confirmTick == 0) g_confirmTick = 1;
-                return 1;
-            }
-
-            g_confirmTick = 0;
             g_sendPending = true;
             g_clickTick = GetTickCount();
             g_mouseOver = false;
@@ -189,7 +169,7 @@ namespace
             PeroniaUi::MetalButton(rect, state);
             PeroniaUi::Shine(rect);
             PeroniaUi::EndShapes();
-            PeroniaUi::ButtonText(rect, Confirming() ? g_confirmText : g_text, hover ? PeroniaUi::GoldTextHover : PeroniaUi::GoldText, true,
+            PeroniaUi::ButtonText(rect, g_text, hover ? PeroniaUi::GoldTextHover : PeroniaUi::GoldText, true,
                 state == PeroniaUi::ButtonState::Pressed, g_fontSize);
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
@@ -253,14 +233,6 @@ extern "C" __declspec(dllexport) bool StartResetButton(const ResetButtonHost* ho
     {
         strcpy_s(g_text, text);
     }
-
-    GetPrivateProfileStringA("ResetButton", "ConfirmText", "", text, sizeof(text), host->iniPath);
-    if (text[0] != '\0')
-    {
-        strcpy_s(g_confirmText, text);
-    }
-
-    g_confirm = GetPrivateProfileIntA("ResetButton", "Confirm", 1, host->iniPath) != 0;
 
     // El reparto de paquetes, el dibujo y el mouse pueden estar redirigidos por otras DLL: se encadena a lo que haya.
     const DWORD dispatch = CallTarget(DispatchCallSite);
