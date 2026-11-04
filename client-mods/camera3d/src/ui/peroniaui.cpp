@@ -19,6 +19,7 @@
 
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "windowscodecs.lib")
+#pragma comment(lib, "gdi32.lib")
 
 namespace
 {
@@ -212,7 +213,12 @@ namespace
         }
 
         fclose(file);
-        size_t start = 0;
+        // La cabecera de 24 bytes del .OZJ tambien empieza con FF D8 FF: si el JPEG esta despues, se usa ese.
+        constexpr size_t OzjHeader = 24;
+        size_t start = data.size() > OzjHeader + 3 && data[OzjHeader] == 0xFF && data[OzjHeader + 1] == 0xD8
+                && data[OzjHeader + 2] == 0xFF
+            ? OzjHeader
+            : 0;
         while (start + 3 <= data.size() && !(data[start] == 0xFF && data[start + 1] == 0xD8 && data[start + 2] == 0xFF))
         {
             start++;
@@ -395,19 +401,24 @@ namespace PeroniaUi
         const bool pressed = state == ButtonState::Pressed;
         const float light = state == ButtonState::Disabled ? 0.6f : hover ? 1.18f : 1.0f;
 
-        // Sombra debajo y contorno negro.
-        Fill(l + line, t + line, r + 2 * line, b + 2 * line, 0.0f, 0.0f, 0.0f, 0.55f);
-        Fill(l, t, r, b, 0.02f, 0.02f, 0.02f, 0.97f);
+        // Contorno: negro, con un filo gris tenue por fuera, como los marcos de la barra de habilidades.
+        Fill(l - line, t - line, r + line, b + line, 0.32f, 0.31f, 0.29f, 0.45f);
+        Fill(l, t, r, b, 0.02f, 0.02f, 0.02f, 1.0f);
 
-        // Bisel: luz arriba e izquierda, sombra abajo y derecha (al reves si esta apretado).
-        const float hi = (pressed ? 0.12f : 0.58f) * light;
-        const float lo = (pressed ? 0.55f : 0.10f) * light;
+        // Bisel de metal oscuro con degradado: luz suave arriba e izquierda, sombra abajo y derecha (al reves si esta
+        // apretado). Sin colores fuertes, para que entone con los marcos del juego.
+        const float hi = (pressed ? 0.10f : 0.36f) * light;
+        const float lo = (pressed ? 0.30f : 0.07f) * light;
         const float bevel = 2 * line;
         const float il = l + line, it = t + line, ir = r - line, ib = b - line;
-        Fill(il, it, ir, it + bevel, hi, hi * 0.97f, hi * 0.9f, 1.0f);
-        Fill(il, it, il + bevel, ib, hi * 0.85f, hi * 0.82f, hi * 0.77f, 1.0f);
-        Fill(il, ib - bevel, ir, ib, lo, lo, lo, 1.0f);
-        Fill(ir - bevel, it + bevel, ir, ib, lo, lo, lo, 1.0f);
+        const float upper[4] = { hi, hi * 0.98f, hi * 0.94f, 1.0f };
+        const float upperInner[4] = { hi * 0.6f, hi * 0.59f, hi * 0.57f, 1.0f };
+        const float lower[4] = { lo * 1.4f, lo * 1.4f, lo * 1.35f, 1.0f };
+        const float lowerOuter[4] = { lo, lo, lo, 1.0f };
+        FillVertical(il, it, ir, it + bevel, upper, upperInner);
+        FillVertical(il, ib - bevel, ir, ib, lower, lowerOuter);
+        Fill(il, it + bevel, il + bevel, ib - bevel, hi * 0.7f, hi * 0.68f, hi * 0.65f, 1.0f);
+        Fill(ir - bevel, it + bevel, ir, ib - bevel, lo * 1.2f, lo * 1.2f, lo * 1.15f, 1.0f);
 
         // Linea oscura entre el bisel y la cara.
         const float fl = il + bevel, ft = it + bevel, fr = ir - bevel, fb = ib - bevel;
@@ -442,15 +453,8 @@ namespace PeroniaUi
         }
 
         // Linea de luz bajo el borde de arriba de la cara.
-        Fill(cl, ct, cr, ct + line, 1.0f, 0.95f, 0.85f, pressed ? 0.05f : 0.16f);
+        Fill(cl, ct, cr, ct + line, 1.0f, 0.95f, 0.85f, pressed ? 0.03f : 0.08f);
 
-        // Remaches dorados en las esquinas del bisel.
-        const float stud = bevel;
-        const float sr = 0.75f * light, sg = 0.58f * light, sb = 0.25f * light;
-        Fill(il, it, il + stud, it + stud, sr, sg, sb, 1.0f);
-        Fill(ir - stud, it, ir, it + stud, sr, sg, sb, 1.0f);
-        Fill(il, ib - stud, il + stud, ib, sr * 0.7f, sg * 0.7f, sb * 0.7f, 1.0f);
-        Fill(ir - stud, ib - stud, ir, ib, sr * 0.7f, sg * 0.7f, sb * 0.7f, 1.0f);
     }
 
     void Shine(const Rect& rect)

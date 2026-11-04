@@ -53,7 +53,7 @@ namespace
     float g_height = 24.0f;
     float g_bottom = 420.0f;
     char g_text[32] = "RESET";
-    float g_fontSize = 15.0f; // 0: fuente negrita del juego
+    float g_fontSize = 13.5f; // 0: fuente negrita del juego
     constexpr DWORD ClickWait = 4000; // despues del click, esconderlo hasta que el servidor conteste
 
     LogFunction g_log = nullptr;

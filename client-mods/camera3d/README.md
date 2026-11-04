@@ -396,7 +396,7 @@ Bottom=420     ; borde de abajo del botón, en coordenadas de 640x480 (la barra 
 Width=120
 Height=24
 Text=RESET
-FontSize=15    ; alto de las letras en coordenadas de 480 (0: la fuente negrita del juego, más chica)
+FontSize=13.5  ; alto de las letras en coordenadas de 480 (0: la fuente negrita del juego, más chica)
 
 [PeroniaUi]
 ; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)
@@ -557,7 +557,7 @@ cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
-cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
