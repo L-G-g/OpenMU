@@ -119,7 +119,7 @@ namespace
     }
 
     // Anillo de luz alrededor de un rect: alfa a en el borde del rect, 0 a "spread" de distancia.
-    void Rim(const Rect& rect, float spread, float r, float g, float b, float a)
+    void Rim(const PeroniaUi::Rect& rect, float spread, float r, float g, float b, float a)
     {
         const float l = rect.left, t = rect.top, rr = rect.Right(), bb = rect.Bottom();
         const float ol = l - spread, ot = t - spread, orr = rr + spread, ob = bb + spread;
