@@ -2084,4 +2084,10 @@
   <data name="DiscordIntegrationFeaturePlugIn_Description" xml:space="preserve">
     <value>Tells game clients which ask for it how the server is connected to Discord (invite link, Rich Presence application, account link, mirrored chats), lets players link their account from the client, and sends them messages written in Discord as such.</value>
   </data>
+  <data name="ResetButtonPlugIn_Name" xml:space="preserve">
+    <value>Reset button</value>
+  </data>
+  <data name="ResetButtonPlugIn_Description" xml:space="preserve">
+    <value>Tells the clients every second whether their character meets the requirements of the next reset (level, zen, reset limit, items), so that the reset button of the PeroniaMU client (resetbutton.dll) is shown only then. Needs the reset feature.</value>
+  </data>
 </root>

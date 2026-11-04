@@ -2880,6 +2880,24 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Tells the clients every second whether their character meets the requirements of the next reset.
+        /// </summary>
+        public static string ResetButtonPlugIn_Description {
+            get {
+                return ResourceManager.GetString("ResetButtonPlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reset button.
+        /// </summary>
+        public static string ResetButtonPlugIn_Name {
+            get {
+                return ResourceManager.GetString("ResetButtonPlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Reset chat command.
         /// </summary>
         public static string ResetChatCommandPlugIn_Name {

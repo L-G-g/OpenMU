@@ -204,3 +204,22 @@ struct TabMapHost
 // bool StartTabMap(const TabMapHost* host): se llama una vez, despues de StartEspectros.
 using StartTabMapFunction = bool (*)(const TabMapHost* host);
 constexpr const char* StartTabMapName = "StartTabMap";
+
+// --- Boton de reset (resetbutton.dll) ---
+// camera3d.dll carga resetbutton.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([ResetButton]
+// Enabled=0), y llama a su funcion exportada StartResetButton, despues de tabmap.dll. resetbutton.dll encadena el
+// reparto de paquetes, el dibujo despues de la interfaz y el mouse de las ventanas que ya redirigieron otras DLL.
+
+constexpr int ResetButtonHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a resetbutton.dll.
+struct ResetButtonHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [ResetButton]
+};
+
+// bool StartResetButton(const ResetButtonHost* host): se llama una vez, despues de StartTabMap.
+using StartResetButtonFunction = bool (*)(const ResetButtonHost* host);
+constexpr const char* StartResetButtonName = "StartResetButton";
