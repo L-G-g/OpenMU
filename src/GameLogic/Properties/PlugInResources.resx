@@ -2153,4 +2153,16 @@
   <data name="DiscordIntegrationFeaturePlugIn_Description" xml:space="preserve">
     <value>Tells game clients which ask for it how the server is connected to Discord (invite link, Rich Presence application, account link, mirrored chats), lets players link their account from the client, and sends them messages written in Discord as such.</value>
   </data>
+  <data name="FlightPlugIn_Name" xml:space="preserve">
+    <value>Flight (Dinorant or wings, flight.dll)</value>
+  </data>
+  <data name="FlightPlugIn_Description" xml:space="preserve">
+    <value>Players fly on their Dinorant or with their wings with /volar: they walk over walls (not over tiles without ground) faster by the speed factor of the Dinorant or of the level of the wings, and can only move: no attacks or skills, and monsters don't attack them. Not in combat or in a safezone (entering one lands them), only on the allowed maps, never in mini games. Needs flight.dll on the clients.</value>
+  </data>
+  <data name="FlightChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /volar (flight)</value>
+  </data>
+  <data name="FlightChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Starts or ends the flight on the Dinorant or with the wings. Needs the "Flight" plugin.</value>
+  </data>
 </root>

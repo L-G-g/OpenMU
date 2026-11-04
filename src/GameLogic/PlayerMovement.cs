@@ -116,7 +116,7 @@ internal sealed class PlayerMovement : IDisposable
         await this._walker.StopAsync().ConfigureAwait(false);
 
         var requestedTarget = target;
-        var walkableStepCount = GetWalkableStepCount(currentMap.Terrain, steps.Span);
+        var walkableStepCount = GetWalkableStepCount(currentMap.Terrain, steps.Span, this._player.IsFlying);
         if (walkableStepCount == 0)
         {
             this._player.Logger.LogDebug(
@@ -248,12 +248,13 @@ internal sealed class PlayerMovement : IDisposable
         this._walker.Dispose();
     }
 
-    private static int GetWalkableStepCount(GameMapTerrain terrain, ReadOnlySpan<WalkingStep> steps)
+    private static int GetWalkableStepCount(GameMapTerrain terrain, ReadOnlySpan<WalkingStep> steps, bool isFlying)
     {
         for (var index = 0; index < steps.Length; index++)
         {
             var target = steps[index].To;
-            if (!terrain.WalkMap[target.X, target.Y])
+            if (!terrain.WalkMap[target.X, target.Y]
+                && !(isFlying && Flight.FlightPlugIn.IsFlyableTile(terrain, target)))
             {
                 return index;
             }
