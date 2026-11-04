@@ -11,6 +11,14 @@
 
 #include <GL/gl.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include <wincodec.h>
+
+#include <vector>
+
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "windowscodecs.lib")
 
 namespace
 {
@@ -137,10 +145,151 @@ namespace
 
         glEnd();
     }
+
+    // --- Textura de piedra de la interfaz original ---
+    // Los .OZJ del cliente son JPEG con una cabecera propia adelante: se busca el comienzo del JPEG (FF D8 FF) y se
+    // decodifica con WIC (Windows). La textura se crea la primera vez que se dibuja (hace falta el contexto de OpenGL).
+    char g_stonePath[MAX_PATH] = "Data\\Interface\\newui_msgbox_back.OZJ";
+    GLuint g_stone = 0;
+    int g_stoneWidth = 0;
+    int g_stoneHeight = 0;
+    bool g_stoneTried = false;
+    LogFunction g_uiLog = nullptr;
+
+    bool DecodeJpeg(const BYTE* data, size_t size, std::vector<BYTE>& pixels, UINT& width, UINT& height)
+    {
+        const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        IWICImagingFactory* factory = nullptr;
+        IWICStream* stream = nullptr;
+        IWICBitmapDecoder* decoder = nullptr;
+        IWICBitmapFrameDecode* frame = nullptr;
+        IWICFormatConverter* converter = nullptr;
+        bool ok = SUCCEEDED(CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory)))
+            && SUCCEEDED(factory->CreateStream(&stream))
+            && SUCCEEDED(stream->InitializeFromMemory(const_cast<BYTE*>(data), static_cast<DWORD>(size)))
+            && SUCCEEDED(factory->CreateDecoderFromStream(stream, nullptr, WICDecodeMetadataCacheOnLoad, &decoder))
+            && SUCCEEDED(decoder->GetFrame(0, &frame))
+            && SUCCEEDED(factory->CreateFormatConverter(&converter))
+            && SUCCEEDED(converter->Initialize(frame, GUID_WICPixelFormat32bppRGBA, WICBitmapDitherTypeNone, nullptr, 0.0,
+                WICBitmapPaletteTypeCustom))
+            && SUCCEEDED(converter->GetSize(&width, &height));
+        if (ok)
+        {
+            pixels.resize(static_cast<size_t>(width) * height * 4);
+            ok = SUCCEEDED(converter->CopyPixels(nullptr, width * 4, static_cast<UINT>(pixels.size()), pixels.data()));
+        }
+
+        if (converter) converter->Release();
+        if (frame) frame->Release();
+        if (decoder) decoder->Release();
+        if (stream) stream->Release();
+        if (factory) factory->Release();
+        if (SUCCEEDED(com))
+        {
+            CoUninitialize();
+        }
+
+        return ok;
+    }
+
+    void LoadStone()
+    {
+        g_stoneTried = true;
+        FILE* file = nullptr;
+        if (fopen_s(&file, g_stonePath, "rb") != 0 || file == nullptr)
+        {
+            if (g_uiLog) g_uiLog("Estilo: no se encontro la textura %s; sin piedra.", g_stonePath);
+            return;
+        }
+
+        std::vector<BYTE> data;
+        BYTE buffer[4096];
+        size_t read;
+        while ((read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+        {
+            data.insert(data.end(), buffer, buffer + read);
+        }
+
+        fclose(file);
+        size_t start = 0;
+        while (start + 3 <= data.size() && !(data[start] == 0xFF && data[start + 1] == 0xD8 && data[start + 2] == 0xFF))
+        {
+            start++;
+        }
+
+        std::vector<BYTE> pixels;
+        UINT width = 0, height = 0;
+        if (start + 3 > data.size() || !DecodeJpeg(data.data() + start, data.size() - start, pixels, width, height))
+        {
+            if (g_uiLog) g_uiLog("Estilo: no se pudo leer la textura %s.", g_stonePath);
+            return;
+        }
+
+        GLint previous = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+        glGenTextures(1, &g_stone);
+        glBindTexture(GL_TEXTURE_2D, g_stone);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous));
+        g_stoneWidth = static_cast<int>(width);
+        g_stoneHeight = static_cast<int>(height);
+        if (g_uiLog) g_uiLog("Estilo: textura de piedra %s (%ux%u).", g_stonePath, width, height);
+    }
+
+    // Piedra en la cara del boton, del tamano real de la textura en pixeles de la pantalla (repetida si hace falta).
+    // El juego recuerda que textura dejo puesta: se vuelve a poner la que habia.
+    bool StoneFace(float left, float top, float right, float bottom, float shade)
+    {
+        if (!g_stoneTried)
+        {
+            LoadStone();
+        }
+
+        if (g_stone == 0)
+        {
+            return false;
+        }
+
+        GLint previous = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, g_stone);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+        const float u = (Px(right) - Px(left)) / g_stoneWidth;
+        const float v = (Py(top) - Py(bottom)) / g_stoneHeight;
+        glColor4f(shade, shade, shade, 1.0f);
+        glBegin(GL_QUADS);
+        glTexCoord2f(0, 0);
+        Vertex(left, top);
+        glTexCoord2f(u, 0);
+        Vertex(right, top);
+        glTexCoord2f(u, v);
+        Vertex(right, bottom);
+        glTexCoord2f(0, v);
+        Vertex(left, bottom);
+        glEnd();
+        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous));
+        glDisable(GL_TEXTURE_2D);
+        return true;
+    }
 }
 
 namespace PeroniaUi
 {
+    void Initialize(const char* iniPath, LogFunction log)
+    {
+        g_uiLog = log;
+        char path[MAX_PATH];
+        GetPrivateProfileStringA("PeroniaUi", "StoneTexture", "", path, sizeof(path), iniPath);
+        if (path[0] != '\0')
+        {
+            strcpy_s(g_stonePath, path);
+        }
+    }
     float MouseX()
     {
         return static_cast<float>(*GameMouseX);
@@ -265,13 +414,25 @@ namespace PeroniaUi
         const float middle[4] = { 0.15f * shade, 0.145f * shade, 0.14f * shade, 1.0f };
         const float bottom[4] = { 0.21f * shade, 0.20f * shade, 0.19f * shade, 1.0f };
         const float cm = (ct + cb) / 2;
-        FillVertical(cl, ct, cr, cm, top, middle);
-        FillVertical(cl, cm, cr, cb, middle, bottom);
-
-        // Metal cepillado: lineas horizontales tenues.
-        for (float y = ct + line; y < cb; y += 2 * line)
+        if (StoneFace(cl, ct, cr, cb, shade))
         {
-            Fill(cl, y, cr, y + line * 0.5f, 1.0f, 1.0f, 1.0f, 0.025f);
+            // Piedra de la interfaz original, con luz arriba y sombra en el medio por encima.
+            const float lit[4] = { 1.0f, 0.95f, 0.85f, 0.10f };
+            const float clear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            const float dark[4] = { 0.0f, 0.0f, 0.0f, 0.30f };
+            FillVertical(cl, ct, cr, cm, lit, clear);
+            FillVertical(cl, cm, cr, cb, clear, dark);
+        }
+        else
+        {
+            FillVertical(cl, ct, cr, cm, top, middle);
+            FillVertical(cl, cm, cr, cb, middle, bottom);
+
+            // Metal cepillado: lineas horizontales tenues.
+            for (float y = ct + line; y < cb; y += 2 * line)
+            {
+                Fill(cl, y, cr, y + line * 0.5f, 1.0f, 1.0f, 1.0f, 0.025f);
+            }
         }
 
         // Linea de luz bajo el borde de arriba de la cara.

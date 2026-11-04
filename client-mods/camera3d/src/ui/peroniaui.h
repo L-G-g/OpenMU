@@ -12,8 +12,14 @@
 
 #include <windows.h>
 
+using LogFunction = void (*)(const char* format, ...);
+
 namespace PeroniaUi
 {
+    // Una vez, al arrancar la DLL: lee [PeroniaUi] de camera3d.ini (StoneTexture: textura de piedra de la cara de
+    // los botones, un .OZJ del cliente; por defecto Data\Interface\newui_msgbox_back.OZJ).
+    void Initialize(const char* iniPath, LogFunction log);
+
     struct Rect
     {
         float left;

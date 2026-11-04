@@ -52,7 +52,7 @@ namespace
     float g_width = 120.0f;
     float g_height = 24.0f;
     float g_bottom = 420.0f;
-    char g_text[32] = "Reset";
+    char g_text[32] = "RESET";
     constexpr DWORD ClickWait = 4000; // despues del click, esconderlo hasta que el servidor conteste
 
     LogFunction g_log = nullptr;
@@ -221,6 +221,7 @@ extern "C" __declspec(dllexport) bool StartResetButton(const ResetButtonHost* ho
     }
 
     g_log = host->log;
+    PeroniaUi::Initialize(host->iniPath, host->log);
     g_width = ReadFloat(host->iniPath, "Width", g_width);
     g_height = ReadFloat(host->iniPath, "Height", g_height);
     g_bottom = ReadFloat(host->iniPath, "Bottom", g_bottom);
