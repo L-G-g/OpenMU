@@ -204,3 +204,55 @@ struct TabMapHost
 // bool StartTabMap(const TabMapHost* host): se llama una vez, despues de StartEspectros.
 using StartTabMapFunction = bool (*)(const TabMapHost* host);
 constexpr const char* StartTabMapName = "StartTabMap";
+
+// --- Monturas voladoras (flight.dll) ---
+// camera3d.dll carga flight.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Flight]
+// Enabled=0), y llama a su funcion exportada StartFlight, despues de tabmap.dll. flight.dll encadena el reparto
+// de paquetes; camera3d.dll le avisa antes y despues del dibujo de la escena principal (despues del movimiento
+// fluido) y en cada paso de logica.
+
+constexpr int FlightHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a flight.dll.
+struct FlightHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Flight]
+    void (*setRenderHooks)(BeforeRenderCallback before, BeforeRenderCallback after);
+    void (*setKeyTick)(KeyTickCallback callback);
+};
+
+// bool StartFlight(const FlightHost* host): se llama una vez, despues de StartTabMap.
+using StartFlightFunction = bool (*)(const FlightHost* host);
+constexpr const char* StartFlightName = "StartFlight";
+
+// float FlightHeroLift(): altura de vuelo dibujada del personaje propio (0 en el suelo). Opcional.
+using FlightHeroLiftFunction = float (*)();
+constexpr const char* FlightHeroLiftName = "FlightHeroLift";
+
+// --- Escenas de dialogo con los espectros (cinematicas.dll) ---
+// camera3d.dll carga cinematicas.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Cinematicas]
+// Enabled=0), y llama a su funcion exportada StartCinematicas, despues de espectros.dll (asi ve primero los paquetes FD
+// y le pasa a espectros.dll los que no son suyos). cinematicas.dll encadena el reparto de paquetes, el dibujo despues de
+// la interfaz y el mouse de las ventanas a lo que haya. La camara y el teclado los recibe de camera3d.dll.
+
+constexpr int CinematicasHostVersion = 1;
+
+// Se llama en cada cuadro, despues de que camera3d.dll calculo la camara (posicion x, y, z y angulos: inclinacion, -,
+// giro). Devuelve true si la cambio: camera3d.dll no le aplica su zoom ni su inclinacion.
+using CameraOverride = bool (*)(float* position, float* angle);
+
+// Lo que camera3d.dll le ofrece a cinematicas.dll.
+struct CinematicasHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Cinematicas]
+    void (*setCameraOverride)(CameraOverride callback);
+    void (*setKeyTick)(KeyTickCallback callback);
+};
+
+// bool StartCinematicas(const CinematicasHost* host): se llama una vez, despues de StartEspectros.
+using StartCinematicasFunction = bool (*)(const CinematicasHost* host);
+constexpr const char* StartCinematicasName = "StartCinematicas";

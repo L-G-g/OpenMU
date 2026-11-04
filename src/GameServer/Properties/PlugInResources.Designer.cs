@@ -7948,5 +7948,11 @@ namespace MUnique.OpenMU.GameServer.Properties {
 
         /// <summary>Gets the localized ShowSpectresViewPlugIn_Description text.</summary>
         public static string ShowSpectresViewPlugIn_Description => ResourceManager.GetString("ShowSpectresViewPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowFlightStatePlugIn_Name text.</summary>
+        public static string ShowFlightStatePlugIn_Name => ResourceManager.GetString("ShowFlightStatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowFlightStatePlugIn_Description text.</summary>
+        public static string ShowFlightStatePlugIn_Description => ResourceManager.GetString("ShowFlightStatePlugIn_Description", resourceCulture)!;
     }
 }

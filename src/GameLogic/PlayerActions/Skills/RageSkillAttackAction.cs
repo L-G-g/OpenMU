@@ -24,6 +24,12 @@ public class RageSkillAttackAction
     /// <param name="skillId">The skill identifier.</param>
     public async ValueTask AttackAsync(Player player, ushort explicitTargetId, ushort skillId)
     {
+        if (player.IsFlying)
+        {
+            // Flying is movement only, see FlightPlugIn.
+            return;
+        }
+
         if (player.CurrentMap is not { } map)
         {
             // The player is changing the map, e.g. by a warp.

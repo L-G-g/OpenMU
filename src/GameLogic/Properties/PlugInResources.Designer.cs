@@ -4450,6 +4450,30 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         /// <summary>Gets the localized SpectreConfiguration_RivalHealthMultiplier_Name text.</summary>
         public static string SpectreConfiguration_RivalHealthMultiplier_Name => ResourceManager.GetString("SpectreConfiguration_RivalHealthMultiplier_Name", resourceCulture)!;
 
+        /// <summary>Gets the localized SpectreConfiguration_FemaleNames_Description text.</summary>
+        public static string SpectreConfiguration_FemaleNames_Description => ResourceManager.GetString("SpectreConfiguration_FemaleNames_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_FemaleNames_Name text.</summary>
+        public static string SpectreConfiguration_FemaleNames_Name => ResourceManager.GetString("SpectreConfiguration_FemaleNames_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaleNames_Description text.</summary>
+        public static string SpectreConfiguration_MaleNames_Description => ResourceManager.GetString("SpectreConfiguration_MaleNames_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaleNames_Name text.</summary>
+        public static string SpectreConfiguration_MaleNames_Name => ResourceManager.GetString("SpectreConfiguration_MaleNames_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumVictoriesPerDay_Description text.</summary>
+        public static string SpectreConfiguration_MaximumVictoriesPerDay_Description => ResourceManager.GetString("SpectreConfiguration_MaximumVictoriesPerDay_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumVictoriesPerDay_Name text.</summary>
+        public static string SpectreConfiguration_MaximumVictoriesPerDay_Name => ResourceManager.GetString("SpectreConfiguration_MaximumVictoriesPerDay_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_VictoriesPerReset_Description text.</summary>
+        public static string SpectreConfiguration_VictoriesPerReset_Description => ResourceManager.GetString("SpectreConfiguration_VictoriesPerReset_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_VictoriesPerReset_Name text.</summary>
+        public static string SpectreConfiguration_VictoriesPerReset_Name => ResourceManager.GetString("SpectreConfiguration_VictoriesPerReset_Name", resourceCulture)!;
+
         /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Description text.</summary>
         public static string SpectreGuardianTalkPlugIn_Description => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Description", resourceCulture)!;
 
@@ -5217,5 +5241,225 @@ namespace MUnique.OpenMU.GameLogic.Properties {
                 return ResourceManager.GetString("DiscordIntegrationFeaturePlugIn_Description", resourceCulture);
             }
         }
+    
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Map invasions.
+        /// </summary>
+        public static string MapInvasionsPlugIn_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsPlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invades one map after another, in a random order which repeats only after every map was invaded. The monsters of an invasion stay until the next invasion of their map, which replaces the ones that are left, and each of them always drops the configured items..
+        /// </summary>
+        public static string MapInvasionsPlugIn_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsPlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interval.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Interval_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Interval_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The time between two invasions (at least one minute)..
+        /// </summary>
+        public static string MapInvasionsConfiguration_Interval_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Interval_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to First invasion delay.
+        /// </summary>
+        public static string MapInvasionsConfiguration_FirstInvasionDelay_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_FirstInvasionDelay_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The time between the start of the game server and the first invasion. The invasions start a new cycle when the game server starts..
+        /// </summary>
+        public static string MapInvasionsConfiguration_FirstInvasionDelay_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_FirstInvasionDelay_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spawn distance.
+        /// </summary>
+        public static string MapInvasionsConfiguration_SpawnDistance_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_SpawnDistance_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The monsters appear at random coordinates within this distance of random monster spots of the map..
+        /// </summary>
+        public static string MapInvasionsConfiguration_SpawnDistance_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_SpawnDistance_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Start message.
+        /// </summary>
+        public static string MapInvasionsConfiguration_StartMessage_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_StartMessage_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The message which all players get when an invasion starts. {monster} is replaced by the name of the monster and {map} by the name of the map..
+        /// </summary>
+        public static string MapInvasionsConfiguration_StartMessage_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_StartMessage_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invasions.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Invasions_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Invasions_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The invasions of a cycle, each one happens once per cycle..
+        /// </summary>
+        public static string MapInvasionsConfiguration_Invasions_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Invasions_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Map number.
+        /// </summary>
+        public static string MapInvasionsConfiguration_MapNumber_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_MapNumber_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Monster.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Monster_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Monster_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Number of monsters.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Count_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Count_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drops.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Drops_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Drops_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The items which each monster always drops, in addition to its normal drop..
+        /// </summary>
+        public static string MapInvasionsConfiguration_Drops_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Drops_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Items.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Items_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Items_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minimum number of items.
+        /// </summary>
+        public static string MapInvasionsConfiguration_MinimumCount_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_MinimumCount_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum number of items.
+        /// </summary>
+        public static string MapInvasionsConfiguration_MaximumCount_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_MaximumCount_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Item group.
+        /// </summary>
+        public static string MapInvasionsConfiguration_ItemGroup_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_ItemGroup_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Item number.
+        /// </summary>
+        public static string MapInvasionsConfiguration_ItemNumber_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_ItemNumber_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Item level.
+        /// </summary>
+        public static string MapInvasionsConfiguration_ItemLevel_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_ItemLevel_Name", resourceCulture);
+            }
+        }
+
+        /// <summary>Gets the localized FlightPlugIn_Name text.</summary>
+        public static string FlightPlugIn_Name => ResourceManager.GetString("FlightPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightPlugIn_Description text.</summary>
+        public static string FlightPlugIn_Description => ResourceManager.GetString("FlightPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightChatCommandPlugIn_Name text.</summary>
+        public static string FlightChatCommandPlugIn_Name => ResourceManager.GetString("FlightChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightChatCommandPlugIn_Description text.</summary>
+        public static string FlightChatCommandPlugIn_Description => ResourceManager.GetString("FlightChatCommandPlugIn_Description", resourceCulture)!;
     }
 }

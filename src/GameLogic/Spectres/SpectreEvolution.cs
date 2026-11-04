@@ -281,5 +281,10 @@ public static class SpectreEvolution
         _ => 15,
     };
 
-    private static bool IsFemale(SpectreKind kind) => kind is SpectreKind.Elf or SpectreKind.Summoner;
+    /// <summary>
+    /// Determines whether a kind is female (the elf and the summoner).
+    /// </summary>
+    /// <param name="kind">The kind.</param>
+    /// <returns><c>true</c>, if it is female.</returns>
+    internal static bool IsFemale(SpectreKind kind) => kind is SpectreKind.Elf or SpectreKind.Summoner;
 }

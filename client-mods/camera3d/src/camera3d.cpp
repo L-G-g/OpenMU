@@ -51,6 +51,7 @@ namespace
     constexpr float DegreesPerPixel = 0.3f;
     constexpr float PivotHeight = 100.0f;   // altura del punto alrededor del cual se inclina
     constexpr float CloseZoomLift = 0.12f;  // cuanto sube la camara por cada unidad que se acerca
+    constexpr float FlightLiftPerExtraView = 500.0f; // volando: +1 vez el area por cada 500 de altura
 
     // --- Estado (todo se usa desde el hilo del juego) ---
     volatile float g_yawDelta = 0.0f;
@@ -65,6 +66,7 @@ namespace
     bool g_gameControlsYaw = false;
     float g_baseViewFar = 0.0f;
     float g_lastViewFarWeSet = -1.0f;
+    bool g_cinematic = false; // cinematicas.dll puso la camara en este cuadro
     WNDPROC g_originalWndProc = nullptr;
     FILE* g_log = nullptr;
 
@@ -99,6 +101,11 @@ namespace
     // vista actual: alejando se ve mas terreno, y mirando mas horizontal se ve mas lejos.
     float ViewScale()
     {
+        if (g_cinematic)
+        {
+            return 3.0f; // primera persona: se mira al horizonte
+        }
+
         // El area del juego es justa para su camara (incluso sin tocarla aparecen baldosas negras en
         // algunas esquinas), asi que siempre se le da margen extra.
         float scale = g_distance / DefaultDistance;
@@ -120,6 +127,8 @@ namespace
             scale *= 1.0f - g_pitchDelta / 25.0f; // hasta el doble con la inclinacion minima
         }
 
+        // Volando (flight.dll) la camara sigue al personaje subido y desde mas arriba se ve mas lejos.
+        scale *= 1.0f + FlightViewLift() / FlightLiftPerExtraView;
         return scale;
     }
 
@@ -194,6 +203,21 @@ namespace
         if (g_gameControlsYaw)
         {
             g_lastYawWeSet = CameraAngle[2];
+        }
+
+        // Escena de cinematicas.dll: su camara reemplaza al zoom y a la inclinacion.
+        g_cinematic = CinematicasCamera(CameraPosition, CameraAngle);
+        if (g_cinematic)
+        {
+            if (*ViewFar != g_lastViewFarWeSet)
+            {
+                g_baseViewFar = *ViewFar;
+            }
+
+            *ViewFar = g_baseViewFar * ViewScale();
+            g_lastViewFarWeSet = *ViewFar;
+            g_lastYawWeSet = CameraAngle[2];
+            return result;
         }
 
         // Si la camara esta en un modo especial (nivel 5, por ejemplo montado/eventos), no se toca.
@@ -394,7 +418,9 @@ namespace
         LoadStacks(&Log);
         LoadLoot(&Log);
         LoadEspectros(&Log);
+        LoadCinematicas(&Log);
         LoadTabMap(&Log);
+        LoadFlight(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())

@@ -406,6 +406,23 @@ public class SpectreFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IPlayer
     }
 
     /// <summary>
+    /// For tests of game masters: puts all rivals of the owner at the last duel (8 victories each, the rivals at the
+    /// highest tier), so the owner can see how they cast their buff in the scene and fight them.
+    /// </summary>
+    /// <param name="owner">The owner.</param>
+    /// <returns>The task.</returns>
+    internal async ValueTask MaxOutAsync(Player owner)
+    {
+        foreach (var kind in SpectreClasses.AllKinds)
+        {
+            SpectreProgress.SetVictories(owner, kind, SpectreProgress.MaximumVictories - 1);
+        }
+
+        await SendPanelAsync(owner).ConfigureAwait(false);
+        await owner.ShowBlueMessageAsync("Todos los rivales estan en la ultima pelea. Entra (o volve a entrar) al refugio para verlos.").ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Shows the summoned spectres of a player, with their level, resets and stat percentages.
     /// </summary>
     /// <param name="owner">The owner.</param>

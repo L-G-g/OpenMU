@@ -104,6 +104,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         IceQueenDungeon.Apply(this.Context, this.GameConfiguration);
         SpectreHubSetup.Apply(this.Context, this.GameConfiguration);
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
+        MapDropsAndInvasions.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 
         // After all items exist.

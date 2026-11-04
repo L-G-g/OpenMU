@@ -42,7 +42,17 @@ public class SpectreHubUpdatePlugIn : UpdatePlugInBase
     public override bool IsMandatory => false;
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Version 2 adds the attributes of the names of the spectres and of the victories per day. Applying the update again
+    /// only adds what is missing.
+    /// </remarks>
+    public override int Version => 2;
+
+    /// <inheritdoc />
     public override DateTime CreatedAt => new(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <inheritdoc />
+    public override DateTime UpdatedAt => new(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
     protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)

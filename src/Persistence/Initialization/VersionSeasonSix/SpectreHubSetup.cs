@@ -13,7 +13,7 @@ using MUnique.OpenMU.GameLogic.Spectres;
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
-///   <item>The attributes of the victories against the rivals and of the pets of the spectres (<see cref="SpectreProgress"/>).</item>
+///   <item>The attributes of the victories against the rivals, of the pets and names of the spectres, and of the victories per day (<see cref="SpectreProgress"/>).</item>
 ///   <item>The mini game <see cref="MiniGameType.SpectreHub"/> with one instance per player: the hub (30 minutes) and the duel
 ///         (3 minutes), in two rooms of the Duel Arena (<see cref="SpectreHub.HubMapNumber"/>).</item>
 ///   <item>The guardian of the spectres in Lorencia, a copy of the Mirage (385) of the Illusion Temple, which is recognized
@@ -46,7 +46,7 @@ internal static class SpectreHubSetup
     /// <param name="gameConfiguration">The game configuration.</param>
     internal static void Apply(IContext context, GameConfiguration gameConfiguration)
     {
-        foreach (var attribute in SpectreProgress.VictoryAttributes.Append(SpectreProgress.GrantedPetsAttribute))
+        foreach (var attribute in SpectreProgress.AllAttributes)
         {
             if (gameConfiguration.Attributes.All(a => a.Id != attribute.Id))
             {

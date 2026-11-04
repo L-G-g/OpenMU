@@ -42,6 +42,69 @@ public static class SpectreProgress
     public static AttributeDefinition GrantedPetsAttribute { get; } = new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A10"), "Spectre granted pets", "The pets which a spectre got from its evolutions, as bit mask.");
 
     /// <summary>
+    /// Gets the attribute definitions of the names of the spectres of a character, by kind: the position of the name in its
+    /// pool, starting at 1, or 0 while the story of the spectre isn't finished (see <see cref="SpectreNames"/>).
+    /// </summary>
+    public static IReadOnlyList<AttributeDefinition> NameAttributes { get; } =
+    [
+        new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A21"), "Spectre name warrior", "The position of the name of the warrior spectre in its pool, 0 if it has none."),
+        new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A22"), "Spectre name mage", "The position of the name of the mage spectre in its pool, 0 if it has none."),
+        new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A23"), "Spectre name elf", "The position of the name of the elf spectre in its pool, 0 if it has none."),
+        new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A24"), "Spectre name gladiator", "The position of the name of the gladiator spectre in its pool, 0 if it has none."),
+        new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A25"), "Spectre name lord", "The position of the name of the lord spectre in its pool, 0 if it has none."),
+        new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A26"), "Spectre name summoner", "The position of the name of the summoner spectre in its pool, 0 if it has none."),
+        new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A27"), "Spectre name fighter", "The position of the name of the fighter spectre in its pool, 0 if it has none."),
+    ];
+
+    /// <summary>
+    /// Gets the attribute definition of the day of the last victory of a character in the spectre hub (days since 2000-01-01, in the time of Argentina).
+    /// </summary>
+    public static AttributeDefinition VictoryDayAttribute { get; } = new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A30"), "Spectre victory day", "The day of the last victory of the character in the spectre hub.");
+
+    /// <summary>
+    /// Gets the attribute definition of the victories of a character in the spectre hub on the day of <see cref="VictoryDayAttribute"/>.
+    /// </summary>
+    public static AttributeDefinition VictoriesTodayAttribute { get; } = new(new Guid("3A9E2B70-5C1D-4F8E-9B21-6D0C7E8F1A31"), "Spectre victories of the day", "How often the character won in the spectre hub on the day of its last victory.");
+
+    /// <summary>
+    /// Gets all attribute definitions which the spectres keep at the owner character.
+    /// </summary>
+    public static IEnumerable<AttributeDefinition> AllAttributes
+        => VictoryAttributes.Append(GrantedPetsAttribute).Concat(NameAttributes).Append(VictoryDayAttribute).Append(VictoriesTodayAttribute);
+
+    /// <summary>
+    /// Gets the total number of victories of a character against all rivals, which is the number of its spectres and their evolutions.
+    /// </summary>
+    /// <param name="character">The owner character.</param>
+    /// <returns>The number of victories.</returns>
+    public static int GetTotalVictories(Character character)
+        => SpectreClasses.AllKinds.Sum(kind => GetVictories(character, kind));
+
+    /// <summary>
+    /// Gets how often a character won in the spectre hub today.
+    /// </summary>
+    /// <param name="character">The owner character.</param>
+    /// <returns>The number of victories of today.</returns>
+    public static int GetVictoriesToday(Character character)
+        => (int)GetValue(character, VictoryDayAttribute) == GetToday() ? (int)GetValue(character, VictoriesTodayAttribute) : 0;
+
+    /// <summary>
+    /// Counts a victory of the owner for the limit of victories per day.
+    /// </summary>
+    /// <param name="player">The owner.</param>
+    public static void CountVictoryOfToday(Player player)
+    {
+        if (player.SelectedCharacter is not { } character)
+        {
+            return;
+        }
+
+        var victories = GetVictoriesToday(character) + 1;
+        SetValue(player.GameContext.Configuration, player.PersistenceContext, character, VictoryDayAttribute, GetToday());
+        SetValue(player.GameContext.Configuration, player.PersistenceContext, character, VictoriesTodayAttribute, victories);
+    }
+
+    /// <summary>
     /// Gets how often a character beat the rival of a kind.
     /// </summary>
     /// <param name="character">The owner character.</param>
@@ -103,4 +166,10 @@ public static class SpectreProgress
         character.Attributes.Add(persistenceContext.CreateNew<StatAttribute>(persistentDefinition, value));
         return true;
     }
+
+    /// <summary>
+    /// Gets the current day, as days since 2000-01-01 in the time of Argentina (UTC-3), where the players are.
+    /// </summary>
+    /// <returns>The day.</returns>
+    private static int GetToday() => (int)(DateTime.UtcNow.AddHours(-3).Date - new DateTime(2000, 1, 1)).TotalDays;
 }

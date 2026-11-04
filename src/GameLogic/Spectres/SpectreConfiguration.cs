@@ -48,4 +48,31 @@ public class SpectreConfiguration
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_RivalHealthMultiplier_Name), Description = nameof(PlugInResources.SpectreConfiguration_RivalHealthMultiplier_Description))]
     public float RivalHealthMultiplier { get; set; } = 3;
+
+    /// <summary>
+    /// Gets or sets how many victories in the spectre hub (spectres and their evolutions) a player may have per reset:
+    /// with 1, one reset allows the first spectre, two resets a second one or the first evolution, and so on. 0 means no limit.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_VictoriesPerReset_Name), Description = nameof(PlugInResources.SpectreConfiguration_VictoriesPerReset_Description))]
+    [Range(0, 100)]
+    public int VictoriesPerReset { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets how often a player may win in the spectre hub per day (in the time of Argentina). 0 means no limit.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_MaximumVictoriesPerDay_Name), Description = nameof(PlugInResources.SpectreConfiguration_MaximumVictoriesPerDay_Description))]
+    [Range(0, 100)]
+    public int MaximumVictoriesPerDay { get; set; } = 3;
+
+    /// <summary>
+    /// Gets or sets the names, separated by commas, of which the male spectres get one when their story is finished.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_MaleNames_Name), Description = nameof(PlugInResources.SpectreConfiguration_MaleNames_Description))]
+    public string MaleNames { get; set; } = SpectreNames.DefaultMaleNames;
+
+    /// <summary>
+    /// Gets or sets the names, separated by commas, of which the female spectres (elf and summoner) get one when their story is finished.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.SpectreConfiguration_FemaleNames_Name), Description = nameof(PlugInResources.SpectreConfiguration_FemaleNames_Description))]
+    public string FemaleNames { get; set; } = SpectreNames.DefaultFemaleNames;
 }

@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameServer.RemoteView.World;
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Text;
+using MUnique.OpenMU.DataModel;
 using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.GameLogic.Spectres;
@@ -35,6 +36,12 @@ using MUnique.OpenMU.PlugIns;
 ///   <item><c>C1 [length] FD 03 [object id, 2 bytes big endian]</c> and a name (Latin-1, ends with 0, up to <see cref="MaximumTitleLength"/>
 ///         characters): the client shows the object with this name instead of the name of at most 10 characters of the original protocol.
 ///         It's repeated every few seconds while the object is in view.</item>
+///   <item><c>C2 [length, 2 bytes big endian] FD 04 [object id, 2 bytes big endian] [can duel, 0 or 1] [kind] [flags, bit 0 = mounted]</c> and three texts
+///         (Latin-1, each ends with 0): the name of a rival of the spectre hub, what it says, and why the player may not duel it now
+///         (empty if it may). cinematicas.dll shows it in a scene in which the camera looks at the rival, with the buttons
+///         Duelo (sends <c>/espectro duelo [object id]</c>) and Volver mas tarde.</item>
+///   <item><c>C1 06 FD 05 [object id, 2 bytes big endian]</c>: the object is a rival of the spectre hub of the player; a click on it
+///         sends <c>/espectro hablar [object id]</c>. It's repeated every few seconds while the rival is in view.</item>
 /// </list>
 /// The window answers with the chat command /espectro.
 /// </remarks>
@@ -48,6 +55,9 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
     private const byte SpectreSubCode = 0x01;
     private const byte StorySubCode = 0x02;
     private const byte TitleSubCode = 0x03;
+    private const byte DialogueSubCode = 0x04;
+    private const byte RivalSubCode = 0x05;
+    private const int MaximumDialogueLength = 1000;
     private const int MaximumTitleLength = 30;
     private const int MaximumStoryLength = 2000;
     private const int SpectreLength = 6;
@@ -175,6 +185,71 @@ public class ShowSpectresViewPlugIn : IShowSpectresPlugIn
             BinaryPrimitives.WriteUInt16BigEndian(span[4..], id);
             titleBytes.CopyTo(span[SpectreLength..]);
             span[^1] = 0;
+            return length;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ShowRivalAsync(RivalPlayer rival)
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        var id = rival.GetId(this._player);
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(SpectreLength)[..SpectreLength];
+            span[0] = 0xC1;
+            span[1] = SpectreLength;
+            span[2] = Code;
+            span[3] = RivalSubCode;
+            BinaryPrimitives.WriteUInt16BigEndian(span[4..], id);
+            return SpectreLength;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ShowRivalDialogueAsync(RivalPlayer rival, string title, string text, bool canDuel, string? reason)
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        const int headerLength = PanelHeaderLength + 5;
+        var id = rival.GetId(this._player);
+        var isMounted = rival.Inventory?.GetItem(InventoryConstants.PetSlot)?.Definition is { Group: 13, Number: 2 or 3 or 4 or 37 };
+        var titleBytes = Encoding.Latin1.GetBytes(title.Length > MaximumTitleLength ? title[..MaximumTitleLength] : title);
+        var textBytes = Encoding.Latin1.GetBytes(text.Length > MaximumDialogueLength ? text[..MaximumDialogueLength] : text);
+        var reasonBytes = Encoding.Latin1.GetBytes(reason ?? string.Empty);
+        var length = headerLength + titleBytes.Length + 1 + textBytes.Length + 1 + reasonBytes.Length + 1;
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(length)[..length];
+            span.Clear();
+            span[0] = 0xC2;
+            BinaryPrimitives.WriteUInt16BigEndian(span[1..], (ushort)length);
+            span[3] = Code;
+            span[4] = DialogueSubCode;
+            BinaryPrimitives.WriteUInt16BigEndian(span[5..], id);
+            span[7] = canDuel ? (byte)1 : (byte)0;
+            span[8] = (byte)rival.Kind;
+            span[9] = isMounted ? (byte)1 : (byte)0;
+            var offset = headerLength;
+            foreach (var bytes in new[] { titleBytes, textBytes, reasonBytes })
+            {
+                bytes.CopyTo(span[offset..]);
+                offset += bytes.Length + 1;
+            }
+
             return length;
         }
 

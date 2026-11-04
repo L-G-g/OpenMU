@@ -63,9 +63,24 @@ void EspectrosBeforeRender();
 void SetRightClickFilter(RightClickFilter filter);
 void SetEspectrosKeyTick(KeyTickCallback callback);
 
+// Escenas de dialogo con los espectros: carga cinematicas.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+// La camara llama a CinematicasCamera despues de calcular la suya (true: la cambio cinematicas.dll).
+void LoadCinematicas(LogFunction log);
+void SetCinematicasKeyTick(KeyTickCallback callback);
+bool CinematicasCamera(float* position, float* angle);
+
 // Mapa del TAB completo: carga tabmap.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadTabMap(LogFunction log);
 void SetTabMapKeyTick(KeyTickCallback callback);
+
+// Monturas voladoras: carga flight.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva. Lo que se
+// llama antes y despues de dibujar la escena principal (frames.cpp) y su paso de logica (rightclick.cpp).
+void LoadFlight(LogFunction log);
+void SetFlightRenderHooks(BeforeRenderCallback before, BeforeRenderCallback after);
+void FlightBeforeRender();
+void FlightAfterRender();
+void SetFlightKeyTick(KeyTickCallback callback);
+float FlightViewLift(); // altura de vuelo del personaje propio, 0 sin flight.dll
 
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y

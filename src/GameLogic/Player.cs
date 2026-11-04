@@ -198,6 +198,17 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     /// <inheritdoc />
     public bool IsWalking => this._movement.IsWalking;
 
+    /// <summary>
+    /// Gets a value indicating whether the player is flying on its mount, see <see cref="Flight.FlightPlugIn"/>.
+    /// A flying player may walk over blocked tiles, can't attack or use skills and can't be attacked by monsters.
+    /// </summary>
+    public bool IsFlying { get; internal set; }
+
+    /// <summary>
+    /// Gets the factor of the movement speed while flying (Dinorant or wings), see <see cref="Flight.FlightPlugIn"/>.
+    /// </summary>
+    public float FlightSpeedFactor { get; internal set; }
+
     /// <inheritdoc />
     public TimeSpan StepDelay => this._movement.StepDelay;
 
@@ -795,6 +806,12 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
         if (this is Spectres.SpectrePlayer)
         {
             // Spectres can't be hurt by anyone.
+            return null;
+        }
+
+        if (this.IsFlying && attacker is Monster)
+        {
+            // Monsters can't reach a flying player, see FlightPlugIn.
             return null;
         }
 

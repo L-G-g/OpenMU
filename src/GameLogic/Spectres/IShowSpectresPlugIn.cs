@@ -39,4 +39,23 @@ public interface IShowSpectresPlugIn : IViewPlugIn
     /// <param name="title">The name.</param>
     /// <returns>The task.</returns>
     ValueTask ShowTitleAsync(IIdentifiable obj, string title);
+
+    /// <summary>
+    /// Shows that an object in the view of the player is a rival of its spectre hub, which the player can talk to by clicking on it.
+    /// </summary>
+    /// <param name="rival">The rival.</param>
+    /// <returns>The task.</returns>
+    ValueTask ShowRivalAsync(RivalPlayer rival);
+
+    /// <summary>
+    /// Shows what a rival of the spectre hub says to the player, in a scene in which the camera looks at the rival,
+    /// with the options to duel it (if <paramref name="canDuel"/>) or to come back later.
+    /// </summary>
+    /// <param name="rival">The rival.</param>
+    /// <param name="title">The name of the rival, e.g. "Guerrero Olvidado".</param>
+    /// <param name="text">What the rival says.</param>
+    /// <param name="canDuel">If set to <c>true</c>, the player may duel the rival now.</param>
+    /// <param name="reason">Why the player may not duel the rival now, or <c>null</c>.</param>
+    /// <returns>The task.</returns>
+    ValueTask ShowRivalDialogueAsync(RivalPlayer rival, string title, string text, bool canDuel, string? reason);
 }
