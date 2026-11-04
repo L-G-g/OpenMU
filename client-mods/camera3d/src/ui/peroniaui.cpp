@@ -40,6 +40,7 @@ namespace
         int height, int sort, SIZE* size);
 
     constexpr float Pi = 3.14159265f;
+    constexpr float BottomBarTop = 429.0f;
 
     float Seconds()
     {
@@ -353,21 +354,25 @@ namespace PeroniaUi
         const float cy = rect.top + rect.height / 2;
         Additive();
 
+        // El resplandor no pasa a la barra de abajo del juego (empieza en 429 de 480).
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(0, static_cast<GLint>(Py(BottomBarTop)), *WindowWidth, *WindowHeight);
+
         // Halo ancho y suave, y otro mas chico y caliente.
-        Halo(cx, cy, rect.width * 0.85f, rect.height * 1.9f, 1.0f, 0.62f, 0.12f, 0.38f * s);
-        Halo(cx, cy, rect.width * 0.62f, rect.height * 1.15f, 1.0f, 0.80f, 0.30f, 0.30f * s);
+        Halo(cx, cy, rect.width * 1.05f, rect.height * 2.4f, 1.0f, 0.60f, 0.10f, 0.55f * s);
+        Halo(cx, cy, rect.width * 0.7f, rect.height * 1.4f, 1.0f, 0.82f, 0.35f, 0.45f * s);
 
         // Rayos que giran despacio (aplastados en la vertical para que no tapen la barra de abajo).
         constexpr int Rays = 12;
         const float spin = time * 0.35f;
-        const float length = rect.width * 0.75f;
+        const float length = rect.width * 0.95f;
         glBegin(GL_TRIANGLES);
         for (int i = 0; i < Rays; i++)
         {
             const float angle = spin + 2 * Pi * i / Rays;
-            const float wide = 0.07f;
+            const float wide = 0.06f;
             const float flicker = 0.6f + 0.4f * sinf(time * 3.1f + i * 1.7f);
-            glColor4f(1.0f, 0.85f, 0.4f, 0.22f * s * flicker);
+            glColor4f(1.0f, 0.88f, 0.45f, 0.45f * s * flicker);
             Vertex(cx, cy);
             glColor4f(1.0f, 0.7f, 0.2f, 0.0f);
             Vertex(cx + cosf(angle - wide) * length, cy + sinf(angle - wide) * length * 0.45f);
@@ -377,7 +382,8 @@ namespace PeroniaUi
         glEnd();
 
         // Borde de luz pegado al marco.
-        Rim(rect, 7.0f, 1.0f, 0.72f, 0.2f, 0.55f * s);
+        Rim(rect, 9.0f, 1.0f, 0.75f, 0.25f, 0.65f * s);
+        glDisable(GL_SCISSOR_TEST);
         Normal();
     }
 
@@ -486,7 +492,29 @@ namespace PeroniaUi
         Normal();
     }
 
-    void ButtonText(const Rect& rect, const char* text, DWORD color, bool bold, bool pressed)
+    // Fuente propia para textos mas grandes que los del juego: Arial negrita de "size" (en 480 de alto), recreada
+    // si cambia el tamano de la ventana. El texto del juego acepta cualquier HFONT.
+    HFONT LargeFont(float size)
+    {
+        static HFONT font = nullptr;
+        static int height = 0;
+        const int wanted = static_cast<int>(size * *WindowHeight / 480.0f + 0.5f);
+        if (font == nullptr || wanted != height)
+        {
+            if (font != nullptr)
+            {
+                DeleteObject(font);
+            }
+
+            height = wanted;
+            font = CreateFontA(-height, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_SWISS, "Arial");
+        }
+
+        return font;
+    }
+
+    void ButtonText(const Rect& rect, const char* text, DWORD color, bool bold, bool pressed, float size)
     {
         BYTE* const renderer = *reinterpret_cast<BYTE**>(RenderTextObject + 4);
         if (renderer == nullptr)
@@ -501,12 +529,15 @@ namespace PeroniaUi
         const DWORD savedText = *textColor;
         const DWORD savedBackground = *background;
         *background = 0;
-        reinterpret_cast<SetFontType>(SetFontFunction)(RenderTextObject, nullptr, bold ? *BoldFont : *NormalFont);
+        const HFONT large = size > 0 ? LargeFont(size) : nullptr;
+        reinterpret_cast<SetFontType>(SetFontFunction)(RenderTextObject, nullptr,
+            large != nullptr ? large : bold ? *BoldFont : *NormalFont);
 
         // El texto del juego toma la altura de la fuente: se centra con la altura de una linea (unos 10 de 480).
         const int offset = pressed ? 1 : 0;
         const int x = static_cast<int>(rect.left) + offset;
-        const int y = static_cast<int>(rect.top + (rect.height - 10.0f) / 2) + offset;
+        const float lineHeight = large != nullptr ? size : 10.0f;
+        const int y = static_cast<int>(rect.top + (rect.height - lineHeight) / 2) + offset;
         const int width = static_cast<int>(rect.width);
         const auto render = reinterpret_cast<RenderTextType>(RenderTextFunction);
         *textColor = TextOutline;

@@ -53,6 +53,7 @@ namespace
     float g_height = 24.0f;
     float g_bottom = 420.0f;
     char g_text[32] = "RESET";
+    float g_fontSize = 15.0f; // 0: fuente negrita del juego
     constexpr DWORD ClickWait = 4000; // despues del click, esconderlo hasta que el servidor conteste
 
     LogFunction g_log = nullptr;
@@ -169,7 +170,7 @@ namespace
             PeroniaUi::Shine(rect);
             PeroniaUi::EndShapes();
             PeroniaUi::ButtonText(rect, g_text, hover ? PeroniaUi::GoldTextHover : PeroniaUi::GoldText, true,
-                state == PeroniaUi::ButtonState::Pressed);
+                state == PeroniaUi::ButtonState::Pressed, g_fontSize);
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
@@ -225,6 +226,7 @@ extern "C" __declspec(dllexport) bool StartResetButton(const ResetButtonHost* ho
     g_width = ReadFloat(host->iniPath, "Width", g_width);
     g_height = ReadFloat(host->iniPath, "Height", g_height);
     g_bottom = ReadFloat(host->iniPath, "Bottom", g_bottom);
+    g_fontSize = ReadFloat(host->iniPath, "FontSize", g_fontSize);
     char text[sizeof(g_text)];
     GetPrivateProfileStringA("ResetButton", "Text", "", text, sizeof(text), host->iniPath);
     if (text[0] != '\0')

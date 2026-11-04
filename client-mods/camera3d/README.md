@@ -396,6 +396,7 @@ Bottom=420     ; borde de abajo del botón, en coordenadas de 640x480 (la barra 
 Width=120
 Height=24
 Text=RESET
+FontSize=15    ; alto de las letras en coordenadas de 480 (0: la fuente negrita del juego, más chica)
 
 [PeroniaUi]
 ; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)

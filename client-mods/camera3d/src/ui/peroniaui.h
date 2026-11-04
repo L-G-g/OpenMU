@@ -75,6 +75,7 @@ namespace PeroniaUi
     // Reflejo de luz que cruza la cara del boton cada tanto (encima del marco, debajo del texto).
     void Shine(const Rect& rect);
 
-    // Texto con la fuente del juego, centrado en el rect, con borde oscuro (despues de EndShapes).
-    void ButtonText(const Rect& rect, const char* text, DWORD color, bool bold, bool pressed);
+    // Texto centrado en el rect, con borde oscuro (despues de EndShapes). size 0: fuente del juego (normal o negrita);
+    // si no, Arial negrita de ese alto en coordenadas de 480.
+    void ButtonText(const Rect& rect, const char* text, DWORD color, bool bold, bool pressed, float size = 0);
 }
