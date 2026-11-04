@@ -398,7 +398,8 @@ Height=24
 Text=RESET
 
 [PeroniaUi]
-StoneTexture=Data\Interface\newui_msgbox_back.OZJ ; piedra de la cara de los botones (un .OZJ del cliente)
+; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)
+StoneTexture=Data\Interface\newui_msgbox_back.OZJ
 ```
 
 El servidor (plugins "Reset button", que revisa cada segundo, y "Show Reset Button (resetbutton.dll)") manda
