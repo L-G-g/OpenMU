@@ -111,6 +111,27 @@ namespace
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
+    // Marco de "width" de ancho dentro del rect, con degradado del borde de afuera (outer) hacia adentro (60%),
+    // igual en los cuatro lados (trapecios que se juntan en las esquinas).
+    void Bevel(float left, float top, float right, float bottom, float width, float outer)
+    {
+        const float o[4] = { outer, outer * 0.98f, outer * 0.94f, 1.0f };
+        const float i[4] = { outer * 0.6f, outer * 0.59f, outer * 0.57f, 1.0f };
+        const float il = left + width, it = top + width, ir = right - width, ib = bottom - width;
+        const float outerPoints[5][2] = { { left, top }, { right, top }, { right, bottom }, { left, bottom }, { left, top } };
+        const float innerPoints[5][2] = { { il, it }, { ir, it }, { ir, ib }, { il, ib }, { il, it } };
+        glBegin(GL_QUAD_STRIP);
+        for (int k = 0; k < 5; k++)
+        {
+            glColor4fv(o);
+            Vertex(outerPoints[k][0], outerPoints[k][1]);
+            glColor4fv(i);
+            Vertex(innerPoints[k][0], innerPoints[k][1]);
+        }
+
+        glEnd();
+    }
+
     // Halo eliptico: centro con alfa, borde transparente.
     void Halo(float cx, float cy, float rx, float ry, float r, float g, float b, float a)
     {
@@ -405,20 +426,12 @@ namespace PeroniaUi
         Fill(l - line, t - line, r + line, b + line, 0.32f, 0.31f, 0.29f, 0.45f);
         Fill(l, t, r, b, 0.02f, 0.02f, 0.02f, 1.0f);
 
-        // Bisel de metal oscuro con degradado: luz suave arriba e izquierda, sombra abajo y derecha (al reves si esta
-        // apretado). Sin colores fuertes, para que entone con los marcos del juego.
-        const float hi = (pressed ? 0.10f : 0.36f) * light;
-        const float lo = (pressed ? 0.30f : 0.07f) * light;
+        // Bisel de metal oscuro: el mismo degradado en los cuatro lados, claro por fuera y mas oscuro hacia la cara
+        // (mas oscuro si esta apretado). Sin colores fuertes, para que entone con los marcos del juego.
+        const float hi = (pressed ? 0.22f : 0.36f) * light;
         const float bevel = 2 * line;
         const float il = l + line, it = t + line, ir = r - line, ib = b - line;
-        const float upper[4] = { hi, hi * 0.98f, hi * 0.94f, 1.0f };
-        const float upperInner[4] = { hi * 0.6f, hi * 0.59f, hi * 0.57f, 1.0f };
-        const float lower[4] = { lo * 1.4f, lo * 1.4f, lo * 1.35f, 1.0f };
-        const float lowerOuter[4] = { lo, lo, lo, 1.0f };
-        FillVertical(il, it, ir, it + bevel, upper, upperInner);
-        FillVertical(il, ib - bevel, ir, ib, lower, lowerOuter);
-        Fill(il, it + bevel, il + bevel, ib - bevel, hi * 0.7f, hi * 0.68f, hi * 0.65f, 1.0f);
-        Fill(ir - bevel, it + bevel, ir, ib - bevel, lo * 1.2f, lo * 1.2f, lo * 1.15f, 1.0f);
+        Bevel(il, it, ir, ib, bevel, hi);
 
         // Linea oscura entre el bisel y la cara.
         const float fl = il + bevel, ft = it + bevel, fr = ir - bevel, fb = ib - bevel;
