@@ -149,24 +149,52 @@ namespace
         glEnd();
     }
 
-    // Anillo de luz alrededor de un rect: alfa a en el borde del rect, 0 a "spread" de distancia.
+    // Anillo de luz alrededor de un rect, con las esquinas redondeadas: alfa "a" pegado al rect, que se apaga en dos
+    // tramos (rapido y despues lento) hasta 0 a "spread" de distancia. Asi no se ve un rectangulo de luz.
     void Rim(const PeroniaUi::Rect& rect, float spread, float r, float g, float b, float a)
     {
-        const float l = rect.left, t = rect.top, rr = rect.Right(), bb = rect.Bottom();
-        const float ol = l - spread, ot = t - spread, orr = rr + spread, ob = bb + spread;
-        const float inner[4][2] = { { l, t }, { rr, t }, { rr, bb }, { l, bb } };
-        const float outer[4][2] = { { ol, ot }, { orr, ot }, { orr, ob }, { ol, ob } };
-        glBegin(GL_QUAD_STRIP);
-        for (int i = 0; i <= 4; i++)
+        constexpr int CornerSegments = 10;
+        const float cornerX[4] = { rect.Right(), rect.left, rect.left, rect.Right() };
+        const float cornerY[4] = { rect.top, rect.top, rect.Bottom(), rect.Bottom() };
+        const float middle = 0.35f; // alfa relativo a mitad de camino
+        float points[4 * (CornerSegments + 1) + 1][3];
+        int count = 0;
+        for (int corner = 0; corner < 4; corner++)
         {
-            const int k = i % 4;
-            glColor4f(r, g, b, a);
-            Vertex(inner[k][0], inner[k][1]);
-            glColor4f(r, g, b, 0.0f);
-            Vertex(outer[k][0], outer[k][1]);
+            for (int i = 0; i <= CornerSegments; i++)
+            {
+                // Esquinas: arriba derecha (de 0 a 90 grados, con y para arriba), arriba izquierda, abajo izquierda, abajo derecha.
+                const float angle = (corner + static_cast<float>(i) / CornerSegments) * Pi / 2;
+                points[count][0] = cornerX[corner];
+                points[count][1] = cornerY[corner];
+                points[count][2] = angle;
+                count++;
+            }
         }
 
-        glEnd();
+        points[count][0] = points[0][0];
+        points[count][1] = points[0][1];
+        points[count][2] = points[0][2];
+        count++;
+        for (int ring = 0; ring < 2; ring++)
+        {
+            const float from = ring == 0 ? 0.0f : spread * 0.4f;
+            const float to = ring == 0 ? spread * 0.4f : spread;
+            const float alphaFrom = ring == 0 ? a : a * middle;
+            const float alphaTo = ring == 0 ? a * middle : 0.0f;
+            glBegin(GL_QUAD_STRIP);
+            for (int k = 0; k < count; k++)
+            {
+                const float dx = cosf(points[k][2]);
+                const float dy = -sinf(points[k][2]); // en 640x480 y crece para abajo
+                glColor4f(r, g, b, alphaFrom);
+                Vertex(points[k][0] + dx * from, points[k][1] + dy * from);
+                glColor4f(r, g, b, alphaTo);
+                Vertex(points[k][0] + dx * to, points[k][1] + dy * to);
+            }
+
+            glEnd();
+        }
     }
 
     // --- Textura de piedra de la interfaz original ---
@@ -602,7 +630,7 @@ namespace PeroniaUi
         glEnd();
 
         // Borde de luz pegado al marco.
-        Rim(rect, 9.0f, 1.0f, 0.75f, 0.25f, 0.65f * s);
+        Rim(rect, 12.0f, 1.0f, 0.75f, 0.25f, 0.32f * s);
         glDisable(GL_SCISSOR_TEST);
         Normal();
     }
