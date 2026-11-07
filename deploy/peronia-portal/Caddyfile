@@ -1,0 +1,6 @@
+# Web pública de PeroniaMU. Caddy saca y renueva solo el certificado HTTPS de Let's Encrypt.
+# Solo pasa el portal (puerto 8090 de openmu-startup); el panel de admin nunca sale por acá.
+{$PORTAL_DOMAIN:peroniamu.duckdns.org} {
+	encode zstd gzip
+	reverse_proxy openmu-startup:8090
+}
