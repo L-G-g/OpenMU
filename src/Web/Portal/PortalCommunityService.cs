@@ -103,7 +103,7 @@ public sealed class PortalCommunityService
         }
 
         CharacterSummary? summary;
-        using (var context = this._persistence.CreateNewPlayerContext(new GameConfiguration()))
+        using (var context = this._persistence.CreateNewPlayerContext(await this._configuration.GetOwnerAsync(cancellationToken: cancellationToken).ConfigureAwait(false)))
         {
             summary = await context.GetCharacterSummaryAsync(name, Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id, cancellationToken).ConfigureAwait(false);
         }
@@ -188,7 +188,7 @@ public sealed class PortalCommunityService
             }
 
             var memberNames = await guildContext.GetMemberNamesAsync(entity.Id).ConfigureAwait(false);
-            using var context = this._persistence.CreateNewPlayerContext(new GameConfiguration());
+            using var context = this._persistence.CreateNewPlayerContext(await this._configuration.GetOwnerAsync(cancellationToken: cancellationToken).ConfigureAwait(false));
             foreach (var member in entity.Members)
             {
                 if (!memberNames.TryGetValue(member.Id, out var memberName))
@@ -578,7 +578,7 @@ public sealed class PortalCommunityService
     {
         var config = await this._configuration.GetOwnerAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         AccountStatistics accounts;
-        using (var context = this._persistence.CreateNewPlayerContext(new GameConfiguration()))
+        using (var context = this._persistence.CreateNewPlayerContext(await this._configuration.GetOwnerAsync(cancellationToken: cancellationToken).ConfigureAwait(false)))
         {
             accounts = await context.GetAccountStatisticsAsync(DateTime.UtcNow.AddDays(-7), cancellationToken).ConfigureAwait(false);
         }

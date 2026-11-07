@@ -160,7 +160,7 @@ public sealed partial class PortalService
             return "wrong_credentials";
         }
 
-        using var context = this._persistence.CreateNewPlayerContext(new GameConfiguration());
+        using var context = this._persistence.CreateNewPlayerContext(await this._configuration.GetOwnerAsync(cancellationToken: cancellationToken).ConfigureAwait(false));
         var state = await context.AuthenticateAsync(request.LoginName, request.Password, cancellationToken).ConfigureAwait(false);
         return state switch
         {
@@ -260,7 +260,7 @@ public sealed partial class PortalService
         {
             if (this._rankingCache is not { } cache || DateTime.UtcNow - cache.CreatedAt > RankingCacheDuration)
             {
-                using var context = this._persistence.CreateNewPlayerContext(new GameConfiguration());
+                using var context = this._persistence.CreateNewPlayerContext(await this._configuration.GetOwnerAsync(cancellationToken: cancellationToken).ConfigureAwait(false));
                 var summaries = await context.GetCharacterRankingAsync(Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id, 100, cancellationToken).ConfigureAwait(false);
                 var ranking = new List<PortalCharacter>(summaries.Count);
                 foreach (var s in summaries)
