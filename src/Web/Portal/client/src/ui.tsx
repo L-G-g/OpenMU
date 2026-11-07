@@ -86,6 +86,7 @@ export function untilText(ms: number) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
+  if (h >= 24) return `en ${Math.floor(h / 24)} d ${h % 24} h`;
   if (h > 0) return `en ${h} h ${String(m).padStart(2, '0')} min`;
   if (m > 0) return `en ${m} min ${String(sec).padStart(2, '0')} s`;
   return `en ${sec} s`;

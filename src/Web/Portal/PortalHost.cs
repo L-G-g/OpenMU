@@ -250,6 +250,9 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
 
         api.MapGet("/events", (PortalCommunityService community) => Results.Ok(community.GetUpcomingEvents()));
 
+        api.MapGet("/castle-siege", async (PortalCommunityService community, CancellationToken ct)
+            => Results.Ok(await community.GetCastleSiegeAsync(ct).ConfigureAwait(false)));
+
         api.MapGet("/stats", async (PortalCommunityService community, CancellationToken ct)
             => Results.Ok(await community.GetStatisticsAsync(ct).ConfigureAwait(false)));
 

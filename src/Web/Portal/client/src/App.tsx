@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Account, api, errorText, ServerInfo } from './api';
 import { LedSign } from './LedSign';
-import { CharacterPage, EventsPage, GuildPage, GuildsPage, InfoPage, NewsList, NewsPage, NextEvents, OnlinePage, RankingPage, RankingTable } from './pages';
+import { CastleCard, CharacterPage, EventsPage, GuildPage, GuildsPage, InfoPage, NewsList, NewsPage, NextEvents, OnlinePage, RankingPage, RankingTable } from './pages';
 import { go, Page, useRoute } from './router';
 import { A, num, useLoad } from './ui';
 
@@ -132,6 +132,7 @@ function Home({ server, account }: { server: ServerInfo | null; account: Account
             <A to="eventos" className="more">Ver todos</A>
           </div>
           {events.data ? <NextEvents events={events.data} limit={4} /> : <p className="muted">{events.error ?? 'Cargando eventos…'}</p>}
+          <CastleCard />
           <div className="head-row">
             <h2>Servers</h2>
             <A to="online" className="more">Quién está</A>

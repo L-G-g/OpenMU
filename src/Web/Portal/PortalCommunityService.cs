@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.CastleSiege;
 using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.GameLogic.PlugIns.PeriodicTasks;
 using MUnique.OpenMU.Interfaces;
@@ -224,16 +225,19 @@ public sealed class PortalCommunityService
     /// <returns>The events, in the order of their start.</returns>
     public IReadOnlyList<PortalEvent> GetUpcomingEvents()
     {
-        if (this._plugInManager is null)
+        // The events run per game server, with the plug-in configuration of its game context.
+        var gameContext = this.GetMainGameContext();
+        var plugInManager = gameContext?.PlugInManager ?? this._plugInManager;
+        if (plugInManager is null)
         {
             return [];
         }
 
-        var timeZone = this._getServerTimeZone();
+        var timeZone = gameContext?.ServerTimeZone ?? this._getServerTimeZone();
         var now = DateTime.UtcNow;
         var end = now + EventWindow;
         var result = new List<PortalEvent>();
-        foreach (var plugIn in this._plugInManager.GetActivePlugInsOf<IPeriodicTaskPlugIn>().OfType<IScheduledPlugIn>())
+        foreach (var plugIn in plugInManager.GetActivePlugInsOf<IPeriodicTaskPlugIn>().OfType<IScheduledPlugIn>())
         {
             var type = plugIn.GetType();
             var key = type.Name;
@@ -253,6 +257,14 @@ public sealed class PortalCommunityService
 
         return result.OrderBy(e => e.StartsAtUtc).ToList();
     }
+
+    /// <summary>
+    /// Gets the state of the Castle Siege: owner, current phase, next battle and registered guilds.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The state; <see cref="PortalCastleSiege.IsActive"/> is <c>false</c> when the event isn't running.</returns>
+    public ValueTask<PortalCastleSiege> GetCastleSiegeAsync(CancellationToken cancellationToken)
+        => this.GetCachedAsync("siege", ShortCache, this.LoadCastleSiegeAsync, cancellationToken);
 
     /// <summary>
     /// Gets numbers about the server.
@@ -471,7 +483,98 @@ public sealed class PortalCommunityService
             .ToList();
     }
 
-    private async ValueTask<PortalStatistics> LoadStatisticsAsync(CancellationToken cancellationToken)
+    private IGameServerContext? GetMainGameContext()
+        => this._serverProvider.Servers
+            .OfType<IGameServer>()
+            .Where(s => s.ServerState == ServerState.Started)
+            .OrderBy(s => s.Id)
+            .OfType<IGameServerContextProvider>()
+            .Select(s => s.Context)
+            .FirstOrDefault();
+
+    private async ValueTask<PortalCastleSiege> LoadCastleSiegeAsync(CancellationToken cancellationToken)
+    {
+        foreach (var server in this._serverProvider.Servers.OfType<IGameServer>().Where(s => s.ServerState == ServerState.Started).OrderBy(s => s.Id))
+        {
+            if (server is not IGameServerContextProvider { Context: { } context }
+                || context.PlugInManager.GetActivePlugInsOf<IPeriodicTaskPlugIn>().OfType<CastleSiegePlugIn>().FirstOrDefault() is not { } plugIn)
+            {
+                continue;
+            }
+
+            var snapshot = await new CastleSiegeAdministration(plugIn).GetSnapshotAsync(context).ConfigureAwait(false);
+            if (snapshot is null)
+            {
+                continue;
+            }
+
+            string? ownerLogo = null;
+            if (snapshot.IsOccupied && snapshot.OwnerGuildName is { } ownerName)
+            {
+                ownerLogo = (await this.GetGuildsAsync(cancellationToken).ConfigureAwait(false))
+                    .FirstOrDefault(g => string.Equals(g.Name, ownerName, StringComparison.OrdinalIgnoreCase))?.Logo;
+            }
+
+            var schedule = context.Configuration.CastleSiegeConfiguration?.StateSchedule;
+            var nextBattle = snapshot.State == CastleSiegeState.Start
+                ? snapshot.StateStartTimeUtc
+                : NextWeeklyStart(schedule?.FirstOrDefault(e => e.State == CastleSiegeState.Start), context.ServerTimeZone);
+            return new PortalCastleSiege(
+                true,
+                snapshot.IsOccupied ? snapshot.OwnerGuildName : null,
+                ownerLogo,
+                snapshot.State.ToString(),
+                SiegeStateName(snapshot.State),
+                snapshot.StateEndTimeUtc,
+                nextBattle,
+                snapshot.Registrations
+                    .Where(r => !r.IsGuildDeleted)
+                    .Select(r => new PortalSiegeGuild(r.GuildName, r.Marks))
+                    .ToList());
+        }
+
+        return new PortalCastleSiege(false, null, null, null, null, null, null, []);
+    }
+
+    private static DateTime? NextWeeklyStart(CastleSiegeStateScheduleEntry? entry, TimeZoneInfo timeZone)
+    {
+        if (entry is null)
+        {
+            return null;
+        }
+
+        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone);
+        for (var day = 0; day <= 7; day++)
+        {
+            var date = nowLocal.Date.AddDays(day);
+            if (date.DayOfWeek != entry.DayOfWeek)
+            {
+                continue;
+            }
+
+            var local = DateTime.SpecifyKind(date.AddHours(entry.Hour).AddMinutes(entry.Minute), DateTimeKind.Unspecified);
+            if (local > nowLocal)
+            {
+                return TimeZoneInfo.ConvertTimeToUtc(local, timeZone);
+            }
+        }
+
+        return null;
+    }
+
+    private static string SiegeStateName(CastleSiegeState state) => state switch
+    {
+        CastleSiegeState.RegisterGuild => "Inscripción de guilds",
+        CastleSiegeState.RegisterMark => "Entrega de Signs of Lord",
+        CastleSiegeState.Notify => "Anuncio de las guilds que pelean",
+        CastleSiegeState.Ready => "Preparación para la batalla",
+        CastleSiegeState.Start => "¡Batalla en curso!",
+        CastleSiegeState.End => "Terminó la batalla",
+        CastleSiegeState.EndCycle => "Fin del ciclo",
+        _ => "En espera",
+    };
+
+        private async ValueTask<PortalStatistics> LoadStatisticsAsync(CancellationToken cancellationToken)
     {
         var config = await this._configuration.GetOwnerAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         AccountStatistics accounts;

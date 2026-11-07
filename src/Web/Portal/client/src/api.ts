@@ -12,6 +12,8 @@ export type GameEvent = { key: string; name: string; startsAtUtc: string };
 export type Stats = { accounts: number; newAccounts: number; characters: number; guilds: number; playersOnline: number; experienceRate: number; masterExperienceRate: number; maximumLevel: number; maximumMasterLevel: number };
 export type NewsItem = { date: string; title: string; body: string[] };
 
+export type CastleSiege = { isActive: boolean; ownerGuildName: string | null; ownerGuildLogo: string | null; state: string | null; stateName: string | null; stateEndsAtUtc: string | null; nextBattleUtc: string | null; guilds: { name: string; marks: number }[] };
+
 export class ApiError extends Error {
   constructor(public code: string, public status: number) {
     super(code);
@@ -46,6 +48,7 @@ export const api = {
   guilds: () => call<Guild[]>('/guilds'),
   guild: (name: string) => call<GuildDetail>(`/guilds/${encodeURIComponent(name)}`),
   events: () => call<GameEvent[]>('/events'),
+  castleSiege: () => call<CastleSiege>('/castle-siege'),
   stats: () => call<Stats>('/stats'),
   news: () => call<NewsItem[]>('/news'),
   changePassword: (d: { currentPassword: string; newPassword: string }) => post<void>('/me/password', d),

@@ -241,6 +241,7 @@ export function GuildsPage() {
     <section className="page">
       <h1>Guilds</h1>
       <p className="lead">Ordenadas por cantidad de miembros. Tocá una para ver quiénes la forman.</p>
+      <CastleCard full />
       <GuildTable guilds={data} error={error} />
     </section>
   );
@@ -298,6 +299,43 @@ export function GuildPage({ name }: { name: string }) {
   );
 }
 
+/* ---------- Castle Siege ---------- */
+
+const when = (iso: string) => new Date(iso).toLocaleString('es-AR', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+export function CastleCard({ full }: { full?: boolean }) {
+  const { data: cs } = useLoad(() => api.castleSiege(), 'siege', 60000);
+  const now = useNow(30000);
+  if (!cs || !cs.isActive) return null;
+  const battle = cs.nextBattleUtc ? new Date(cs.nextBattleUtc).getTime() : null;
+  const fighting = cs.state === 'Start';
+  return (
+    <div className={`castle ${fighting ? 'fighting' : ''}`}>
+      <div className="castle-top">
+        {cs.ownerGuildName ? <GuildMark logo={cs.ownerGuildLogo} size={44} label={`Escudo de ${cs.ownerGuildName}`} /> : <span className="castle-empty" aria-hidden="true">?</span>}
+        <div>
+          <p className="kicker">Castle Siege · dueño del castillo</p>
+          <p className="castle-owner">{cs.ownerGuildName ? <A to="guild" param={cs.ownerGuildName}>{cs.ownerGuildName}</A> : 'Nadie todavía'}</p>
+        </div>
+      </div>
+      <dl className="castle-facts">
+        <div><dt>Ahora</dt><dd>{cs.stateName}{cs.stateEndsAtUtc && !fighting && <span className="muted small"> hasta el {when(cs.stateEndsAtUtc)}</span>}</dd></div>
+        {battle && !fighting && <div><dt>Próxima batalla</dt><dd>{when(cs.nextBattleUtc!)} <span className="muted small">({untilText(battle - now).replace(/ \d+ s$/, '')})</span></dd></div>}
+      </dl>
+      {full && cs.guilds.length > 0 && (
+        <>
+          <p className="kicker castle-reg">Guilds anotadas</p>
+          <ul className="chips">
+            {cs.guilds.map((g) => (
+              <li key={g.name}><A to="guild" param={g.name}>{g.name}</A> <b className="mono">{g.marks}</b></li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ---------- Events ---------- */
 
 function dayLabel(d: Date) {
@@ -346,6 +384,7 @@ export function EventsPage() {
     <section className="page">
       <h1>Eventos</h1>
       <p className="lead">Lo que arranca en las próximas 24 horas, en la hora de tu celu o compu.</p>
+      <CastleCard />
       {error && <p className="error">{error}</p>}
       {!data && !error && <Loading what="los eventos" />}
       {data && (

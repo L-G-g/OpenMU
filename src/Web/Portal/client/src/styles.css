@@ -265,6 +265,18 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--amber); out
 .guild-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
 .guild-head .mark { border-radius: 6px; }
 
+/* Castle Siege */
+.castle { background: linear-gradient(180deg, #17130b, var(--panel)); border: 1px solid #3a2f17; border-radius: var(--r); padding: 16px 18px; margin: 12px 0 18px; }
+.castle.fighting { border-color: var(--amber); box-shadow: 0 0 0 1px rgba(255, 176, 0, 0.25), 0 0 28px -10px rgba(255, 176, 0, 0.6); }
+.castle-top { display: flex; align-items: center; gap: 14px; }
+.castle-empty { width: 44px; height: 44px; display: grid; place-items: center; border: 1px dashed #4d4538; border-radius: 4px; color: var(--muted); font-family: var(--display); font-size: 22px; }
+.castle-owner { margin: 0; font: 400 24px/1.1 var(--display); color: var(--amber); }
+.castle-owner a { text-decoration: none; }
+.castle-facts { display: grid; gap: 8px; margin: 14px 0 0; }
+.castle-facts dt { font: 600 11px/1.4 var(--data); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.castle-facts dd { margin: 2px 0 0; }
+.castle-reg { margin-top: 14px; }
+
 /* Events */
 .events { list-style: none; margin: 0 0 8px; padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
 .events li { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto; align-items: baseline; gap: 12px; padding: 12px 14px; border-top: 1px solid #1c1915; }

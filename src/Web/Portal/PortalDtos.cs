@@ -145,3 +145,19 @@ public sealed record PortalStatistics(int Accounts, int NewAccounts, int Charact
 /// <param name="Title">The title.</param>
 /// <param name="Body">The text paragraphs.</param>
 public sealed record PortalNewsItem(string Date, string Title, IReadOnlyList<string> Body);
+
+/// <summary>A guild which is registered for the Castle Siege.</summary>
+/// <param name="Name">The guild name.</param>
+/// <param name="Marks">The number of handed in Signs of Lord.</param>
+public sealed record PortalSiegeGuild(string Name, int Marks);
+
+/// <summary>The state of the Castle Siege.</summary>
+/// <param name="IsActive">If set to <c>false</c>, the Castle Siege event isn't running.</param>
+/// <param name="OwnerGuildName">The guild which owns the castle.</param>
+/// <param name="OwnerGuildLogo">The mark of the owner guild.</param>
+/// <param name="State">The key of the current phase.</param>
+/// <param name="StateName">The name of the current phase, in Spanish.</param>
+/// <param name="StateEndsAtUtc">When the current phase ends.</param>
+/// <param name="NextBattleUtc">When the next battle starts, or the current one started.</param>
+/// <param name="Guilds">The registered guilds.</param>
+public sealed record PortalCastleSiege(bool IsActive, string? OwnerGuildName, string? OwnerGuildLogo, string? State, string? StateName, DateTime? StateEndsAtUtc, DateTime? NextBattleUtc, IReadOnlyList<PortalSiegeGuild> Guilds);
