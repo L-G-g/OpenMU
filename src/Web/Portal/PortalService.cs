@@ -193,7 +193,7 @@ public sealed partial class PortalService
             var isOnline = await this._friendServer.GetOnlineServerIdAsync(character.Name).ConfigureAwait(false) is not null;
             characters.Add(new PortalCharacter(
                 character.Name,
-                summary?.CharacterClassName ?? character.CharacterClass?.Name.ValueInNeutralLanguage ?? string.Empty,
+                Neutral(summary?.CharacterClassName) ?? character.CharacterClass?.Name.ValueInNeutralLanguage ?? string.Empty,
                 summary?.Level ?? 0,
                 summary?.MasterLevel ?? 0,
                 summary?.Resets ?? 0,
@@ -266,7 +266,7 @@ public sealed partial class PortalService
                 foreach (var s in summaries)
                 {
                     var isOnline = await this._friendServer.GetOnlineServerIdAsync(s.Name).ConfigureAwait(false) is not null;
-                    ranking.Add(new PortalCharacter(s.Name, s.CharacterClassName, s.Level, s.MasterLevel, s.Resets, isOnline, null));
+                    ranking.Add(new PortalCharacter(s.Name, Neutral(s.CharacterClassName) ?? string.Empty, s.Level, s.MasterLevel, s.Resets, isOnline, null));
                 }
 
                 cache = (DateTime.UtcNow, ranking);
@@ -298,4 +298,12 @@ public sealed partial class PortalService
 
     private async ValueTask<bool> IsAccountOnlineAsync(string loginName)
         => (await this._loginServer.GetSnapshotAsync().ConfigureAwait(false)).Keys.Contains(loginName, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Resolves a stored localized string (e.g. "Blade Master||de=...||@src=...") to its neutral language text.
+    /// </summary>
+    private static string? Neutral(string? localized)
+    {
+        return string.IsNullOrEmpty(localized) ? null : new LocalizedString(localized).ValueInNeutralLanguage;
+    }
 }
