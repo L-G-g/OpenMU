@@ -66,7 +66,8 @@ public class CharacterRankingTest
         var ranking = await queryContext.GetCharacterRankingAsync(Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id, 10).ConfigureAwait(false);
 
         Assert.That(ranking.Select(entry => entry.Name), Is.EqualTo(new[] { "Reset", "Master", "Normal" }));
-        Assert.That(ranking[1], Is.EqualTo(new CharacterSummary("Master", "Blade Knight", 400, 50, 0)));
+        Assert.That(ranking[1] with { CharacterClassId = null }, Is.EqualTo(new CharacterSummary("Master", "Blade Knight", 400, 50, 0)));
+        Assert.That(ranking[1].CharacterClassId, Is.Not.Null);
     }
 
     /// <summary>
@@ -87,7 +88,7 @@ public class CharacterRankingTest
         using var queryContext = contextProvider.CreateNewPlayerContext(new GameConfiguration());
 
         Assert.That(
-            await queryContext.GetCharacterSummaryAsync("Wizard", Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id).ConfigureAwait(false),
+            (await queryContext.GetCharacterSummaryAsync("Wizard", Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id).ConfigureAwait(false))! with { CharacterClassId = null },
             Is.EqualTo(new CharacterSummary("Wizard", "Dark Wizard", 250, 0, 2)));
         Assert.That(await queryContext.GetCharacterSummaryAsync("Unknown", Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id).ConfigureAwait(false), Is.Null);
     }
@@ -103,6 +104,22 @@ public class CharacterRankingTest
         var sql = PlayerContext.CreateCharacterSummaryQuery(context.Set<Persistence.EntityFramework.Model.Character>().Where(c => c.Name == "Wizard"), Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id).ToQueryString();
 
         Assert.That(sql, Does.Contain("WHERE"));
+    }
+
+    /// <summary>
+    /// Tests that the summary query only selects the class identifier, because the character classes are not part of
+    /// the model of the account context. Projecting the class name made EF load whole characters and fail with
+    /// "Nullable object must have a value" on a real database.
+    /// </summary>
+    [Test]
+    public void EntityFrameworkSummaryQuerySelectsOnlyTheClassId()
+    {
+        using var context = new AccountContext();
+
+        var sql = PlayerContext.CreateCharacterSummaryQuery(context.Set<Persistence.EntityFramework.Model.Character>().Where(c => c.Name == "Wizard"), Stats.Level.Id, Stats.MasterLevel.Id, Stats.Resets.Id).ToQueryString();
+
+        Assert.That(sql, Does.Contain("CharacterClassId"));
+        Assert.That(sql, Does.Not.Contain("\"Experience\""));
     }
 
     private static void AddAccount(IContext context, CharacterClass characterClass, bool isBot, params (string Name, int Level, int MasterLevel, int Resets, CharacterStatus Status)[] characters)
