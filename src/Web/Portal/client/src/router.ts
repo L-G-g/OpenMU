@@ -1,19 +1,38 @@
 import { useEffect, useState } from 'react';
 
-export type Route = 'inicio' | 'ranking' | 'registro' | 'entrar' | 'cuenta' | 'descargar';
-const paths: Record<Route, string> = { inicio: '/', ranking: '/ranking', registro: '/registro', entrar: '/entrar', cuenta: '/cuenta', descargar: '/descargar' };
+export type Page = 'inicio' | 'ranking' | 'online' | 'guilds' | 'guild' | 'personaje' | 'eventos' | 'info' | 'noticias' | 'registro' | 'entrar' | 'cuenta' | 'descargar';
+export type Route = { page: Page; param?: string };
+
+const fixed: Partial<Record<Page, string>> = {
+  inicio: '/',
+  ranking: '/ranking',
+  online: '/online',
+  guilds: '/guilds',
+  eventos: '/eventos',
+  info: '/info',
+  noticias: '/noticias',
+  registro: '/registro',
+  entrar: '/entrar',
+  cuenta: '/cuenta',
+  descargar: '/descargar',
+};
 
 export function routeFromPath(path: string): Route {
-  const found = (Object.keys(paths) as Route[]).find((r) => paths[r] === path.replace(/\/+$/, '') || (r === 'inicio' && path === '/'));
-  return found ?? 'inicio';
+  const clean = path.replace(/\/+$/, '') || '/';
+  const m = clean.match(/^\/(personaje|guild)\/([^/]+)$/);
+  if (m) return { page: m[1] as Page, param: decodeURIComponent(m[2]) };
+  const page = (Object.keys(fixed) as Page[]).find((p) => fixed[p] === clean);
+  return { page: page ?? 'inicio' };
 }
 
-export function href(route: Route) {
-  return paths[route];
+export function href(page: Page, param?: string) {
+  if (page === 'personaje' || page === 'guild') return `/${page}/${encodeURIComponent(param ?? '')}`;
+  return fixed[page] ?? '/';
 }
 
-export function go(route: Route) {
-  if (location.pathname !== paths[route]) history.pushState({}, '', paths[route]);
+export function go(page: Page, param?: string) {
+  const to = href(page, param);
+  if (location.pathname !== to) history.pushState({}, '', to);
   window.dispatchEvent(new PopStateEvent('popstate'));
   window.scrollTo({ top: 0 });
 }

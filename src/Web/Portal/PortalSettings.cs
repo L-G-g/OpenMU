@@ -43,6 +43,12 @@ public class PortalSettings
     public string? KeyDirectory { get; set; } = "/app/data-protection-keys/portal";
 
     /// <summary>
+    /// Gets or sets the path of the news file. Each news entry starts with a line like
+    /// <c>## 2026-11-07 | Title</c>, followed by its text. The file is read again when it changes.
+    /// </summary>
+    public string? NewsFile { get; set; } = "/app/portal/noticias.md";
+
+    /// <summary>
     /// Gets a value indicating whether the portal is enabled.
     /// </summary>
     public bool IsEnabled => !string.IsNullOrWhiteSpace(this.Urls);

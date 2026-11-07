@@ -6,6 +6,8 @@ services:
       Portal__Urls: http://+:8090
       Portal__InviteCodes: ${PORTAL_INVITE_CODES:-}
       Portal__ClientDownloadUrl: ${PORTAL_CLIENT_URL:-}
+    volumes:
+      - ./noticias.md:/app/portal/noticias.md:ro
 
   caddy:
     image: caddy:2-alpine

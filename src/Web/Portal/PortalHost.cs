@@ -23,6 +23,7 @@ using Microsoft.Extensions.Logging;
 using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.Interfaces;
 using MUnique.OpenMU.Persistence;
+using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// Hosts the public web portal as its own small web application on its own port, inside the process of the servers.
@@ -37,6 +38,7 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
 
     private readonly IServiceProvider _rootServices;
     private readonly PortalSettings _settings;
+    private readonly Func<TimeZoneInfo> _getServerTimeZone;
     private readonly ILogger<PortalHost> _logger;
     private WebApplication? _app;
 
@@ -45,11 +47,13 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
     /// </summary>
     /// <param name="rootServices">The services of the server process, which the portal shares.</param>
     /// <param name="settings">The settings.</param>
+    /// <param name="getServerTimeZone">Gets the time zone in which the event schedules are defined.</param>
     /// <param name="logger">The logger.</param>
-    public PortalHost(IServiceProvider rootServices, PortalSettings settings, ILogger<PortalHost> logger)
+    public PortalHost(IServiceProvider rootServices, PortalSettings settings, Func<TimeZoneInfo> getServerTimeZone, ILogger<PortalHost> logger)
     {
         this._rootServices = rootServices;
         this._settings = settings;
+        this._getServerTimeZone = getServerTimeZone;
         this._logger = logger;
     }
 
@@ -80,6 +84,15 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
         builder.Services.AddSingleton(this._rootServices.GetRequiredService<IFriendServer>());
         builder.Services.AddSingleton(this._rootServices.GetRequiredService<IServerProvider>());
         builder.Services.AddSingleton<PortalService>();
+        builder.Services.AddSingleton(provider => new PortalCommunityService(
+            provider.GetRequiredService<IPersistenceContextProvider>(),
+            provider.GetRequiredService<IDataSource<GameConfiguration>>(),
+            provider.GetRequiredService<IFriendServer>(),
+            provider.GetRequiredService<IServerProvider>(),
+            this._rootServices.GetService<PlugInManager>(),
+            this._getServerTimeZone,
+            this._settings,
+            provider.GetRequiredService<ILogger<PortalCommunityService>>()));
 
         var dataProtection = builder.Services.AddDataProtection().SetApplicationName("PeroniaPortal");
         if (!string.IsNullOrWhiteSpace(this._settings.KeyDirectory))
@@ -222,6 +235,25 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
             var error = await portal.ChangePasswordAsync(user.Identity!.Name!, request, ct).ConfigureAwait(false);
             return error is null ? Results.NoContent() : Results.BadRequest(new { error });
         }).RequireAuthorization().RequireRateLimiting(AuthPolicy);
+
+        api.MapGet("/online", async (PortalCommunityService community, CancellationToken ct)
+            => Results.Ok(await community.GetOnlinePlayersAsync(ct).ConfigureAwait(false)));
+
+        api.MapGet("/characters/{name}", async (PortalCommunityService community, string name, CancellationToken ct)
+            => await community.GetCharacterAsync(name, ct).ConfigureAwait(false) is { } profile ? Results.Ok(profile) : Results.NotFound());
+
+        api.MapGet("/guilds", async (PortalCommunityService community, CancellationToken ct)
+            => Results.Ok(await community.GetGuildsAsync(ct).ConfigureAwait(false)));
+
+        api.MapGet("/guilds/{name}", async (PortalCommunityService community, string name, CancellationToken ct)
+            => await community.GetGuildAsync(name, ct).ConfigureAwait(false) is { } guild ? Results.Ok(guild) : Results.NotFound());
+
+        api.MapGet("/events", (PortalCommunityService community) => Results.Ok(community.GetUpcomingEvents()));
+
+        api.MapGet("/stats", async (PortalCommunityService community, CancellationToken ct)
+            => Results.Ok(await community.GetStatisticsAsync(ct).ConfigureAwait(false)));
+
+        api.MapGet("/news", (PortalCommunityService community) => Results.Ok(community.GetNews()));
 
         api.MapFallback(() => Results.NotFound());
     }

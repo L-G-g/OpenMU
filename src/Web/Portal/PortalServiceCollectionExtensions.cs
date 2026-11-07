@@ -18,11 +18,12 @@ public static class PortalServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The services.</param>
     /// <param name="section">The configuration section <see cref="PortalSettings.SectionName"/>.</param>
+    /// <param name="getServerTimeZone">Gets the time zone in which the event schedules are defined.</param>
     /// <returns>The same services, for chaining.</returns>
-    public static IServiceCollection AddPeroniaPortal(this IServiceCollection services, IConfiguration section)
+    public static IServiceCollection AddPeroniaPortal(this IServiceCollection services, IConfiguration section, Func<TimeZoneInfo>? getServerTimeZone = null)
     {
         var settings = new PortalSettings();
         section.Bind(settings);
-        return services.AddHostedService(provider => new PortalHost(provider, settings, provider.GetRequiredService<ILogger<PortalHost>>()));
+        return services.AddHostedService(provider => new PortalHost(provider, settings, getServerTimeZone ?? (() => TimeZoneInfo.Utc), provider.GetRequiredService<ILogger<PortalHost>>()));
     }
 }

@@ -412,7 +412,7 @@ internal sealed class Program : IDisposable
             .AddSingleton<IGuildServer, GuildServer>()
             .AddSingleton<IFriendServer, FriendServer>()
             .AddDiscordIntegration(builder.Configuration.GetSection(DiscordSettings.SectionName), () => ServerTimeZone)
-            .AddPeroniaPortal(builder.Configuration.GetSection(MUnique.OpenMU.Web.Portal.PortalSettings.SectionName))
+            .AddPeroniaPortal(builder.Configuration.GetSection(MUnique.OpenMU.Web.Portal.PortalSettings.SectionName), () => ServerTimeZone)
             .AddSingleton<ChatServer>()
             .AddSingleton<IChatServer>(s => s.GetService<ChatServer>()!)
             .AddSingleton<ConnectServerFactory>()

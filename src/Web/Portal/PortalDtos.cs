@@ -74,3 +74,74 @@ public sealed class ChangePasswordRequest
     /// <summary>Gets or sets the new password.</summary>
     public string NewPassword { get; set; } = string.Empty;
 }
+
+/// <summary>The public profile of a character.</summary>
+/// <param name="Name">The name.</param>
+/// <param name="ClassName">The name of the character class.</param>
+/// <param name="Level">The level.</param>
+/// <param name="MasterLevel">The master level.</param>
+/// <param name="Resets">The number of resets.</param>
+/// <param name="IsOnline">If set to <c>true</c>, the character is playing right now.</param>
+/// <param name="ServerName">The game server on which the character plays right now.</param>
+/// <param name="MapName">The map where the character is, while it's online.</param>
+/// <param name="GuildName">The name of the guild.</param>
+/// <param name="GuildPosition">The position in the guild.</param>
+public sealed record PortalCharacterProfile(string Name, string ClassName, int Level, int MasterLevel, int Resets, bool IsOnline, string? ServerName, string? MapName, string? GuildName, string? GuildPosition);
+
+/// <summary>A character which is playing right now.</summary>
+/// <param name="Name">The name.</param>
+/// <param name="ClassName">The name of the character class.</param>
+/// <param name="Level">The level.</param>
+/// <param name="MasterLevel">The master level.</param>
+/// <param name="Resets">The number of resets.</param>
+/// <param name="MapName">The map where the character is.</param>
+/// <param name="ServerName">The game server.</param>
+public sealed record PortalOnlinePlayer(string Name, string ClassName, int Level, int MasterLevel, int Resets, string? MapName, string ServerName);
+
+/// <summary>A guild in the guild list.</summary>
+/// <param name="Name">The name.</param>
+/// <param name="MasterName">The name of the guild master.</param>
+/// <param name="MemberCount">The number of members.</param>
+/// <param name="Score">The score.</param>
+/// <param name="Logo">The guild mark as hex string (64 colors of 4 bit, 8x8).</param>
+/// <param name="AllianceName">The name of the master guild of the alliance.</param>
+public sealed record PortalGuild(string Name, string? MasterName, int MemberCount, int Score, string? Logo, string? AllianceName);
+
+/// <summary>A member of a guild.</summary>
+/// <param name="Name">The character name.</param>
+/// <param name="Position">The position in the guild.</param>
+/// <param name="ClassName">The name of the character class.</param>
+/// <param name="Level">The level.</param>
+/// <param name="MasterLevel">The master level.</param>
+/// <param name="Resets">The number of resets.</param>
+/// <param name="IsOnline">If set to <c>true</c>, the character is playing right now.</param>
+public sealed record PortalGuildMember(string Name, string Position, string ClassName, int Level, int MasterLevel, int Resets, bool IsOnline);
+
+/// <summary>A guild with its members.</summary>
+/// <param name="Guild">The guild.</param>
+/// <param name="Members">The members.</param>
+public sealed record PortalGuildDetail(PortalGuild Guild, IReadOnlyList<PortalGuildMember> Members);
+
+/// <summary>An upcoming start of a scheduled event.</summary>
+/// <param name="Key">The key of the event kind, e.g. <c>BloodCastle</c>.</param>
+/// <param name="Name">The name, in Spanish where it's known.</param>
+/// <param name="StartsAtUtc">The start time.</param>
+public sealed record PortalEvent(string Key, string Name, DateTime StartsAtUtc);
+
+/// <summary>Numbers about the server.</summary>
+/// <param name="Accounts">The number of player accounts.</param>
+/// <param name="NewAccounts">The accounts registered in the last 7 days.</param>
+/// <param name="Characters">The number of characters.</param>
+/// <param name="Guilds">The number of guilds.</param>
+/// <param name="PlayersOnline">The players online right now.</param>
+/// <param name="ExperienceRate">The experience rate.</param>
+/// <param name="MasterExperienceRate">The master experience rate.</param>
+/// <param name="MaximumLevel">The maximum level.</param>
+/// <param name="MaximumMasterLevel">The maximum master level.</param>
+public sealed record PortalStatistics(int Accounts, int NewAccounts, int Characters, int Guilds, int PlayersOnline, float ExperienceRate, float MasterExperienceRate, int MaximumLevel, int MaximumMasterLevel);
+
+/// <summary>A news entry.</summary>
+/// <param name="Date">The date, as written in the news file.</param>
+/// <param name="Title">The title.</param>
+/// <param name="Body">The text paragraphs.</param>
+public sealed record PortalNewsItem(string Date, string Title, IReadOnlyList<string> Body);

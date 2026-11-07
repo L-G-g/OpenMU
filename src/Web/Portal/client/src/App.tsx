@@ -1,25 +1,9 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { Account, api, Character, errorText, ServerInfo } from './api';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { Account, api, errorText, ServerInfo } from './api';
 import { LedSign } from './LedSign';
-import { go, href, Route, useRoute } from './router';
-
-function A({ to, children, className }: { to: Route; children: ReactNode; className?: string }) {
-  return (
-    <a
-      href={href(to)}
-      className={className}
-      onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        e.preventDefault();
-        go(to);
-      }}
-    >
-      {children}
-    </a>
-  );
-}
-
-const num = (n: number) => n.toLocaleString('es-AR');
+import { CharacterPage, EventsPage, GuildPage, GuildsPage, InfoPage, NewsList, NewsPage, NextEvents, OnlinePage, RankingPage, RankingTable } from './pages';
+import { go, Page, useRoute } from './router';
+import { A, num, useLoad } from './ui';
 
 export function App() {
   const route = useRoute();
@@ -39,9 +23,15 @@ export function App() {
   }, [refreshAccount]);
 
   useEffect(() => {
-    const titles: Record<Route, string> = { inicio: 'PeroniaMU', ranking: 'Ranking · PeroniaMU', registro: 'Crear cuenta · PeroniaMU', entrar: 'Entrar · PeroniaMU', cuenta: 'Mi cuenta · PeroniaMU', descargar: 'Descargar · PeroniaMU' };
-    document.title = titles[route];
+    const titles: Record<Page, string> = { inicio: '', ranking: 'Ranking', online: 'Jugando ahora', guilds: 'Guilds', guild: route.param ?? 'Guild', personaje: route.param ?? 'Personaje', eventos: 'Eventos', info: 'Cómo es el server', noticias: 'Novedades', registro: 'Crear cuenta', entrar: 'Entrar', cuenta: 'Mi cuenta', descargar: 'Descargar' };
+    const t = titles[route.page];
+    document.title = t ? `${t} · PeroniaMU` : 'PeroniaMU';
   }, [route]);
+
+  const page = route.page;
+  const nav = (to: Page, label: string, also: Page[] = []) => (
+    <A to={to} className={page === to || also.includes(page) ? 'on' : ''}>{label}</A>
+  );
 
   return (
     <>
@@ -49,27 +39,35 @@ export function App() {
       <header className="top">
         <div className="wrap top-in">
           <A to="inicio" className="logo">PERONIA MU</A>
-          <nav aria-label="Principal">
-            <A to="ranking" className={route === 'ranking' ? 'on' : ''}>Ranking</A>
-            <A to="descargar" className={route === 'descargar' ? 'on' : ''}>Descargar</A>
-            {account ? (
-              <A to="cuenta" className={route === 'cuenta' ? 'on' : ''}>{account.loginName}</A>
-            ) : (
-              <A to="entrar" className={route === 'entrar' ? 'on' : ''}>Entrar</A>
-            )}
-          </nav>
-          <span className={`status ${server?.playersOnline ? 'live' : ''}`}>
+          <A to="online" className={`status ${server?.playersOnline ? 'live' : ''}`}>
             {server ? `${server.playersOnline} jugando` : 'server sin respuesta'}
-          </span>
+          </A>
+          <A to={account ? 'cuenta' : 'entrar'} className={`acct ${page === 'cuenta' || page === 'entrar' ? 'on' : ''}`}>{account ? account.loginName : 'Entrar'}</A>
+          <nav aria-label="Principal">
+            {nav('ranking', 'Ranking', ['personaje'])}
+            {nav('online', 'Online')}
+            {nav('guilds', 'Guilds', ['guild'])}
+            {nav('eventos', 'Eventos')}
+            {nav('info', 'Info')}
+            {nav('noticias', 'Novedades')}
+            {nav('descargar', 'Descargar')}
+          </nav>
         </div>
       </header>
       <main id="main" className="wrap">
-        {route === 'inicio' && <Home server={server} account={account} />}
-        {route === 'ranking' && <RankingPage />}
-        {route === 'registro' && <RegisterPage server={server} />}
-        {route === 'entrar' && <LoginPage onLogin={refreshAccount} />}
-        {route === 'cuenta' && <AccountPage account={account} onChange={refreshAccount} onLogout={() => setAccount(null)} />}
-        {route === 'descargar' && <DownloadPage server={server} />}
+        {page === 'inicio' && <Home server={server} account={account} />}
+        {page === 'ranking' && <RankingPage />}
+        {page === 'online' && <OnlinePage />}
+        {page === 'guilds' && <GuildsPage />}
+        {page === 'guild' && <GuildPage key={route.param} name={route.param ?? ''} />}
+        {page === 'personaje' && <CharacterPage key={route.param} name={route.param ?? ''} />}
+        {page === 'eventos' && <EventsPage />}
+        {page === 'info' && <InfoPage />}
+        {page === 'noticias' && <NewsPage />}
+        {page === 'registro' && <RegisterPage server={server} />}
+        {page === 'entrar' && <LoginPage onLogin={refreshAccount} />}
+        {page === 'cuenta' && <AccountPage account={account} onChange={refreshAccount} onLogout={() => setAccount(null)} />}
+        {page === 'descargar' && <DownloadPage server={server} />}
       </main>
       <footer className="wrap foot">
         <span>PeroniaMU · MU Online Season 6 · server privado entre amigos</span>
@@ -79,23 +77,19 @@ export function App() {
   );
 }
 
-function useRanking(count: number) {
-  const [rows, setRows] = useState<Character[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    api.ranking(count).then(setRows, (e) => setError(errorText(e)));
-  }, [count]);
-  return { rows, error };
-}
-
 function Home({ server, account }: { server: ServerInfo | null; account: Account | null | undefined }) {
-  const { rows, error } = useRanking(10);
+  const ranking = useLoad(() => api.ranking(10), 'ranking10', 60000);
+  const events = useLoad(() => api.events(), 'events', 300000);
+  const news = useLoad(() => api.news(), 'news');
+  const rows = ranking.data;
+  const next = events.data?.find((e) => new Date(e.startsAtUtc).getTime() > Date.now());
   const messages = useMemo(() => {
-    const m = ['LORENCIA > NORIA > DEVIAS > KARUTAN'];
+    const m = ['BIENVENIDOS A PERONIA MU'];
     if (server) m.push(`${server.playersOnline} JUGANDO AHORA`);
     if (rows?.[0]) m.push(`PUNTERO: ${rows[0].name.toUpperCase()} · ${rows[0].resets} RESETS`);
+    if (next) m.push(`PROXIMO: ${next.name.toUpperCase()} ${new Date(next.startsAtUtc).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
     return m;
-  }, [server, rows]);
+  }, [server, rows, next]);
 
   return (
     <>
@@ -103,14 +97,14 @@ function Home({ server, account }: { server: ServerInfo | null; account: Account
         <LedSign messages={messages} label="Cartel del server" />
         <div className="hero-copy">
           <h1 id="hero-t">El MU de siempre, con tus amigos y sin pagar nada</h1>
-          <p className="lead">PeroniaMU es un server privado de MU Online Season 6 con resets, dungeons, espectros y mercado propio. Si Gabi te pasó un código, te subís en un minuto.</p>
+          <p className="lead">PeroniaMU es un server privado de MU Online Season 6 con resets, dungeons y espectros. Si Gabi te pasó un código, te subís en un minuto.</p>
           <div className="actions">
             {account ? (
               <A to="cuenta" className="btn">Ver mi cuenta</A>
             ) : (
               <A to="registro" className="btn">Crear cuenta</A>
             )}
-            <A to="descargar" className="btn ghost">Descargar el juego</A>
+            <A to="info" className="btn ghost">Cómo es el server</A>
           </div>
         </div>
       </section>
@@ -121,16 +115,35 @@ function Home({ server, account }: { server: ServerInfo | null; account: Account
             <h2>Ranking</h2>
             <A to="ranking" className="more">Ver los 100</A>
           </div>
-          <RankingTable rows={rows} error={error} compact />
+          <RankingTable rows={rows} error={ranking.error} compact />
+          {news.data && news.data.length > 0 && (
+            <>
+              <div className="head-row">
+                <h2>Novedades</h2>
+                <A to="noticias" className="more">Ver todas</A>
+              </div>
+              <NewsList items={news.data} limit={2} />
+            </>
+          )}
         </div>
         <div>
-          <h2>Estado</h2>
+          <div className="head-row">
+            <h2>Próximos eventos</h2>
+            <A to="eventos" className="more">Ver todos</A>
+          </div>
+          {events.data ? <NextEvents events={events.data} limit={4} /> : <p className="muted">{events.error ?? 'Cargando eventos…'}</p>}
+          <div className="head-row">
+            <h2>Servers</h2>
+            <A to="online" className="more">Quién está</A>
+          </div>
           <ServersPanel server={server} />
-          <ol className="steps">
-            <li><b>Pedile el código a Gabi.</b> Sin código no se puede crear cuenta.</li>
-            <li><b>Creá tu cuenta acá.</b> Usuario de 3 a 10 caracteres.</li>
-            <li><b>Bajá el cliente</b> y entrá con ese usuario.</li>
-          </ol>
+          {!account && (
+            <ol className="steps">
+              <li><b>Pedile el código a Gabi.</b> Sin código no se puede crear cuenta.</li>
+              <li><b>Creá tu cuenta acá.</b> Usuario de 3 a 10 caracteres.</li>
+              <li><b>Bajá el cliente</b> y entrá con ese usuario.</li>
+            </ol>
+          )}
         </div>
       </section>
     </>
@@ -149,78 +162,6 @@ function ServersPanel({ server }: { server: ServerInfo | null }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function RankingTable({ rows, error, compact, filter }: { rows: Character[] | null; error: string | null; compact?: boolean; filter?: (c: Character) => boolean }) {
-  if (error) return <p className="error">{error}</p>;
-  if (!rows) return <p className="muted">Cargando ranking…</p>;
-  const shown = filter ? rows.filter(filter) : rows;
-  if (shown.length === 0) return <p className="muted">{rows.length === 0 ? 'Todavía no hay personajes en el ranking.' : 'Ningún personaje coincide con el filtro.'}</p>;
-  return (
-    <div className="table-wrap">
-      <table className="rank">
-        <thead>
-          <tr>
-            <th scope="col" className="n">#</th>
-            <th scope="col">Personaje</th>
-            {!compact && <th scope="col">Clase</th>}
-            <th scope="col" className="n">Resets</th>
-            <th scope="col" className="n">Nivel</th>
-            {!compact && <th scope="col" className="n">Master</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((c) => {
-            const pos = rows.indexOf(c) + 1;
-            return (
-              <tr key={c.name} className={pos <= 3 ? 'podium' : ''}>
-                <td className="n pos">{String(pos).padStart(2, '0')}</td>
-                <td>
-                  <span className="who">{c.name}</span>
-                  {c.isOnline && <span className="online">en línea</span>}
-                  {compact && <span className="cls">{c.className}</span>}
-                </td>
-                {!compact && <td className="cls-col">{c.className}</td>}
-                <td className="n">{c.resets}</td>
-                <td className="n">{c.level}</td>
-                {!compact && <td className="n">{c.masterLevel || '–'}</td>}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function RankingPage() {
-  const { rows, error } = useRanking(100);
-  const [query, setQuery] = useState('');
-  const [cls, setCls] = useState('');
-  const classes = useMemo(() => Array.from(new Set((rows ?? []).map((r) => r.className))).sort(), [rows]);
-  const q = query.trim().toLowerCase();
-  return (
-    <section className="page">
-      <h1>Ranking</h1>
-      <p className="lead">Ordenado por resets, después nivel master y nivel. Se actualiza cada minuto.</p>
-      <div className="filters">
-        <label>
-          <span>Buscar personaje</span>
-          <input id="rank-q" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nombre" autoComplete="off" />
-        </label>
-        <label>
-          <span>Clase</span>
-          <select id="rank-cls" value={cls} onChange={(e) => setCls(e.target.value)}>
-            <option value="">Todas</option>
-            {classes.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <RankingTable rows={rows} error={error} filter={(c) => (!q || c.name.toLowerCase().includes(q)) && (!cls || c.className === cls)} />
-    </section>
   );
 }
 
@@ -383,7 +324,7 @@ function AccountPage({ account, onChange, onLogout }: { account: Account | null 
           {account.characters.map((c) => (
             <li key={c.name}>
               <div className="char-top">
-                <span className="who">{c.name}</span>
+                <A to="personaje" param={c.name} className="who">{c.name}</A>
                 {c.isOnline && <span className="online">en línea</span>}
               </div>
               <span className="cls">{c.className}</span>
