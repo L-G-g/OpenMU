@@ -105,6 +105,14 @@ public class TalkNpcAction
                 await player.InvokeViewPlugInAsync<IShowVaultPlugIn>(p => p.ShowVaultAsync()).ConfigureAwait(false);
                 break;
             case NpcWindow.MarketDepot:
+                if (player.Account is { } marketAccount && Market.MarketLocks.IsAccountBusy(marketAccount.LoginName))
+                {
+                    await player.ShowBlueMessageAsync(Market.MarketLocks.DepotIsBusyMessage).ConfigureAwait(false);
+                    player.OpenedNpc = null;
+                    await player.PlayerState.TryAdvanceToAsync(PlayerState.EnteredWorld).ConfigureAwait(false);
+                    break;
+                }
+
                 player.Account!.MarketDepot ??= player.PersistenceContext.CreateNew<ItemStorage>();
                 player.Vault = new Storage(InventoryConstants.WarehouseSize, player.Account.MarketDepot);
                 await player.InvokeViewPlugInAsync<IShowVaultPlugIn>(p => p.ShowVaultAsync()).ConfigureAwait(false);

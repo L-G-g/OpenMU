@@ -49,6 +49,22 @@ public class PortalSettings
     public string? NewsFile { get; set; } = "/app/portal/noticias.md";
 
     /// <summary>
+    /// Gets or sets the commission of the market in percent of the price, which the seller doesn't get.
+    /// Set it with the environment variable <c>Portal__MarketCommissionPercent</c>.
+    /// </summary>
+    public decimal MarketCommissionPercent { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the number of days after which a market order expires.
+    /// </summary>
+    public int MarketOrderDays { get; set; } = 14;
+
+    /// <summary>
+    /// Gets or sets the maximum number of open market orders of an account.
+    /// </summary>
+    public int MarketMaximumOrders { get; set; } = 30;
+
+    /// <summary>
     /// Gets a value indicating whether the portal is enabled.
     /// </summary>
     public bool IsEnabled => !string.IsNullOrWhiteSpace(this.Urls);

@@ -6,6 +6,7 @@ services:
       Portal__Urls: http://+:8090
       Portal__InviteCodes: ${PORTAL_INVITE_CODES:-}
       Portal__ClientDownloadUrl: ${PORTAL_CLIENT_URL:-}
+      Portal__MarketCommissionPercent: ${PORTAL_MARKET_COMMISSION:-1}
     volumes:
       - ./noticias.md:/app/portal/noticias.md:ro
 

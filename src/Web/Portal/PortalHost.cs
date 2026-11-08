@@ -16,11 +16,13 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MUnique.OpenMU.DataModel.Configuration;
+using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.Interfaces;
 using MUnique.OpenMU.Persistence;
 using MUnique.OpenMU.PlugIns;
@@ -35,6 +37,7 @@ using MUnique.OpenMU.PlugIns;
 public sealed class PortalHost : IHostedService, IAsyncDisposable
 {
     private const string AuthPolicy = "auth";
+    private const string MarketPolicy = "market";
 
     private readonly IServiceProvider _rootServices;
     private readonly PortalSettings _settings;
@@ -84,6 +87,7 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
         builder.Services.AddSingleton(this._rootServices.GetRequiredService<IFriendServer>());
         builder.Services.AddSingleton(this._rootServices.GetRequiredService<IServerProvider>());
         builder.Services.AddSingleton<PortalService>();
+        builder.Services.AddSingleton<PortalMarketService>();
         builder.Services.AddSingleton(provider => new PortalCommunityService(
             provider.GetRequiredService<IPersistenceContextProvider>(),
             provider.GetRequiredService<IDataSource<GameConfiguration>>(),
@@ -139,6 +143,9 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
             options.AddPolicy(AuthPolicy, ctx => RateLimitPartition.GetFixedWindowLimiter(
                 ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 8, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+            options.AddPolicy(MarketPolicy, ctx => RateLimitPartition.GetFixedWindowLimiter(
+                ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
         });
 
         var app = builder.Build();
@@ -167,6 +174,7 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
             app.MapFallbackToFile("index.html", new StaticFileOptions { FileProvider = new PhysicalFileProvider(spaRoot) });
         }
 
+        await app.Services.GetRequiredService<PortalMarketService>().InitializeAsync(cancellationToken).ConfigureAwait(false);
         await app.StartAsync(cancellationToken).ConfigureAwait(false);
         this._app = app;
         this._logger.LogInformation("Portal started on {urls}, web files: {root}", this._settings.Urls, app.Environment.WebRootPath ?? "(none)");
@@ -258,6 +266,54 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
 
         api.MapGet("/news", (PortalCommunityService community) => Results.Ok(community.GetNews()));
 
+        MapMarketEndpoints(api.MapGroup("/market"));
+
         api.MapFallback(() => Results.NotFound());
+    }
+
+    private static void MapMarketEndpoints(RouteGroupBuilder market)
+    {
+        static string? Viewer(ClaimsPrincipal user) => user.Identity?.IsAuthenticated == true ? user.Identity.Name : null;
+        static IResult Done(string? error) => error is null ? Results.NoContent() : Results.BadRequest(new { error });
+
+        market.MapGet("/catalog", async (PortalMarketService service, CancellationToken ct)
+            => Results.Ok(await service.GetCatalogAsync(ct).ConfigureAwait(false)));
+
+        market.MapGet("/orders", async (PortalMarketService service, ClaimsPrincipal user, string? kind, CancellationToken ct)
+            => Results.Ok(await service.GetOrdersAsync(kind == "buy" ? MarketOrderKind.Buy : MarketOrderKind.Sell, Viewer(user), ct).ConfigureAwait(false)));
+
+        market.MapGet("/items/{key}", async (PortalMarketService service, ClaimsPrincipal user, string key, CancellationToken ct)
+            => await service.GetItemPageAsync(key, Viewer(user), ct).ConfigureAwait(false) is { } page ? Results.Ok(page) : Results.NotFound());
+
+        market.MapGet("/trades", async (PortalMarketService service, int? count, CancellationToken ct)
+            => Results.Ok(await service.GetLatestTradesAsync(count ?? 20, ct).ConfigureAwait(false)));
+
+        market.MapGet("/me", async (PortalMarketService service, ClaimsPrincipal user, CancellationToken ct)
+            => await service.GetMyMarketAsync(user.Identity!.Name!, ct).ConfigureAwait(false) is { } mine ? Results.Ok(mine) : Results.Unauthorized())
+            .RequireAuthorization();
+
+        market.MapPost("/sell", async (PortalMarketService service, ClaimsPrincipal user, MarketSellRequest request, CancellationToken ct)
+            => Done(await service.SellAsync(user.Identity!.Name!, request, ct).ConfigureAwait(false)))
+            .RequireAuthorization().RequireRateLimiting(MarketPolicy);
+
+        market.MapPost("/buy-orders", async (PortalMarketService service, ClaimsPrincipal user, MarketBuyOrderRequest request, CancellationToken ct)
+            => Done(await service.PlaceBuyOrderAsync(user.Identity!.Name!, request, ct).ConfigureAwait(false)))
+            .RequireAuthorization().RequireRateLimiting(MarketPolicy);
+
+        market.MapPost("/orders/{id:guid}/buy", async (PortalMarketService service, ClaimsPrincipal user, Guid id, CancellationToken ct)
+            => Done(await service.BuyAsync(user.Identity!.Name!, id, ct).ConfigureAwait(false)))
+            .RequireAuthorization().RequireRateLimiting(MarketPolicy);
+
+        market.MapPost("/orders/{id:guid}/fill", async (PortalMarketService service, ClaimsPrincipal user, Guid id, MarketFillRequest request, CancellationToken ct)
+            => Done(await service.FillAsync(user.Identity!.Name!, id, request, ct).ConfigureAwait(false)))
+            .RequireAuthorization().RequireRateLimiting(MarketPolicy);
+
+        market.MapPost("/orders/{id:guid}/cancel", async (PortalMarketService service, ClaimsPrincipal user, Guid id, CancellationToken ct)
+            => Done(await service.CancelAsync(user.Identity!.Name!, id, ct).ConfigureAwait(false)))
+            .RequireAuthorization().RequireRateLimiting(MarketPolicy);
+
+        market.MapPost("/orders/{id:guid}", async (PortalMarketService service, ClaimsPrincipal user, Guid id, MarketChangeRequest request, CancellationToken ct)
+            => Done(await service.ChangeAsync(user.Identity!.Name!, id, request, ct).ConfigureAwait(false)))
+            .RequireAuthorization().RequireRateLimiting(MarketPolicy);
     }
 }
