@@ -23,7 +23,7 @@ export function routeFromPath(path: string): Route {
   const clean = path.replace(/\/+$/, '') || '/';
   const m = clean.match(/^\/(personaje|guild)\/([^/]+)$/);
   if (m) return { page: m[1] as Page, param: decodeURIComponent(m[2]) };
-  const item = clean.match(/^\/mercado\/(\d+-\d+)$/);
+  const item = clean.match(/^\/mercado\/(\d+-\d+(?:-[a-z0-9]+)?)$/);
   if (item) return { page: 'item', param: item[1] };
   const page = (Object.keys(fixed) as Page[]).find((p) => fixed[p] === clean);
   return { page: page ?? 'inicio' };
