@@ -163,8 +163,9 @@ public static class PortalMarketItems
     /// <param name="group">The group.</param>
     /// <param name="number">The number.</param>
     /// <param name="itemName">The name of the item.</param>
+    /// <param name="level">The level which the market kept; orders from before the variants kept the level of the variant.</param>
     /// <returns>The key.</returns>
-    public static string KeyOf(byte group, short number, string itemName)
+    public static string KeyOf(byte group, short number, string itemName, byte level = 0)
     {
         if (IsFenrir(group, number))
         {
@@ -174,8 +175,13 @@ public static class PortalMarketItems
 
         if (LevelVariants.TryGetValue((group, number), out var names))
         {
-            var level = Array.IndexOf(names, itemName);
-            return $"{KeyOf(group, number)}-{Math.Max(level, 0)}";
+            var variant = Array.IndexOf(names, itemName);
+            if (variant < 0)
+            {
+                variant = level < names.Length ? level : 0;
+            }
+
+            return $"{KeyOf(group, number)}-{variant}";
         }
 
         return KeyOf(group, number);

@@ -808,9 +808,9 @@ public sealed class PortalMarketService : IDisposable
 
     private static string? Neutral(string? value) => string.IsNullOrEmpty(value) ? null : new LocalizedString(value).ValueInNeutralLanguage;
 
-    private static string KeyOf(MarketOrder order) => PortalMarketItems.KeyOf(order.ItemGroup, order.ItemNumber, order.ItemName);
+    private static string KeyOf(MarketOrder order) => PortalMarketItems.KeyOf(order.ItemGroup, order.ItemNumber, order.ItemName, order.Level);
 
-    private static string KeyOf(MarketTrade trade) => PortalMarketItems.KeyOf(trade.ItemGroup, trade.ItemNumber, trade.ItemName);
+    private static string KeyOf(MarketTrade trade) => PortalMarketItems.KeyOf(trade.ItemGroup, trade.ItemNumber, trade.ItemName, trade.Level);
 
     private static string[] OptionLines(string? description)
         => (description ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(PortalMarketItems.TranslateOptionLine).ToArray();
@@ -966,7 +966,7 @@ public sealed class PortalMarketService : IDisposable
     /// </summary>
     private static byte LevelOfImage(byte group, short number, string itemName, byte level)
     {
-        var key = PortalMarketItems.KeyOf(group, number, itemName);
+        var key = PortalMarketItems.KeyOf(group, number, itemName, level);
         var parts = key.Split('-');
         return parts.Length == 3 && byte.TryParse(parts[2], out var variantLevel) ? variantLevel : level;
     }
