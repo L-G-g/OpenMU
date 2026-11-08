@@ -12,7 +12,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
     public partial class EntityDataContextModel
     {
         private EntityDataContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("6c212de4-2b84-4858-89c1-27208450d1d0"), entityTypeCount: 128)
+            : base(skipDetectChanges: false, modelId: new Guid("dd37a17c-5d34-4539-b5e2-94444a195dfe"), entityTypeCount: 130)
         {
         }
 
@@ -114,6 +114,8 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             var letterHeader = LetterHeaderEntityType.Create(this);
             var levelBonus = LevelBonusEntityType.Create(this);
             var magicEffectDefinition = MagicEffectDefinitionEntityType.Create(this);
+            var marketOrder = MarketOrderEntityType.Create(this);
+            var marketTrade = MarketTradeEntityType.Create(this);
             var masterSkillDefinition = MasterSkillDefinitionEntityType.Create(this);
             var masterSkillDefinitionSkill = MasterSkillDefinitionSkillEntityType.Create(this);
             var masterSkillRoot = MasterSkillRootEntityType.Create(this);
@@ -332,6 +334,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             MagicEffectDefinitionEntityType.CreateForeignKey3(magicEffectDefinition, powerUpDefinitionValue);
             MagicEffectDefinitionEntityType.CreateForeignKey4(magicEffectDefinition, powerUpDefinitionValue);
             MagicEffectDefinitionEntityType.CreateForeignKey5(magicEffectDefinition, gameConfiguration);
+            MarketOrderEntityType.CreateForeignKey1(marketOrder, account);
             MasterSkillDefinitionEntityType.CreateForeignKey1(masterSkillDefinition, skill);
             MasterSkillDefinitionEntityType.CreateForeignKey2(masterSkillDefinition, masterSkillRoot);
             MasterSkillDefinitionEntityType.CreateForeignKey3(masterSkillDefinition, attributeDefinition);
@@ -496,6 +499,8 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             LetterHeaderEntityType.CreateAnnotations(letterHeader);
             LevelBonusEntityType.CreateAnnotations(levelBonus);
             MagicEffectDefinitionEntityType.CreateAnnotations(magicEffectDefinition);
+            MarketOrderEntityType.CreateAnnotations(marketOrder);
+            MarketTradeEntityType.CreateAnnotations(marketTrade);
             MasterSkillDefinitionEntityType.CreateAnnotations(masterSkillDefinition);
             MasterSkillDefinitionSkillEntityType.CreateAnnotations(masterSkillDefinitionSkill);
             MasterSkillRootEntityType.CreateAnnotations(masterSkillRoot);

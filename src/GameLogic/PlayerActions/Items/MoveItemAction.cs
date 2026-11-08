@@ -11,6 +11,7 @@ using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.GameLogic.Views.Trade;
+using MUnique.OpenMU.Persistence;
 using static MUnique.OpenMU.DataModel.InventoryConstants;
 
 /// <summary>
@@ -55,6 +56,13 @@ public class MoveItemAction
         {
             // Item not found
             await player.InvokeViewPlugInAsync<IItemMoveFailedPlugIn>(p => p.ItemMoveFailedAsync(null)).ConfigureAwait(false);
+            return;
+        }
+
+        if (Market.MarketLocks.IsItemListed(item.GetId()))
+        {
+            await player.ShowBlueMessageAsync(Market.MarketLocks.ItemIsListedMessage).ConfigureAwait(false);
+            await player.InvokeViewPlugInAsync<IItemMoveFailedPlugIn>(p => p.ItemMoveFailedAsync(item)).ConfigureAwait(false);
             return;
         }
 
