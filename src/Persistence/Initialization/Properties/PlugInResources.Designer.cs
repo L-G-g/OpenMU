@@ -989,6 +989,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized StrongGoldenMobsUpdatePlugIn_Description text.</summary>
         public static string StrongGoldenMobsUpdatePlugIn_Description => ResourceManager.GetString("StrongGoldenMobsUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized MarketDepotNpcUpdatePlugIn_Name text.</summary>
+        public static string MarketDepotNpcUpdatePlugIn_Name => ResourceManager.GetString("MarketDepotNpcUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MarketDepotNpcUpdatePlugIn_Description text.</summary>
+        public static string MarketDepotNpcUpdatePlugIn_Description => ResourceManager.GetString("MarketDepotNpcUpdatePlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized ZenByMonsterLevelUpdatePlugIn_Name text.</summary>
         public static string ZenByMonsterLevelUpdatePlugIn_Name => ResourceManager.GetString("ZenByMonsterLevelUpdatePlugIn_Name", resourceCulture)!;
 

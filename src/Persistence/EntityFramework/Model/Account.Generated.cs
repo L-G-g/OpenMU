@@ -77,6 +77,32 @@ internal partial class Account : MUnique.OpenMU.DataModel.Entities.Account, IIde
         }
     }
 
+    /// <summary>
+    /// Gets or sets the identifier of <see cref="MarketDepot"/>.
+    /// </summary>
+    public Guid? MarketDepotId { get; set; }
+
+    /// <summary>
+    /// Gets the raw object of <see cref="MarketDepot" />.
+    /// </summary>
+    [ForeignKey(nameof(MarketDepotId))]
+    public ItemStorage RawMarketDepot
+    {
+        get => base.MarketDepot as ItemStorage;
+        set => base.MarketDepot = value;
+    }
+
+    /// <inheritdoc/>
+    [NotMapped]
+    public override MUnique.OpenMU.DataModel.Entities.ItemStorage MarketDepot
+    {
+        get => base.MarketDepot;set
+        {
+            base.MarketDepot = value;
+            this.MarketDepotId = this.RawMarketDepot?.Id;
+        }
+    }
+
 
     /// <inheritdoc/>
     public override bool Equals(object obj)

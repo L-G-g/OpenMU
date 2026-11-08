@@ -12,7 +12,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForTradeCont
     public partial class TradeContextModel
     {
         private TradeContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("0270667c-2566-4156-944b-07ee53f56a8b"), entityTypeCount: 47)
+            : base(skipDetectChanges: false, modelId: new Guid("7337fb0b-eeb4-469c-a659-baa09ec9d8f6"), entityTypeCount: 47)
         {
         }
 

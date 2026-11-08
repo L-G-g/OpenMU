@@ -30,7 +30,7 @@ public class UpdateVaultMoneyPlugIn : IUpdateVaultMoneyPlugIn
     {
         await this._player.Connection.SendVaultMoneyUpdateAsync(
             success,
-            success ? (uint)this._player.Account!.Vault!.Money : 0,
+            success ? (uint)((this._player.Vault?.ItemStorage ?? this._player.Account!.Vault)?.Money ?? 0) : 0,
             success ? (uint)this._player.Money : 0)
             .ConfigureAwait(false);
     }
