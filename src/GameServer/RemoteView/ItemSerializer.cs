@@ -87,7 +87,7 @@ public class ItemSerializer : IItemSerializer
             target[1] |= LuckFlag;
         }
 
-        if (item.HasSkill && item.Definition?.Skill is not null)
+        if (item.HasSkill && item.Definition!.Skill is not null)
         {
             target[1] |= SkillFlag;
         }
