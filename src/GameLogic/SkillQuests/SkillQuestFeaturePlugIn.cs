@@ -90,8 +90,8 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
     /// <returns>The quest, if there is one.</returns>
     public static QuestDefinition? FindQuestOfSkill(GameConfiguration gameConfiguration, Skill skill)
     {
-        return gameConfiguration.Monsters
-            .SelectMany(m => m.Quests)
+        return (gameConfiguration.Monsters ?? Enumerable.Empty<MonsterDefinition>())
+            .SelectMany(m => m.Quests ?? Enumerable.Empty<QuestDefinition>())
             .Where(q => q.IsSkillQuest())
             .FirstOrDefault(q => q.Rewards.Any(r => r.RewardType == QuestRewardType.Skill && r.SkillReward?.Number == skill.Number));
     }
@@ -394,7 +394,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
 
     private static IEnumerable<CharacterQuestState> GetActiveSkillQuestStates(Player player)
     {
-        return player.SelectedCharacter?.QuestStates
+        return player.SelectedCharacter?.QuestStates?
                    .Where(s => SkillQuestGroups.IsSkillQuestGroup(s.Group) && s.ActiveQuest is not null)
                    .OrderBy(s => s.Group)
                ?? Enumerable.Empty<CharacterQuestState>();
@@ -452,7 +452,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         (SkillQuestMark Mark, QuestDefinition? Quest, CharacterQuestState? State) result = (SkillQuestMark.None, null, null);
         foreach (var group in GetSkillQuests(npc).GroupBy(q => q.Group))
         {
-            var questState = character.QuestStates.FirstOrDefault(s => s.Group == group.Key);
+            var questState = character.QuestStates?.FirstOrDefault(s => s.Group == group.Key);
             if (questState?.ActiveQuest is { } active && group.Contains(active))
             {
                 var mark = IsCompleted(questState) ? SkillQuestMark.Ready : SkillQuestMark.InProgress;

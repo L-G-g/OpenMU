@@ -28,8 +28,8 @@ public class LearnablesConsumeHandlerPlugIn : BaseConsumeHandlerPlugIn
             return false;
         }
 
-        if (SkillQuests.SkillQuestFeaturePlugIn.FindQuestOfSkill(player.GameContext.Configuration, skill) is { } quest
-            && player.GameContext.FeaturePlugIns.GetPlugIn<SkillQuests.SkillQuestFeaturePlugIn>() is not null)
+        if (player.GameContext.FeaturePlugIns.GetPlugIn<SkillQuests.SkillQuestFeaturePlugIn>() is not null
+            && SkillQuests.SkillQuestFeaturePlugIn.FindQuestOfSkill(player.GameContext.Configuration, skill) is { } quest)
         {
             // Skills which a skill quest teaches can only be learned by that quest.
             var giver = quest.QuestGiver?.Designation.GetTranslation(player.Culture) ?? "un NPC";
