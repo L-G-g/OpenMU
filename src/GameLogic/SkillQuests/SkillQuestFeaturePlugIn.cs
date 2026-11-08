@@ -1,4 +1,4 @@
-// <copyright file="SkillQuestFeaturePlugIn.cs" company="MUnique">
+﻿// <copyright file="SkillQuestFeaturePlugIn.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic.SkillQuests;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using MUnique.OpenMU.DataModel.Configuration.Quests;
+using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.Offline;
 using MUnique.OpenMU.GameLogic.PlayerActions.Quests;
@@ -18,10 +19,12 @@ using MUnique.OpenMU.PlugIns;
 /// </summary>
 /// <remarks>
 /// The quests are <see cref="QuestDefinition"/>s of the NPCs with a group of <see cref="SkillQuestGroups"/>. A quest
-/// requires monster kills (<see cref="QuestDefinition.RequiredMonsterKills"/>, counted by the number of the monster, so
-/// that the copies of a monster on other maps count as well) and rewards skills (<see cref="QuestRewardType.Skill"/>).
+/// requires monster kills (<see cref="QuestDefinition.RequiredMonsterKills"/>, only of that monster definition: the
+/// copies of a monster for other maps don't count) and rewards skills (<see cref="QuestRewardType.Skill"/>).
 /// A player gets only the reward skills which its class can use, and a quest is only offered to a player whose class
-/// can use at least one of them. The quests of a group are done in the order of their numbers.
+/// can use at least one of them. The number of a quest is its tier: a player does the tiers in order, so a quest is
+/// only offered when the quests of the lower tiers with rewards for its class (of every NPC) are done. The
+/// <see cref="SkillQuestConfiguration.TierRequirements"/> add resets and the first class change to a tier.
 /// <para>
 /// The client (quests.dll) shows marks above the NPCs, a quest window and a tracker of the active quests. It answers
 /// with the chat command <c>/quest</c> (see <see cref="SkillQuestChatCommandPlugIn"/>).
@@ -48,6 +51,8 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
     internal const string PlugInDescription = "NPCs teach skills when the player completes their quests (quest groups 1000 to 1999). The client (quests.dll) shows golden marks above the NPCs, a quest window and a tracker; it answers with the chat command /quest.";
 
     private static readonly ConditionalWeakTable<Player, ViewState> PlayerStates = new();
+
+    private static readonly ConditionalWeakTable<GameConfiguration, IReadOnlyList<QuestDefinition>> AllSkillQuests = new();
 
     private DateTime _nextRunUtc = DateTime.UtcNow;
 
@@ -410,13 +415,81 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             .Where(s => characterClass is not null && s.QualifiedCharacters.Contains(characterClass));
     }
 
-    private static bool IsQualified(Player player, QuestDefinition quest)
+    private static IReadOnlyList<QuestDefinition> GetAllSkillQuests(GameConfiguration configuration)
     {
-        return GetRewardSkills(player, quest).Any()
-               && quest.MinimumCharacterLevel <= player.Level
-               && (quest.MaximumCharacterLevel == 0 || quest.MaximumCharacterLevel >= player.Level)
-               && (quest.QualifiedCharacter is null || Equals(quest.QualifiedCharacter, player.SelectedCharacter?.CharacterClass));
+        return AllSkillQuests.GetValue(configuration, c => c.Monsters
+            .SelectMany(m => m.Quests ?? Enumerable.Empty<QuestDefinition>())
+            .Where(q => q.IsSkillQuest())
+            .ToList());
     }
+
+    private static bool IsFinished(Character character, QuestDefinition quest)
+    {
+        return character.QuestStates?.FirstOrDefault(s => s.Group == quest.Group)?.LastFinishedQuest?.Number >= quest.Number;
+    }
+
+    /// <summary>
+    /// Gets the next quest of a group for the player: the first one after the last finished one with rewards for its class.
+    /// </summary>
+    private static QuestDefinition? GetNextQuest(Player player, IEnumerable<QuestDefinition> group, CharacterQuestState? questState)
+    {
+        var lastNumber = questState?.LastFinishedQuest?.Number ?? 0;
+        return group.Where(q => q.Number > lastNumber && GetRewardSkills(player, q).Any()).OrderBy(q => q.Number).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Gets the requirement of a quest which the player doesn't meet, as a text for the quest window; or <c>null</c>,
+    /// if the player is qualified for the quest.
+    /// </summary>
+    private string? GetMissingRequirement(Player player, QuestDefinition quest)
+    {
+        if (player.SelectedCharacter is not { } character || !GetRewardSkills(player, quest).Any())
+        {
+            return "No tengo nada para enseñarle a tu clase.";
+        }
+
+        if (quest.QualifiedCharacter is not null && !Equals(quest.QualifiedCharacter, character.CharacterClass))
+        {
+            return "No tengo nada para enseñarle a tu clase.";
+        }
+
+        if (quest.MinimumCharacterLevel > player.Level)
+        {
+            return $"Volvé cuando llegues al nivel {quest.MinimumCharacterLevel}.";
+        }
+
+        if (quest.MaximumCharacterLevel > 0 && quest.MaximumCharacterLevel < player.Level)
+        {
+            return "Ya superaste el nivel de esta lección.";
+        }
+
+        var tier = this.CurrentConfiguration.TierRequirements?.FirstOrDefault(t => t.QuestNumber == quest.Number);
+        var resets = (int)(player.Attributes?[Stats.Resets] ?? 0);
+        if (tier is not null && resets < tier.MinimumResets)
+        {
+            return $"Volvé cuando tengas {tier.MinimumResets} resets.";
+        }
+
+        if (tier?.RequiresClassChange == true
+            && character.CharacterClass is { NextGenerationClass: { IsMasterClass: false } })
+        {
+            return "Volvé cuando hayas hecho tu primer cambio de clase.";
+        }
+
+        var missing = GetAllSkillQuests(player.GameContext.Configuration)
+            .Where(q => q.Number < quest.Number && GetRewardSkills(player, q).Any() && !IsFinished(character, q))
+            .OrderBy(q => q.Number)
+            .FirstOrDefault();
+        if (missing is not null)
+        {
+            var giver = missing.QuestGiver?.Designation.GetTranslation(player.Culture) ?? "otro maestro";
+            return $"Primero terminá \"{missing.Name.GetTranslation(player.Culture)}\" con {giver}.";
+        }
+
+        return null;
+    }
+
+    private bool IsQualified(Player player, QuestDefinition quest) => this.GetMissingRequirement(player, quest) is null;
 
     private static string GetMonsterName(Player player, QuestMonsterKillRequirement requirement)
     {
@@ -469,9 +542,8 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
                 continue; // an active quest of the group of another NPC
             }
 
-            var lastNumber = questState?.LastFinishedQuest?.Number ?? 0;
-            var next = group.Where(q => q.Number > lastNumber).OrderBy(q => q.Number).FirstOrDefault();
-            if (next is not null && IsQualified(player, next) && result.Mark == SkillQuestMark.None)
+            var next = GetNextQuest(player, group, questState);
+            if (next is not null && result.Mark == SkillQuestMark.None && this.IsQualified(player, next))
             {
                 result = (SkillQuestMark.Available, next, questState);
             }
@@ -487,17 +559,26 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         var lines = new List<SkillQuestLine>();
         if (quest is null)
         {
-            var anyQuestForClass = GetSkillQuests(npc.Definition).Any(q => GetRewardSkills(player, q).Any());
-            lines.Add(new(SkillQuestTextColor.White, anyQuestForClass
-                ? "Por ahora no tengo nada más para enseñarte."
-                : "No tengo nada para enseñarle a tu clase."));
-            var nextByLevel = GetSkillQuests(npc.Definition)
-                .Where(q => GetRewardSkills(player, q).Any() && q.MinimumCharacterLevel > player.Level)
-                .OrderBy(q => q.MinimumCharacterLevel)
-                .FirstOrDefault();
-            if (nextByLevel is not null)
+            var character = player.SelectedCharacter;
+            var nextQuests = GetSkillQuests(npc.Definition)
+                .GroupBy(q => q.Group)
+                .Select(g => GetNextQuest(player, g, character?.QuestStates?.FirstOrDefault(s => s.Group == g.Key)))
+                .OfType<QuestDefinition>()
+                .OrderBy(q => q.Number)
+                .ToList();
+            if (nextQuests.Count == 0)
             {
-                lines.Add(new(SkillQuestTextColor.Gray, $"Volvé cuando llegues al nivel {nextByLevel.MinimumCharacterLevel}."));
+                var anyQuestForClass = GetSkillQuests(npc.Definition).Any(q => GetRewardSkills(player, q).Any());
+                lines.Add(new(SkillQuestTextColor.White, anyQuestForClass
+                    ? "Ya te enseñé todo lo que sé."
+                    : "No tengo nada para enseñarle a tu clase."));
+            }
+            else
+            {
+                var next = nextQuests[0];
+                lines.Add(new(SkillQuestTextColor.White, "Por ahora no tengo nada más para enseñarte."));
+                lines.Add(new(SkillQuestTextColor.Gold, next.Name.GetTranslation(player.Culture) ?? string.Empty));
+                lines.Add(new(SkillQuestTextColor.Gray, this.GetMissingRequirement(player, next) ?? string.Empty));
             }
 
             return new SkillQuestDialog(npcName, lines, SkillQuestAction.None);
@@ -550,7 +631,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         foreach (var questState in GetActiveSkillQuestStates(player).ToList())
         {
             var wasCompleted = IsCompleted(questState);
-            foreach (var requirement in questState.ActiveQuest!.RequiredMonsterKills.Where(r => r.Monster?.Number == monster.Number))
+            foreach (var requirement in questState.ActiveQuest!.RequiredMonsterKills.Where(r => Equals(r.Monster, monster)))
             {
                 var requirementState = GetOrCreateRequirementState(player, questState, requirement);
                 if (requirementState.KillCount < requirement.MinimumNumber)

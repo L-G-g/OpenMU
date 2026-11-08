@@ -175,7 +175,7 @@ public class ItemSerializerExtended : IItemSerializer
             result |= OptionFlags.HasLuck;
         }
 
-        if (item.HasSkill)
+        if (item.HasSkill && item.Definition?.Skill is not null)
         {
             result |= OptionFlags.HasSkill;
         }

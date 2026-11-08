@@ -1,4 +1,4 @@
-// <copyright file="SkillQuestsDataTest.cs" company="MUnique">
+﻿// <copyright file="SkillQuestsDataTest.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -12,7 +12,7 @@ using MUnique.OpenMU.Persistence.Initialization.Updates;
 using MUnique.OpenMU.Persistence.InMemory;
 
 /// <summary>
-/// Tests the data of the skill quests (tier 1).
+/// Tests the data of the skill quests.
 /// </summary>
 [TestFixture]
 internal class SkillQuestsDataTest
@@ -50,20 +50,37 @@ internal class SkillQuestsDataTest
     private static void AssertQuests(GameConfiguration gameConfiguration)
     {
         var quests = gameConfiguration.Monsters.SelectMany(m => m.Quests).Where(q => q.IsSkillQuest()).ToList();
-        Assert.That(quests.Select(q => q.QuestGiver!.Number), Is.EquivalentTo(new short[] { 251, 254, 242, 226, 243 }));
+        Assert.That(quests, Has.Count.EqualTo(25));
+        Assert.That(quests.Select(q => q.QuestGiver!.Number).Distinct(), Is.EquivalentTo(new short[] { 251, 254, 242, 226, 243, 416, 568 }));
+        Assert.That(quests.Select(q => (q.Group, q.Number)).Distinct().Count(), Is.EqualTo(quests.Count));
         foreach (var quest in quests)
         {
-            Assert.That(quest.RequiredMonsterKills.Select(r => r.Monster!.Number), Is.EquivalentTo(new short[] { 2, 421, 27 }), quest.Name.ToString());
-            Assert.That(quest.RequiredMonsterKills.All(r => r.MinimumNumber == 100), Is.True);
+            Assert.That(quest.RequiredMonsterKills, Is.Not.Empty, quest.Name.ToString());
+            Assert.That(quest.Rewards, Is.Not.Empty, quest.Name.ToString());
             Assert.That(quest.Rewards.All(r => r.RewardType == QuestRewardType.Skill && r.SkillReward is not null), Is.True);
         }
 
-        var pasi = quests.Single(q => q.QuestGiver!.Number == 254);
-        Assert.That(pasi.Rewards.Select(r => (int)r.SkillReward!.Number), Is.EquivalentTo(new[] { 4, 7, 1, 11, 3, 2 }));
+        foreach (var quest in quests.Where(q => q.Number == 1))
+        {
+            Assert.That(quest.RequiredMonsterKills.Select(r => r.Monster!.Number), Is.EquivalentTo(new short[] { 2, 421, 27 }), quest.Name.ToString());
+            Assert.That(quest.RequiredMonsterKills.All(r => r.MinimumNumber == 30), Is.True);
+        }
+
+        var pasi = quests.Single(q => q.QuestGiver!.Number == 254 && q.Number == 1);
+        Assert.That(pasi.Rewards.Select(r => (int)r.SkillReward!.Number), Is.EquivalentTo(new[] { 4, 7, 11, 2 }));
+        var rhea = quests.Where(q => q.QuestGiver!.Number == 416).Select(q => q.Number);
+        Assert.That(rhea, Is.EquivalentTo(new short[] { 2, 3, 4 }));
+
+        var weaponsWithSkill = gameConfiguration.Items
+            .Where(i => i.Group <= 6 && i.Skill is not null && i.Skill.Number is not (223 or 224 or 225))
+            .Select(i => i.Name.ToString())
+            .ToList();
+        Assert.That(weaponsWithSkill, Is.Empty);
+        Assert.That(gameConfiguration.Items.Any(i => i.Group == 5 && i.Skill?.Number == 223), Is.True, "the summoner books keep their skills");
 
         var questSkills = quests.SelectMany(q => q.Rewards).Select(r => r.SkillReward!.Number).ToHashSet();
         var droppingSkillItems = gameConfiguration.Items
-            .Where(i => i.Group is 12 or 15 && i.Skill is not null && !(i.Group == 12 && i.Number == 11))
+            .Where(i => i.Group is 12 or 15 && i.Skill is not null)
             .Where(i => questSkills.Contains(i.Skill!.Number) && i.DropsFromMonsters)
             .Select(i => i.Name.ToString())
             .ToList();

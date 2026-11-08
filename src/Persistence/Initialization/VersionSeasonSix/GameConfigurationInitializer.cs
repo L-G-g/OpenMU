@@ -102,7 +102,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         ZenByMonsterLevel.Apply(this.Context, this.GameConfiguration);
         PotionStacks.Apply(this.Context, this.GameConfiguration);
         IceQueenDungeon.Apply(this.Context, this.GameConfiguration);
-        SkillQuestsTier1.ApplyAsync(this.Context, this.GameConfiguration).AsTask().GetAwaiter().GetResult();
+        SkillQuestsData.ApplyAsync(this.Context, this.GameConfiguration).AsTask().GetAwaiter().GetResult();
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 

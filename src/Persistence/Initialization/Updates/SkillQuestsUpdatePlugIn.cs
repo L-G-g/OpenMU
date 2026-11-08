@@ -1,4 +1,4 @@
-// <copyright file="SkillQuestsUpdatePlugIn.cs" company="MUnique">
+﻿// <copyright file="SkillQuestsUpdatePlugIn.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -9,7 +9,7 @@ using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// Adds the skill quests of PeroniaMU, see <see cref="SkillQuestsTier1"/>.
+/// Adds the skill quests of PeroniaMU, see <see cref="SkillQuestsData"/>.
 /// </summary>
 /// <remarks>
 /// It's optional, because it changes how the game plays instead of correcting data.
@@ -27,7 +27,7 @@ public class SkillQuestsUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "NPCs teach the skills of each class by quests (plugin 'Skill quests' and quests.dll in the client). Tier 1: kill 100 Budge Dragons, 100 Polluted Butterflies and 100 Chain Scorpions. Hanzo: Twisting Slash (warriors, magic gladiators). Pasi: Fire Ball, Ice, Poison, Power Wave, Lightning, Meteorite (wizards, magic gladiators; summoners get Fire Ball, Ice, Power Wave and Meteorite). Elf Lala: Penetration, Heal, Summon Goblin, Summon Stone Golem. Pet Trainer: Fire Burst. Eo: Chain Drive. These skills can't be learned with items anymore: their scrolls and orbs don't drop and aren't sold anymore.";
+    internal const string PlugInDescription = "NPCs teach the skills of each class by four tiers of quests (plugin 'Skill quests' and quests.dll in the client): Hanzo (knights, magic gladiators), Pasi (wizards, magic gladiators, first tier of summoners), Elf Lala, Pet Trainer, Eo, Rhea (summoners) and the Wandering Merchant Zyro (magic gladiators). Tier 1: kill 30 Budge Dragons, Polluted Butterflies and Chain Scorpions. Tier 2: level 150, 100 Skeleton Warriors, Stone Golems and Captain Grizzlies. Tier 3: 10 resets, 300 Elite Yetis and Dark Knights. Tier 4: 25 resets and the first class change, 300 Shadows, Bahamuts and Mutants. These skills can only be learned by the quests: their scrolls and orbs don't drop and aren't sold anymore. Weapons and shields don't give skills anymore (except the books of the summoners) and new characters don't get skills anymore.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;
@@ -47,6 +47,6 @@ public class SkillQuestsUpdatePlugIn : UpdatePlugInBase
     /// <inheritdoc />
     protected override async ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
     {
-        await SkillQuestsTier1.ApplyAsync(context, gameConfiguration).ConfigureAwait(false);
+        await SkillQuestsData.ApplyAsync(context, gameConfiguration).ConfigureAwait(false);
     }
 }
