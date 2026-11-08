@@ -345,10 +345,10 @@ a.card:hover { border-color: #4d4538; background: #14120f; color: var(--text); }
 .glyph.lg { width: 72px; height: 72px; font-size: 24px; }
 .glyph.exc { color: #7fd4ff; border-color: #24485c; }
 /* The picture from the game: lit from below like on a shop shelf, it turns towards the pointer and floats a little. */
-.glyph.pic { width: 64px; height: 64px; perspective: 360px; background: radial-gradient(circle at 50% 75%, rgba(255, 176, 0, 0.12), transparent 65%), #0b0a09; overflow: visible; }
+.glyph.pic { position: relative; width: 64px; height: 64px; perspective: 360px; overflow: hidden; background: radial-gradient(circle at 50% 75%, rgba(255, 176, 0, 0.12), transparent 65%), #0b0a09; }
 .glyph.pic.exc { background: radial-gradient(circle at 50% 75%, rgba(127, 212, 255, 0.16), transparent 65%), #0b0a09; }
 .glyph.pic.lg { width: 132px; height: 132px; }
-.glyph.pic img { width: 92%; height: 92%; object-fit: contain; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0); transition: transform 0.25s ease-out, filter 0.25s ease-out; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.7)); animation: pic-float 6s ease-in-out infinite; }
+.glyph.pic img { position: absolute; inset: 4%; width: 92%; height: 92%; object-fit: contain; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0); transition: transform 0.25s ease-out, filter 0.25s ease-out; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.7)); animation: pic-float 6s ease-in-out infinite; }
 .glyph.pic:hover img { filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.8)) brightness(1.12); animation-play-state: paused; }
 @keyframes pic-float { 0%, 100% { translate: 0 0; rotate: y -8deg; } 50% { translate: 0 -3px; rotate: y 8deg; } }
 @media (prefers-reduced-motion: reduce) { .glyph.pic img { animation: none; transition: none; } }
