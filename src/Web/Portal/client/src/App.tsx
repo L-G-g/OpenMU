@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Account, api, errorText, ServerInfo } from './api';
 import { LedSign } from './LedSign';
 import { CastleCard, CharacterPage, EventsPage, GuildPage, GuildsPage, InfoPage, NewsList, NewsPage, NextEvents, OnlinePage, RankingPage, RankingTable } from './pages';
+import { ItemPage, MarketPage, MyMarketPage } from './market';
 import { go, Page, useRoute } from './router';
 import { A, num, useLoad } from './ui';
 
@@ -23,7 +24,7 @@ export function App() {
   }, [refreshAccount]);
 
   useEffect(() => {
-    const titles: Record<Page, string> = { inicio: '', ranking: 'Ranking', online: 'Jugando ahora', guilds: 'Guilds', guild: route.param ?? 'Guild', personaje: route.param ?? 'Personaje', eventos: 'Eventos', info: 'Cómo es el server', noticias: 'Novedades', registro: 'Crear cuenta', entrar: 'Entrar', cuenta: 'Mi cuenta', descargar: 'Descargar' };
+    const titles: Record<Page, string> = { inicio: '', ranking: 'Ranking', online: 'Jugando ahora', guilds: 'Guilds', guild: route.param ?? 'Guild', personaje: route.param ?? 'Personaje', eventos: 'Eventos', info: 'Cómo es el server', noticias: 'Novedades', registro: 'Crear cuenta', entrar: 'Entrar', cuenta: 'Mi cuenta', descargar: 'Descargar', mercado: 'Mercado', item: 'Mercado', misordenes: 'Mis órdenes' };
     const t = titles[route.page];
     document.title = t ? `${t} · PeroniaMU` : 'PeroniaMU';
   }, [route]);
@@ -44,6 +45,7 @@ export function App() {
           </A>
           <A to={account ? 'cuenta' : 'entrar'} className={`acct ${page === 'cuenta' || page === 'entrar' ? 'on' : ''}`}>{account ? account.loginName : 'Entrar'}</A>
           <nav aria-label="Principal">
+            {nav('mercado', 'Mercado', ['item', 'misordenes'])}
             {nav('ranking', 'Ranking', ['personaje'])}
             {nav('online', 'Online')}
             {nav('guilds', 'Guilds', ['guild'])}
@@ -68,6 +70,9 @@ export function App() {
         {page === 'entrar' && <LoginPage onLogin={refreshAccount} />}
         {page === 'cuenta' && <AccountPage account={account} onChange={refreshAccount} onLogout={() => setAccount(null)} />}
         {page === 'descargar' && <DownloadPage server={server} />}
+        {page === 'mercado' && <MarketPage account={account} />}
+        {page === 'item' && <ItemPage key={route.param} itemKey={route.param ?? ''} account={account} />}
+        {page === 'misordenes' && <MyMarketPage account={account} />}
       </main>
       <footer className="wrap foot">
         <span>PeroniaMU · MU Online Season 6 · server privado entre amigos</span>
@@ -313,7 +318,7 @@ function AccountPage({ account, onChange, onLogout }: { account: Account | null 
       </div>
       <dl className="facts">
         <div><dt>Estado</dt><dd>{account.isOnline ? <span className="online">en el juego</span> : 'fuera del juego'}</dd></div>
-        <div><dt>WCoin</dt><dd className="mono">{num(account.wCoin)} WC</dd></div>
+        <div><dt>WCoin</dt><dd className="mono">{num(account.wCoin)} WC <A to="misordenes" className="small">mercado</A></dd></div>
         <div><dt>Cuenta desde</dt><dd>{new Date(account.registeredAt).toLocaleDateString('es-AR')}</dd></div>
       </dl>
 
