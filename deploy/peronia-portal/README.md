@@ -28,6 +28,9 @@ cuando cambia; no hace falta reiniciar nada.
 | `Portal__Urls` | `http://+:8090` | Prende el portal. Vacío = apagado. |
 | `Portal__InviteCodes` | `asado2026,lorencia` | Códigos válidos, separados por coma. Vacío = registro cerrado. |
 | `Portal__ClientDownloadUrl` | `https://...` | Link de descarga del cliente (opcional). |
+| `Portal__MarketCommissionPercent` | `1` | Comisión del mercado en % de cada venta. En `.env`: `PORTAL_MARKET_COMMISSION=1`. |
+| `Portal__MarketOrderDays` | `14` | Días hasta que vence una orden del mercado. |
+| `Portal__MarketMaximumOrders` | `30` | Órdenes abiertas por cuenta. |
 
 ## Pasos en la PC del server
 
