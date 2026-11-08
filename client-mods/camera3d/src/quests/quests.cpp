@@ -385,6 +385,12 @@ namespace
         float top = dialog.top + TitleHeight;
         for (const Line& line : g_dialogLines)
         {
+            if (line.text.find_first_not_of(' ') == std::string::npos)
+            {
+                top += LineHeight; // el texto del juego dibuja basura con un texto vacio
+                continue;
+            }
+
             Text(line.text.c_str(), dialog.left + DialogPadding, top, dialog.width - DialogPadding * 2, SortLeft,
                 TextColor(line.color), line.color == 1 && line.text.find_first_not_of(' ') == 0);
             top += LineHeight;
@@ -438,6 +444,12 @@ namespace
         float top = box.top + 4;
         for (const Line& line : g_tracker)
         {
+            if (line.text.find_first_not_of(' ') == std::string::npos)
+            {
+                top += LineHeight;
+                continue;
+            }
+
             const bool title = line.color == 1 && line.text.find_first_not_of(' ') == 0;
             Text(line.text.c_str(), box.left + 7, top, box.width - 10, SortLeft, TextColor(line.color), title);
             top += LineHeight;
