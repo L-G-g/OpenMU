@@ -32,9 +32,10 @@ internal static class MarketDepotNpc
     internal const short SpawnIdNumber = 3100;
 
     /// <summary>
-    /// The position in Lorencia, next to the vault keeper at 147/145.
+    /// The position in Lorencia, on the open square near the vault keeper at 147/145.
+    /// The model of Julia comes with a carriage, which doesn't fit between the vault keeper and the fence.
     /// </summary>
-    internal static readonly (byte X, byte Y) LorenciaPosition = (149, 143);
+    internal static readonly (byte X, byte Y) LorenciaPosition = (144, 139);
 
     /// <summary>
     /// Applies the change to the configuration.
