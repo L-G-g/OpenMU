@@ -42,6 +42,7 @@ using MUnique.OpenMU.Telemetry;
 using MUnique.OpenMU.Web.AdminPanel;
 using MUnique.OpenMU.Web.AdminPanel.API;
 using MUnique.OpenMU.Web.AdminPanel.Mcp;
+using MUnique.OpenMU.Web.Portal;
 using MUnique.OpenMU.Web.Map;
 using MUnique.OpenMU.Web.Map.Map;
 using MUnique.OpenMU.Web.Shared;
@@ -411,6 +412,7 @@ internal sealed class Program : IDisposable
             .AddSingleton<IGuildServer, GuildServer>()
             .AddSingleton<IFriendServer, FriendServer>()
             .AddDiscordIntegration(builder.Configuration.GetSection(DiscordSettings.SectionName), () => ServerTimeZone)
+            .AddPeroniaPortal(builder.Configuration.GetSection(MUnique.OpenMU.Web.Portal.PortalSettings.SectionName), () => ServerTimeZone)
             .AddSingleton<ChatServer>()
             .AddSingleton<IChatServer>(s => s.GetService<ChatServer>()!)
             .AddSingleton<ConnectServerFactory>()

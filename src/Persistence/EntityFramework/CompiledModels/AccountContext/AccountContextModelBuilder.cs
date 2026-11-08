@@ -12,7 +12,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForAccountCo
     public partial class AccountContextModel
     {
         private AccountContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("7a84b3b3-fd04-4359-b130-08013b01bc5b"), entityTypeCount: 48)
+            : base(skipDetectChanges: false, modelId: new Guid("03e48f04-7e07-4862-907f-847c107faa6c"), entityTypeCount: 50)
         {
         }
 
@@ -56,6 +56,8 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForAccountCo
             var itemStorage = ItemStorageEntityType.Create(this);
             var letterBody = LetterBodyEntityType.Create(this);
             var letterHeader = LetterHeaderEntityType.Create(this);
+            var marketOrder = MarketOrderEntityType.Create(this);
+            var marketTrade = MarketTradeEntityType.Create(this);
             var masterSkillDefinitionSkill = MasterSkillDefinitionSkillEntityType.Create(this);
             var miniGameRankingEntry = MiniGameRankingEntryEntityType.Create(this);
             var monsterDefinitionDropItemGroup = MonsterDefinitionDropItemGroupEntityType.Create(this);
@@ -68,6 +70,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForAccountCo
             var statAttribute = StatAttributeEntityType.Create(this);
 
             AccountEntityType.CreateForeignKey1(account, itemStorage);
+            AccountEntityType.CreateForeignKey2(account, itemStorage);
             AccountCharacterClassEntityType.CreateForeignKey1(accountCharacterClass, account);
             AccountExternalLinkEntityType.CreateForeignKey1(accountExternalLink, account);
             AttributeRelationshipEntityType.CreateForeignKey1(attributeRelationship, powerUpDefinitionValue);
@@ -91,6 +94,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForAccountCo
             LetterBodyEntityType.CreateForeignKey1(letterBody, letterHeader);
             LetterBodyEntityType.CreateForeignKey2(letterBody, appearanceData);
             LetterHeaderEntityType.CreateForeignKey1(letterHeader, character);
+            MarketOrderEntityType.CreateForeignKey1(marketOrder, account);
             MiniGameRankingEntryEntityType.CreateForeignKey1(miniGameRankingEntry, character);
             PowerUpDefinitionEntityType.CreateForeignKey1(powerUpDefinition, powerUpDefinitionValue);
             QuestMonsterKillRequirementStateEntityType.CreateForeignKey1(questMonsterKillRequirementState, characterQuestState);
@@ -136,6 +140,8 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForAccountCo
             ItemStorageEntityType.CreateAnnotations(itemStorage);
             LetterBodyEntityType.CreateAnnotations(letterBody);
             LetterHeaderEntityType.CreateAnnotations(letterHeader);
+            MarketOrderEntityType.CreateAnnotations(marketOrder);
+            MarketTradeEntityType.CreateAnnotations(marketTrade);
             MasterSkillDefinitionSkillEntityType.CreateAnnotations(masterSkillDefinitionSkill);
             MiniGameRankingEntryEntityType.CreateAnnotations(miniGameRankingEntry);
             MonsterDefinitionDropItemGroupEntityType.CreateAnnotations(monsterDefinitionDropItemGroup);

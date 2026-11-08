@@ -581,9 +581,7 @@ internal class PlayerContext : CachingEntityFrameworkContext, IPlayerContext
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return entries
-                .Select(entry => new CharacterSummary(entry.Name, entry.ClassName, (int)entry.Level, (int)entry.MasterLevel, (int)entry.Resets))
-                .ToList();
+            return entries.Select(this.ToSummary).ToList();
         }
     }
 
@@ -602,7 +600,7 @@ internal class PlayerContext : CachingEntityFrameworkContext, IPlayerContext
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return entry is null ? null : new CharacterSummary(entry.Name, entry.ClassName, (int)entry.Level, (int)entry.MasterLevel, (int)entry.Resets);
+            return entry is null ? null : this.ToSummary(entry);
         }
     }
 
@@ -619,6 +617,15 @@ internal class PlayerContext : CachingEntityFrameworkContext, IPlayerContext
                 .FirstOrDefaultAsync(abuse => abuse.KillerId == killerId && abuse.VictimId == victimId, cancellationToken)
                 .ConfigureAwait(false);
         }
+    }
+
+    private CharacterSummary ToSummary(CharacterRankingRow row)
+    {
+        var className = row.CharacterClassId is { } classId
+            ? (this.Context as AccountContext)?.CurrentGameConfiguration?.CharacterClasses
+                .FirstOrDefault(characterClass => characterClass.GetId() == classId)?.Name.ValueInNeutralLanguage
+            : null;
+        return new CharacterSummary(row.Name, className ?? string.Empty, (int)row.Level, (int)row.MasterLevel, (int)row.Resets, row.CharacterClassId);
     }
 
     /// <summary>
@@ -666,9 +673,11 @@ internal class PlayerContext : CachingEntityFrameworkContext, IPlayerContext
         Guid masterLevelAttributeId,
         Guid resetsAttributeId)
     {
+        // The character class is part of the configuration, which isn't in the model of the account context,
+        // so only its identifier can be queried. Its name is taken from the game configuration of the context.
         return characters.Select(character => new CharacterRankingRow(
             character.Name,
-            character.RawCharacterClass!.Name,
+            character.CharacterClassId,
             character.RawAttributes.Where(a => a.DefinitionId == levelAttributeId).Select(a => a.Value).FirstOrDefault(),
             character.RawAttributes.Where(a => a.DefinitionId == masterLevelAttributeId).Select(a => a.Value).FirstOrDefault(),
             character.RawAttributes.Where(a => a.DefinitionId == resetsAttributeId).Select(a => a.Value).FirstOrDefault()));

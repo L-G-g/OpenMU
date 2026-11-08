@@ -12,7 +12,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
     public partial class EntityDataContextModel
     {
         private EntityDataContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("5577b320-884d-448b-a346-3a37f266931a"), entityTypeCount: 128)
+            : base(skipDetectChanges: false, modelId: new Guid("2e2f0185-de14-40e1-b140-4f0b592e9a7d"), entityTypeCount: 130)
         {
         }
 
@@ -114,6 +114,8 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             var letterHeader = LetterHeaderEntityType.Create(this);
             var levelBonus = LevelBonusEntityType.Create(this);
             var magicEffectDefinition = MagicEffectDefinitionEntityType.Create(this);
+            var marketOrder = MarketOrderEntityType.Create(this);
+            var marketTrade = MarketTradeEntityType.Create(this);
             var masterSkillDefinition = MasterSkillDefinitionEntityType.Create(this);
             var masterSkillDefinitionSkill = MasterSkillDefinitionSkillEntityType.Create(this);
             var masterSkillRoot = MasterSkillRootEntityType.Create(this);
@@ -148,6 +150,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             var warpInfo = WarpInfoEntityType.Create(this);
 
             AccountEntityType.CreateForeignKey1(account, itemStorage);
+            AccountEntityType.CreateForeignKey2(account, itemStorage);
             AccountCharacterClassEntityType.CreateForeignKey1(accountCharacterClass, account);
             AccountCharacterClassEntityType.CreateForeignKey2(accountCharacterClass, characterClass);
             AccountExternalLinkEntityType.CreateForeignKey1(accountExternalLink, account);
@@ -331,6 +334,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             MagicEffectDefinitionEntityType.CreateForeignKey3(magicEffectDefinition, powerUpDefinitionValue);
             MagicEffectDefinitionEntityType.CreateForeignKey4(magicEffectDefinition, powerUpDefinitionValue);
             MagicEffectDefinitionEntityType.CreateForeignKey5(magicEffectDefinition, gameConfiguration);
+            MarketOrderEntityType.CreateForeignKey1(marketOrder, account);
             MasterSkillDefinitionEntityType.CreateForeignKey1(masterSkillDefinition, skill);
             MasterSkillDefinitionEntityType.CreateForeignKey2(masterSkillDefinition, masterSkillRoot);
             MasterSkillDefinitionEntityType.CreateForeignKey3(masterSkillDefinition, attributeDefinition);
@@ -495,6 +499,8 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             LetterHeaderEntityType.CreateAnnotations(letterHeader);
             LevelBonusEntityType.CreateAnnotations(levelBonus);
             MagicEffectDefinitionEntityType.CreateAnnotations(magicEffectDefinition);
+            MarketOrderEntityType.CreateAnnotations(marketOrder);
+            MarketTradeEntityType.CreateAnnotations(marketTrade);
             MasterSkillDefinitionEntityType.CreateAnnotations(masterSkillDefinition);
             MasterSkillDefinitionSkillEntityType.CreateAnnotations(masterSkillDefinitionSkill);
             MasterSkillRootEntityType.CreateAnnotations(masterSkillRoot);
