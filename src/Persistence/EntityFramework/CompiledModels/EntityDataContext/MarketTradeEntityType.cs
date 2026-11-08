@@ -21,7 +21,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
                 "MUnique.OpenMU.Persistence.EntityFramework.Model.MarketTrade",
                 typeof(MUnique.OpenMU.Persistence.EntityFramework.Model.MarketTrade),
                 baseEntityType,
-                propertyCount: 15,
+                propertyCount: 16,
                 unnamedIndexCount: 2,
                 keyCount: 1);
 
@@ -66,6 +66,14 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
                 fieldInfo: typeof(MUnique.OpenMU.DataModel.Entities.MarketTrade).GetField("<CreatedAt>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly),
                 sentinel: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
             createdAt.AddAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
+
+            var description = runtimeEntityType.AddProperty(
+                "Description",
+                typeof(string),
+                propertyInfo: typeof(MUnique.OpenMU.DataModel.Entities.MarketTrade).GetProperty("Description", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+                fieldInfo: typeof(MUnique.OpenMU.DataModel.Entities.MarketTrade).GetField("<Description>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+                nullable: true);
+            description.AddAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.None);
 
             var excellentOptionCount = runtimeEntityType.AddProperty(
                 "ExcellentOptionCount",

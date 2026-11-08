@@ -60,6 +60,8 @@ public sealed class PortalMarketService : IDisposable
     private readonly ConcurrentDictionary<Guid, DateTime> _webActivity = new();
     private readonly ConcurrentDictionary<string, Guid> _accountIds = new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly HashSet<string> _images = PortalMarketImages.FindFileNames();
+
     private IReadOnlyList<PortalMarketCatalogItem>? _catalog;
     private Timer? _expiryTimer;
     private bool _initialized;
@@ -156,7 +158,7 @@ public sealed class PortalMarketService : IDisposable
         catalog = config.Items
             .Where(d => d.IsTradable && !string.IsNullOrWhiteSpace(Neutral(d.Name)))
             .OrderBy(d => d.Group).ThenBy(d => d.Number)
-            .Select(ToCatalogItem)
+            .SelectMany(this.ToCatalogItems)
             .ToList();
         this._catalog = catalog;
         return catalog;
@@ -198,7 +200,7 @@ public sealed class PortalMarketService : IDisposable
         }
 
         var viewer = loginName is null ? (Guid?)null : await this.GetAccountIdAsync(loginName, cancellationToken).ConfigureAwait(false);
-        var orders = await this.SnapshotAsync(o => o.State == MarketOrderState.Active && o.ItemGroup == item.Group && o.ItemNumber == item.Number, cancellationToken).ConfigureAwait(false);
+        var orders = await this.SnapshotAsync(o => o.State == MarketOrderState.Active && o.ItemGroup == item.Group && o.ItemNumber == item.Number && KeyOf(o) == key, cancellationToken).ConfigureAwait(false);
         var sell = new List<PortalMarketOrder>();
         var buy = new List<PortalMarketOrder>();
         foreach (var order in orders)
@@ -214,7 +216,7 @@ public sealed class PortalMarketService : IDisposable
         await this._lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            trades = this._trades.Where(t => t.ItemGroup == item.Group && t.ItemNumber == item.Number).ToList();
+            trades = this._trades.Where(t => t.ItemGroup == item.Group && t.ItemNumber == item.Number && KeyOf(t) == key).ToList();
         }
         finally
         {
@@ -282,7 +284,7 @@ public sealed class PortalMarketService : IDisposable
                         item.GetId(),
                         info.Key,
                         info.Name,
-                        item.Level,
+                        info.Level,
                         info.ExcellentOptionCount,
                         info.HasLuck,
                         item.HasSkill,
@@ -291,7 +293,8 @@ public sealed class PortalMarketService : IDisposable
                         (byte)item.SocketCount,
                         info.Options,
                         item.Definition?.IsTradable ?? false,
-                        listed.TryGetValue(item.GetId(), out var orderId) ? orderId : null));
+                        listed.TryGetValue(item.GetId(), out var orderId) ? orderId : null,
+                        item.Definition is { } d ? this.ImageOf(d.Group, d.Number, item.Level, info.ExcellentOptionCount > 0, info.IsAncient) : null));
                 }
 
                 balance = await this.GetBalanceAsync(session, cancellationToken).ConfigureAwait(false);
@@ -317,6 +320,82 @@ public sealed class PortalMarketService : IDisposable
 
         var reserved = orders.Where(o => IsOpen(o) && o.Kind == MarketOrderKind.Buy).Sum(o => o.Price * o.RemainingQuantity);
         return new PortalMyMarket(balance, reserved, this._settings.MarketCommissionPercent, this._settings.MarketMaximumOrders, names, depot, depotReadable, dtos, history);
+    }
+
+    /// <summary>
+    /// Gets the sales and offers of an item which are the most like a wanted item: first the ones with the nearest
+    /// options, then the ones with the nearest level. So there's a price for an item even if nobody sold one exactly like it.
+    /// </summary>
+    /// <param name="key">The key of the item.</param>
+    /// <param name="query">The wanted item.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The price guide, or <c>null</c> if the item doesn't exist.</returns>
+    public async ValueTask<PortalMarketPriceGuide?> GetPriceGuideAsync(string key, MarketPriceQuery query, CancellationToken cancellationToken)
+    {
+        var item = (await this.GetCatalogAsync(cancellationToken).ConfigureAwait(false)).FirstOrDefault(c => c.Key == key);
+        if (item is null)
+        {
+            return null;
+        }
+
+        var wanted = new HashSet<string>(query.ExcellentOptions ?? []);
+        var references = new List<(PortalMarketReference Reference, DateTime At)>();
+
+        PortalMarketReference Compare(string kind, DateTime at, byte level, byte excellentCount, string[] lines, int price)
+        {
+            var excellent = ExcellentLines(lines);
+
+            // Older sales which don't know their options are compared by the number of excellent options.
+            var excellentDistance = excellent.Length == 0 && excellentCount > 0
+                ? Math.Abs(excellentCount - wanted.Count)
+                : wanted.Count + excellent.Length - (2 * excellent.Count(wanted.Contains));
+            var optionLevel = lines.Select(l => l.StartsWith("Opción +", StringComparison.Ordinal) && int.TryParse(l["Opción +".Length..], out var o) ? o / 4 : 0).DefaultIfEmpty(0).Max();
+            var distance = excellentDistance
+                           + (lines.Contains("Luck") != query.Luck ? 1 : 0)
+                           + (lines.Contains("Skill") != query.Skill ? 1 : 0)
+                           + (optionLevel != query.OptionLevel ? 1 : 0);
+            var levelDistance = Math.Abs(level - query.Level);
+            return new PortalMarketReference(kind, at, level, excellentCount, lines, price, distance, levelDistance, distance == 0 && levelDistance == 0);
+        }
+
+        await this._lock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            foreach (var trade in this._trades.Where(t => t.ItemGroup == item.Group && t.ItemNumber == item.Number && KeyOf(t) == key))
+            {
+                var description = trade.Description ?? this._orders.FirstOrDefault(o => o.Id == trade.OrderId && o.Kind == MarketOrderKind.Sell)?.Description;
+                references.Add((Compare("sold", trade.CreatedAt, trade.Level, trade.ExcellentOptionCount, OptionLines(description), trade.Price), trade.CreatedAt));
+            }
+
+            foreach (var order in this._orders.Where(o => o.State == MarketOrderState.Active && o.Kind == MarketOrderKind.Sell && o.ItemGroup == item.Group && o.ItemNumber == item.Number && KeyOf(o) == key))
+            {
+                references.Add((Compare("selling", order.CreatedAt, order.Level, order.ExcellentOptionCount, OptionLines(order.Description), order.Price), order.CreatedAt));
+            }
+        }
+        finally
+        {
+            this._lock.Release();
+        }
+
+        var sorted = references
+            .OrderBy(r => r.Reference.OptionDistance)
+            .ThenBy(r => r.Reference.LevelDistance)
+            .ThenBy(r => r.Reference.Kind == "sold" ? 0 : 1)
+            .ThenByDescending(r => r.At)
+            .Select(r => r.Reference)
+            .ToList();
+
+        // The suggested price is the median of the nearest sales.
+        var nearestSold = sorted.Where(r => r.Kind == "sold").ToList();
+        int? suggested = null;
+        if (nearestSold.Count > 0)
+        {
+            var best = nearestSold[0];
+            var prices = nearestSold.Where(r => r.OptionDistance == best.OptionDistance && r.LevelDistance == best.LevelDistance).Select(r => r.Price).Order().ToList();
+            suggested = prices[prices.Count / 2];
+        }
+
+        return new PortalMarketPriceGuide(item.Key, suggested, sorted.Any(r => r.IsExact), sorted.Take(10).ToList());
     }
 
     /// <summary>
@@ -453,6 +532,12 @@ public sealed class PortalMarketService : IDisposable
             return "unknown_item";
         }
 
+        var wantedExcellent = (request.ExcellentOptions ?? []).Distinct().ToList();
+        if (wantedExcellent.Any(e => !catalogItem.ExcellentOptions.Contains(e)))
+        {
+            return "invalid_options";
+        }
+
         return await this.WriteAsync(async () =>
         {
             var accountId = await this.GetAccountIdAsync(loginName, cancellationToken).ConfigureAwait(false);
@@ -495,7 +580,8 @@ public sealed class PortalMarketService : IDisposable
                 order.ItemNumber = catalogItem.Number;
                 order.ItemName = catalogItem.Name;
                 order.Level = Math.Min(request.MinimumLevel, (byte)15);
-                order.ExcellentOptionCount = Math.Min(request.MinimumExcellentOptions, (byte)6);
+                order.ExcellentOptionCount = (byte)Math.Min(Math.Max(request.MinimumExcellentOptions, wantedExcellent.Count), 6);
+                order.Description = string.Join('\n', wantedExcellent.Select(e => PortalMarketItems.ExcellentPrefix + e));
                 order.HasLuck = request.RequiresLuck;
                 order.HasSkill = request.RequiresSkill;
                 order.OptionLevel = Math.Min(request.MinimumOptionLevel, (byte)7);
@@ -722,29 +808,17 @@ public sealed class PortalMarketService : IDisposable
 
     private static string? Neutral(string? value) => string.IsNullOrEmpty(value) ? null : new LocalizedString(value).ValueInNeutralLanguage;
 
-    private static string KeyOf(byte group, short number) => $"{group}-{number}";
+    private static string KeyOf(MarketOrder order) => PortalMarketItems.KeyOf(order.ItemGroup, order.ItemNumber, order.ItemName, order.Level);
 
-    private static string CategoryOf(ItemDefinition definition)
-    {
-        var name = Neutral(definition.Name) ?? string.Empty;
-        if (name.Contains("Jewel", StringComparison.OrdinalIgnoreCase) || name.Contains("Gemstone", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Joyas";
-        }
+    private static string KeyOf(MarketTrade trade) => PortalMarketItems.KeyOf(trade.ItemGroup, trade.ItemNumber, trade.ItemName, trade.Level);
 
-        return definition.Group switch
-        {
-            <= 5 => "Armas",
-            6 => "Escudos",
-            >= 7 and <= 11 => "Sets",
-            12 when name.Contains("Wing", StringComparison.OrdinalIgnoreCase) || name.Contains("Cape", StringComparison.OrdinalIgnoreCase) || name.Contains("Cloak", StringComparison.OrdinalIgnoreCase) => "Alas",
-            13 => "Accesorios",
-            15 => "Pergaminos",
-            _ => "Otros",
-        };
-    }
+    private static string[] OptionLines(string? description)
+        => (description ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(PortalMarketItems.TranslateOptionLine).ToArray();
 
-    private static PortalMarketCatalogItem ToCatalogItem(ItemDefinition definition)
+    private static string[] ExcellentLines(IEnumerable<string> lines)
+        => lines.Where(l => l.StartsWith(PortalMarketItems.ExcellentPrefix, StringComparison.Ordinal)).Select(l => l[PortalMarketItems.ExcellentPrefix.Length..]).ToArray();
+
+    private IEnumerable<PortalMarketCatalogItem> ToCatalogItems(ItemDefinition definition)
     {
         var classes = definition.QualifiedCharacters
             .Select(c => c.Number / 4)
@@ -753,17 +827,39 @@ public sealed class PortalMarketService : IDisposable
             .Order()
             .Select(f => ClassFamilies[f])
             .ToList();
-        var canHaveExcellent = definition.PossibleItemOptions.Any(o => o.PossibleOptions.Any(p => p.OptionType == ItemOptionTypes.Excellent));
-        return new PortalMarketCatalogItem(
-            KeyOf(definition.Group, definition.Number),
-            definition.Group,
-            definition.Number,
-            Neutral(definition.Name) ?? string.Empty,
-            CategoryOf(definition),
-            definition.Width,
-            definition.Height,
-            classes,
-            canHaveExcellent);
+        var excellent = definition.PossibleItemOptions
+            .SelectMany(o => o.PossibleOptions)
+            .Where(p => p.OptionType == ItemOptionTypes.Excellent)
+            .Select(p => Neutral(p.PowerUpDefinition?.TargetAttribute?.Designation))
+            .ToList();
+        IReadOnlyList<string> excellentOptions = excellent.Count == 0
+            ? []
+            : excellent.Any(d => d == "Maximum Health") ? PortalMarketItems.DefenseExcellentOptions : PortalMarketItems.AttackExcellentOptions;
+        var category = PortalMarketItems.CategoryOf(definition);
+        foreach (var (key, name, imageLevel) in PortalMarketItems.VariantsOf(definition.Group, definition.Number, Neutral(definition.Name) ?? string.Empty))
+        {
+            yield return new PortalMarketCatalogItem(
+                key,
+                definition.Group,
+                definition.Number,
+                name,
+                category,
+                definition.Width,
+                definition.Height,
+                classes,
+                excellentOptions.Count > 0,
+                excellentOptions,
+                this.ImageOf(definition.Group, definition.Number, imageLevel, false, false));
+        }
+    }
+
+    /// <summary>
+    /// Gets the url of the picture of an item, if there is one.
+    /// </summary>
+    private string? ImageOf(byte group, short number, byte level, bool excellent, bool ancient)
+    {
+        var name = PortalMarketItems.ImageNames(group, number, level, excellent, ancient).FirstOrDefault(this._images.Contains);
+        return name is null ? null : PortalMarketImages.UrlPrefix + name;
     }
 
     private static ItemInfo Describe(Item item)
@@ -783,7 +879,11 @@ public sealed class PortalMarketService : IDisposable
             var type = link.ItemOption?.OptionType;
             var target = Neutral(link.ItemOption?.PowerUpDefinition?.TargetAttribute?.Designation)
                 ?? Neutral(link.ItemOption?.LevelDependentOptions?.FirstOrDefault()?.PowerUpDefinition?.TargetAttribute?.Designation);
-            if (type == ItemOptionTypes.Luck)
+            if (type == ItemOptionTypes.BlackFenrir || type == ItemOptionTypes.BlueFenrir || type == ItemOptionTypes.GoldFenrir)
+            {
+                // The name of the Horn of Fenrir says it.
+            }
+            else if (type == ItemOptionTypes.Luck)
             {
                 luck = true;
                 options.Add("Luck");
@@ -796,7 +896,7 @@ public sealed class PortalMarketService : IDisposable
             else if (type == ItemOptionTypes.Excellent)
             {
                 excellent++;
-                options.Add($"Exc: {target ?? "opción excelente"}");
+                options.Add(PortalMarketItems.ExcellentPrefix + PortalMarketItems.ExcellentName(target));
             }
             else if (type == ItemOptionTypes.Wing)
             {
@@ -827,12 +927,13 @@ public sealed class PortalMarketService : IDisposable
             options.Add($"{item.SocketCount} sockets");
         }
 
+        var (key, name, level) = PortalMarketItems.Identify(item);
         return new ItemInfo(
-            KeyOf(definition.Group, definition.Number),
+            key,
             definition.Group,
             definition.Number,
-            Neutral(definition.Name) ?? string.Empty,
-            item.Level,
+            name,
+            level,
             excellent,
             luck,
             item.HasSkill,
@@ -843,8 +944,8 @@ public sealed class PortalMarketService : IDisposable
     }
 
     private static bool Meets(ItemInfo info, MarketOrder buyOrder)
-        => info.Group == buyOrder.ItemGroup
-           && info.Number == buyOrder.ItemNumber
+        => info.Key == KeyOf(buyOrder)
+           && ExcellentLines(OptionLines(buyOrder.Description)).All(e => info.Options.Contains(PortalMarketItems.ExcellentPrefix + e))
            && info.Level >= buyOrder.Level
            && info.ExcellentOptionCount >= buyOrder.ExcellentOptionCount
            && (info.HasLuck || !buyOrder.HasLuck)
@@ -857,8 +958,18 @@ public sealed class PortalMarketService : IDisposable
         return requested is not null && names.Contains(requested) ? requested : names.FirstOrDefault();
     }
 
-    private static PortalMarketTrade ToTradeDto(MarketTrade t)
-        => new(t.CreatedAt, KeyOf(t.ItemGroup, t.ItemNumber), t.ItemName, t.Level, t.ExcellentOptionCount, t.Price, t.SellerName, t.BuyerName);
+    private PortalMarketTrade ToTradeDto(MarketTrade t)
+        => new(t.CreatedAt, KeyOf(t), t.ItemName, t.Level, t.ExcellentOptionCount, t.Price, t.SellerName, t.BuyerName, this.ImageOf(t.ItemGroup, t.ItemNumber, LevelOfImage(t.ItemGroup, t.ItemNumber, t.ItemName, t.Level), t.ExcellentOptionCount > 0, false));
+
+    /// <summary>
+    /// Gets the level for the picture: the level of the variant, if the item is a different item by its level.
+    /// </summary>
+    private static byte LevelOfImage(byte group, short number, string itemName, byte level)
+    {
+        var key = PortalMarketItems.KeyOf(group, number, itemName, level);
+        var parts = key.Split('-');
+        return parts.Length == 3 && byte.TryParse(parts[2], out var variantLevel) ? variantLevel : level;
+    }
 
     private static PortalMarketStats CalculateStats(IReadOnlyList<MarketTrade> trades)
     {
@@ -996,6 +1107,7 @@ public sealed class PortalMarketService : IDisposable
             trade.ItemName = info.Name;
             trade.Level = info.Level;
             trade.ExcellentOptionCount = info.ExcellentOptionCount;
+            trade.Description = string.Join('\n', info.Options);
             trade.Price = price;
             trade.Commission = commission;
             trade.CreatedAt = DateTime.UtcNow;
@@ -1213,8 +1325,9 @@ public sealed class PortalMarketService : IDisposable
             status = "web";
         }
 
-        var options = (order.Description ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var category = this._catalog?.FirstOrDefault(c => c.Group == order.ItemGroup && c.Number == order.ItemNumber)?.Category ?? "Otros";
+        var options = OptionLines(order.Description);
+        var key = KeyOf(order);
+        var category = this._catalog?.FirstOrDefault(c => c.Key == key)?.Category ?? "Otros";
         return new PortalMarketOrder(
             order.Id,
             order.Kind == MarketOrderKind.Sell ? "sell" : "buy",
@@ -1222,7 +1335,7 @@ public sealed class PortalMarketService : IDisposable
             order.OwnerName,
             status,
             viewer == order.AccountId,
-            KeyOf(order.ItemGroup, order.ItemNumber),
+            key,
             order.ItemName,
             category,
             order.Level,
@@ -1237,7 +1350,8 @@ public sealed class PortalMarketService : IDisposable
             order.Quantity,
             order.RemainingQuantity,
             order.CreatedAt,
-            order.ExpiresAt);
+            order.ExpiresAt,
+            this.ImageOf(order.ItemGroup, order.ItemNumber, LevelOfImage(order.ItemGroup, order.ItemNumber, order.ItemName, order.Level), order.ExcellentOptionCount > 0, order.IsAncient));
     }
 
     private async ValueTask<IPlayerContext> CreateContextAsync(CancellationToken cancellationToken)
