@@ -62,6 +62,9 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<Guid?>("MarketDepotId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text");
@@ -95,6 +98,9 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("LoginName")
+                        .IsUnique();
+
+                    b.HasIndex("MarketDepotId")
                         .IsUnique();
 
                     b.HasIndex("VaultId")
@@ -4588,10 +4594,17 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.Migrations
 
             modelBuilder.Entity("MUnique.OpenMU.Persistence.EntityFramework.Model.Account", b =>
                 {
+                    b.HasOne("MUnique.OpenMU.Persistence.EntityFramework.Model.ItemStorage", "RawMarketDepot")
+                        .WithOne()
+                        .HasForeignKey("MUnique.OpenMU.Persistence.EntityFramework.Model.Account", "MarketDepotId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("MUnique.OpenMU.Persistence.EntityFramework.Model.ItemStorage", "RawVault")
                         .WithOne()
                         .HasForeignKey("MUnique.OpenMU.Persistence.EntityFramework.Model.Account", "VaultId")
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("RawMarketDepot");
 
                     b.Navigation("RawVault");
                 });

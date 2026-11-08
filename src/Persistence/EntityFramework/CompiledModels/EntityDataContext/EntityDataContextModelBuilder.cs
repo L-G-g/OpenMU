@@ -12,7 +12,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
     public partial class EntityDataContextModel
     {
         private EntityDataContextModel()
-            : base(skipDetectChanges: false, modelId: new Guid("5577b320-884d-448b-a346-3a37f266931a"), entityTypeCount: 128)
+            : base(skipDetectChanges: false, modelId: new Guid("6c212de4-2b84-4858-89c1-27208450d1d0"), entityTypeCount: 128)
         {
         }
 
@@ -148,6 +148,7 @@ namespace MUnique.OpenMU.Persistence.EntityFramework.CompiledModels.ForEntityDat
             var warpInfo = WarpInfoEntityType.Create(this);
 
             AccountEntityType.CreateForeignKey1(account, itemStorage);
+            AccountEntityType.CreateForeignKey2(account, itemStorage);
             AccountCharacterClassEntityType.CreateForeignKey1(accountCharacterClass, account);
             AccountCharacterClassEntityType.CreateForeignKey2(accountCharacterClass, characterClass);
             AccountExternalLinkEntityType.CreateForeignKey1(accountExternalLink, account);

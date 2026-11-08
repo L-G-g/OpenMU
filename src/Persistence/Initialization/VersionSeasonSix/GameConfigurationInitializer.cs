@@ -100,6 +100,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         ResetExperienceScheme.Apply(this.Context, this.GameConfiguration);
         StrongGoldenMobs.Apply(this.Context, this.GameConfiguration);
         ZenByMonsterLevel.Apply(this.Context, this.GameConfiguration);
+        MarketDepotNpc.Apply(this.Context, this.GameConfiguration);
         PotionStacks.Apply(this.Context, this.GameConfiguration);
         IceQueenDungeon.Apply(this.Context, this.GameConfiguration);
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
