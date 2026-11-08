@@ -394,12 +394,14 @@ function FillPicker({ order, depot, onFill }: { order: MarketOrder; depot: Depot
   );
 }
 
-function PriceChart({ days }: { days: PricePoint[] }) {
+function PriceChart({ days: input }: { days: PricePoint[] }) {
+  // A single day of sales is drawn as a flat line across the chart.
+  const days = input.length === 1 ? [input[0], input[0]] : input;
   const W = 300;
   const H = 96;
   const L = 34;
   const B = 18;
-  if (days.length < 2) {
+  if (days.length === 0) {
     return <div className="mk-chart empty-chart"><span className="muted small">El gráfico aparece con las primeras ventas.</span></div>;
   }
   const max = Math.max(...days.map((d) => d.median));
@@ -408,9 +410,9 @@ function PriceChart({ days }: { days: PricePoint[] }) {
   const bottom = max === min ? Math.max(0, min - 1) : min;
   const t0 = new Date(days[0].day).getTime();
   const t1 = new Date(days[days.length - 1].day).getTime();
-  const x = (d: PricePoint) => L + ((new Date(d.day).getTime() - t0) / Math.max(1, t1 - t0)) * (W - L - 6);
+  const x = (d: PricePoint, i: number) => L + (t1 > t0 ? (new Date(d.day).getTime() - t0) / (t1 - t0) : i) * (W - L - 6);
   const y = (v: number) => 6 + (1 - (v - bottom) / (top - bottom)) * (H - B - 6);
-  const line = days.map((d, i) => `${i ? 'L' : 'M'}${x(d).toFixed(1)},${y(d.median).toFixed(1)}`).join('');
+  const line = days.map((d, i) => `${i ? 'L' : 'M'}${x(d, i).toFixed(1)},${y(d.median).toFixed(1)}`).join('');
   const last = days[days.length - 1];
   const fmt = (s: string) => new Date(s).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   return (
@@ -424,9 +426,9 @@ function PriceChart({ days }: { days: PricePoint[] }) {
         ))}
         <text x={L} y={H - 4} className="axis">{fmt(days[0].day)}</text>
         <text x={W - 6} y={H - 4} textAnchor="end" className="axis">{fmt(last.day)}</text>
-        <path d={`${line} L${x(last)},${y(bottom)} L${L},${y(bottom)} Z`} className="area" />
+        <path d={`${line} L${x(last, days.length - 1)},${y(bottom)} L${L},${y(bottom)} Z`} className="area" />
         <path d={line} className="line" />
-        <circle cx={x(last)} cy={y(last.median)} r="3.5" className="dotp" />
+        <circle cx={x(last, days.length - 1)} cy={y(last.median)} r="3.5" className="dotp" />
       </svg>
       <figcaption className="muted small">Mediana por día, últimos 90 días</figcaption>
     </figure>

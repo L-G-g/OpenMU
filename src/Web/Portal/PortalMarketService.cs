@@ -118,6 +118,7 @@ public sealed class PortalMarketService : IDisposable
                 MarketLocks.LockItem(order.ItemId!.Value);
             }
 
+            await this.GetCatalogAsync(cancellationToken).ConfigureAwait(false);
             this._initialized = true;
             this._expiryTimer ??= new Timer(_ => this.OnExpiryTimer(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
             this._logger.LogInformation("Market: loaded {orders} open orders and {trades} trades.", this._orders.Count(IsOpen), this._trades.Count);
