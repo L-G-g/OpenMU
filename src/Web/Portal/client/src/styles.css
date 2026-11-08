@@ -344,6 +344,28 @@ a.card:hover { border-color: #4d4538; background: #14120f; color: var(--text); }
 .glyph { width: 44px; height: 44px; flex: none; border-radius: 4px; background: #0b0a09; border: 1px solid var(--line); display: grid; place-items: center; font: 400 15px/1 var(--display); color: var(--amber-soft); }
 .glyph.lg { width: 72px; height: 72px; font-size: 24px; }
 .glyph.exc { color: #7fd4ff; border-color: #24485c; }
+/* The picture from the game: lit from below like on a shop shelf, it turns towards the pointer and floats a little. */
+.glyph.pic { width: 64px; height: 64px; perspective: 360px; background: radial-gradient(circle at 50% 75%, rgba(255, 176, 0, 0.12), transparent 65%), #0b0a09; overflow: visible; }
+.glyph.pic.exc { background: radial-gradient(circle at 50% 75%, rgba(127, 212, 255, 0.16), transparent 65%), #0b0a09; }
+.glyph.pic.lg { width: 132px; height: 132px; }
+.glyph.pic img { width: 92%; height: 92%; object-fit: contain; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0); transition: transform 0.25s ease-out, filter 0.25s ease-out; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.7)); animation: pic-float 6s ease-in-out infinite; }
+.glyph.pic:hover img { filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.8)) brightness(1.12); animation-play-state: paused; }
+@keyframes pic-float { 0%, 100% { translate: 0 0; rotate: y -8deg; } 50% { translate: 0 -3px; rotate: y 8deg; } }
+@media (prefers-reduced-motion: reduce) { .glyph.pic img { animation: none; transition: none; } }
+.chip.exc { font-size: 12px; min-height: 28px; }
+.chip.exc.on { border-color: #24485c; color: #7fd4ff; background: rgba(127, 212, 255, 0.07); }
+.exc-pick { display: grid; gap: 6px; margin-bottom: 8px; }
+.mk-form-exc { display: grid; gap: 8px; }
+.mk-guide { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 12px 16px; margin: 0 0 18px; display: grid; gap: 12px; }
+.mk-guide[open] { border-color: #4d4538; }
+.mk-guide summary { cursor: pointer; color: var(--amber); font-weight: 600; }
+.guide { display: grid; gap: 8px; }
+.refs { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.refs li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 4px; background: var(--panel-2); }
+.refs li.exact { outline: 1px solid var(--amber-soft); }
+.refs .ref-what { min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+@media (max-width: 520px) { .refs li { grid-template-columns: 1fr auto; } .refs li > .muted { grid-column: 1 / -1; order: 3; } }
+
 .itemname { font-weight: 600; overflow-wrap: anywhere; }
 .itemname.exc { color: #7fd4ff; }
 .itemname.anc { color: #8cf08c; }

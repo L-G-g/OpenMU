@@ -1,5 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Account, api, BuyOrderRequest, CatalogItem, DepotItem, errorText, MarketOrder, MarketTrade, MyMarket, PricePoint } from './api';
+import { FormEvent, PointerEvent, useEffect, useMemo, useState } from 'react';
+import { Account, api, BuyOrderRequest, CatalogItem, DepotItem, errorText, MarketOrder, MarketTrade, MyMarket, PriceGuide, PricePoint, PriceQuery } from './api';
 import { LedSign } from './LedSign';
 import { A, Loading, num, useLoad } from './ui';
 
@@ -12,7 +12,11 @@ const families: { code: string; name: string }[] = [
   { code: 'SUM', name: 'Summoner' },
   { code: 'RF', name: 'Rage Fighter' },
 ];
-const categories = ['Armas', 'Sets', 'Escudos', 'Alas', 'Joyas', 'Accesorios', 'Pergaminos', 'Otros'];
+const categories = ['Armas', 'Escudos', 'Sets', 'Alas', 'Mascotas', 'Anillos y collares', 'Joyas', 'Sockets', 'Orbes y pergaminos', 'Materiales', 'Entradas a eventos', 'Cajas', 'Consumibles', 'Otros'];
+const attackExc = ['Daño excelente +10%', 'Daño +nivel/20', 'Daño +2%', 'Velocidad de ataque +7', 'Vida al matar', 'Maná al matar'];
+const defenseExc = ['Vida máx. +4%', 'Maná máx. +4%', 'Reduce daño 4%', 'Refleja daño 5%', 'Tasa de defensa +10%', 'Zen +40%'];
+const EXC = 'Exc: ';
+const excOf = (options: string[]) => options.filter((o) => o.startsWith(EXC)).map((o) => o.slice(EXC.length));
 
 const initials = (name: string) =>
   name
@@ -23,8 +27,25 @@ const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join('') || '?';
 
-function Glyph({ name, exc, big }: { name: string; exc?: boolean; big?: boolean }) {
-  return <span className={`glyph${exc ? ' exc' : ''}${big ? ' lg' : ''}`} aria-hidden="true">{initials(name)}</span>;
+/** The picture of the item from the game, which turns towards the pointer; the initials if there is none. */
+function Glyph({ name, exc, big, image }: { name: string; exc?: boolean; big?: boolean; image?: string | null }) {
+  const [broken, setBroken] = useState(false);
+  const cls = `glyph${exc ? ' exc' : ''}${big ? ' lg' : ''}`;
+  if (!image || broken) return <span className={cls} aria-hidden="true">{initials(name)}</span>;
+  const tilt = (e: PointerEvent<HTMLSpanElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty('--rx', `${(((e.clientY - r.top) / r.height) - 0.5) * -28}deg`);
+    e.currentTarget.style.setProperty('--ry', `${(((e.clientX - r.left) / r.width) - 0.5) * 36}deg`);
+  };
+  const reset = (e: PointerEvent<HTMLSpanElement>) => {
+    e.currentTarget.style.removeProperty('--rx');
+    e.currentTarget.style.removeProperty('--ry');
+  };
+  return (
+    <span className={`${cls} pic`} aria-hidden="true" onPointerMove={tilt} onPointerLeave={reset}>
+      <img src={image} alt="" loading="lazy" draggable={false} onError={() => setBroken(true)} />
+    </span>
+  );
 }
 
 /** "Exc Lightning Sword +11", like the game names it. */
@@ -50,7 +71,9 @@ function Wc({ v }: { v: number }) {
 function wants(o: MarketOrder) {
   const parts: string[] = [];
   if (o.level > 0) parts.push(`+${o.level} o más`);
-  if (o.excellentOptionCount > 0) parts.push(`${o.excellentOptionCount}+ exc`);
+  const exc = excOf(o.options);
+  if (exc.length > 0) parts.push(exc.join(' + '));
+  if (o.excellentOptionCount > exc.length) parts.push(`${o.excellentOptionCount}+ exc`);
   if (o.hasLuck) parts.push('luck');
   if (o.hasSkill) parts.push('skill');
   if (o.optionLevel > 0) parts.push(`opción +${o.optionLevel * 4} o más`);
@@ -97,6 +120,7 @@ export function MarketPage({ account }: { account: Account | null | undefined })
   const [ancient, setAncient] = useState(false);
   const [sockets, setSockets] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
+  const [excs, setExcs] = useState<string[]>([]);
 
   const byKey = useMemo(() => new Map((catalog.data ?? []).map((c) => [c.key, c])), [catalog.data]);
   const list = useMemo(() => {
@@ -107,14 +131,16 @@ export function MarketPage({ account }: { account: Account | null | undefined })
       if (family && c && c.classes.length > 0 && !c.classes.includes(family)) return false;
       if (cats.length > 0 && !cats.includes(o.category)) return false;
       if (o.level < minLevel || o.excellentOptionCount < minExc) return false;
+      if (excs.length > 0 && !excs.every((x) => excOf(o.options).includes(x))) return false;
       if ((luck && !o.hasLuck) || (skill && !o.hasSkill) || (ancient && !o.isAncient) || (sockets && o.socketCount === 0)) return false;
       if (onlineOnly && o.ownerStatus === 'offline') return false;
       return true;
     });
-  }, [orders.data, byKey, query, family, cats, minLevel, minExc, luck, skill, ancient, sockets, onlineOnly]);
+  }, [orders.data, byKey, query, family, cats, minLevel, minExc, excs, luck, skill, ancient, sockets, onlineOnly]);
 
   const exact = catalog.data?.find((c) => c.name.toLowerCase() === query.trim().toLowerCase());
   const toggleCat = (c: string) => setCats((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]));
+  const toggleExc = (c: string) => setExcs((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]));
   const clear = () => {
     setQuery('');
     setFamily(null);
@@ -126,6 +152,7 @@ export function MarketPage({ account }: { account: Account | null | undefined })
     setAncient(false);
     setSockets(false);
     setOnlineOnly(false);
+    setExcs([]);
   };
 
   return (
@@ -182,6 +209,11 @@ export function MarketPage({ account }: { account: Account | null | undefined })
             </label>
           </div>
           <div className="grp">
+            <span className="eyebrow">Opciones excelentes</span>
+            <ExcPicker title="Armas y collares" options={attackExc} value={excs} toggle={toggleExc} />
+            <ExcPicker title="Sets, escudos y anillos" options={defenseExc} value={excs} toggle={toggleExc} />
+          </div>
+          <div className="grp">
             <span className="eyebrow">Opciones</span>
             <Check id="mk-luck" label="Luck" v={luck} set={setLuck} />
             <Check id="mk-skill" label="Skill" v={skill} set={setSkill} />
@@ -206,7 +238,7 @@ export function MarketPage({ account }: { account: Account | null | undefined })
               <li key={o.id}>
                 <A to="item" param={o.itemKey} className="card">
                   <span className="card-top">
-                    <Glyph name={o.itemName} exc={o.excellentOptionCount > 0} />
+                    <Glyph name={o.itemName} exc={o.excellentOptionCount > 0} image={o.image} />
                     <span className="card-name">
                       <span className={`itemname ${o.excellentOptionCount > 0 ? 'exc' : ''} ${o.isAncient ? 'anc' : ''}`}>{itemTitle(o)}</span>
                       <span className="opts">{kind === 'buy' ? `Pide: ${wants(o)}` : o.options.slice(0, 3).join(' · ') || o.category}</span>
@@ -223,6 +255,19 @@ export function MarketPage({ account }: { account: Account | null | undefined })
         </div>
       </div>
     </section>
+  );
+}
+
+function ExcPicker({ title, options, value, toggle }: { title?: string; options: string[]; value: string[]; toggle: (o: string) => void }) {
+  return (
+    <div className="exc-pick">
+      {title && <span className="muted small">{title}</span>}
+      <div className="chipset">
+        {options.map((c) => (
+          <button key={c} type="button" className={`chip exc ${value.includes(c) ? 'on' : ''}`} aria-pressed={value.includes(c)} onClick={() => toggle(c)}>{c}</button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -267,7 +312,7 @@ export function ItemPage({ itemKey, account }: { itemKey: string; account: Accou
     <section className="page market">
       <p className="back-top"><A to="mercado">← Mercado</A></p>
       <div className="mk-item">
-        <Glyph name={item.name} big />
+        <Glyph name={item.name} big image={item.image} />
         <div className="mk-item-name">
           <h1>{item.name}</h1>
           <p className="muted">{item.category}{item.classes.length > 0 && item.classes.length < 7 ? ` · ${item.classes.map((c) => families.find((f) => f.code === c)?.name ?? c).join(', ')}` : ''}</p>
@@ -279,6 +324,8 @@ export function ItemPage({ itemKey, account }: { itemKey: string; account: Accou
         </dl>
         <PriceChart days={stats.days} />
       </div>
+
+      <PriceGuidePanel item={item} />
 
       <div className="mk-toolbar">
         <Check id="it-on" label="Solo gente en línea" v={onlineOnly} set={setOnlineOnly} />
@@ -375,7 +422,7 @@ function Confirm({ label, confirm, onConfirm }: { label: string; confirm: string
 }
 
 function meets(i: DepotItem, o: MarketOrder) {
-  return i.itemKey === o.itemKey && i.isTradable && !i.listedOrderId && i.level >= o.level && i.excellentOptionCount >= o.excellentOptionCount && (i.hasLuck || !o.hasLuck) && (i.hasSkill || !o.hasSkill) && i.optionLevel >= o.optionLevel;
+  return i.itemKey === o.itemKey && excOf(o.options).every((x) => i.options.includes(EXC + x)) && i.isTradable && !i.listedOrderId && i.level >= o.level && i.excellentOptionCount >= o.excellentOptionCount && (i.hasLuck || !o.hasLuck) && (i.hasSkill || !o.hasSkill) && i.optionLevel >= o.optionLevel;
 }
 
 function FillPicker({ order, depot, onFill }: { order: MarketOrder; depot: DepotItem[]; onFill: (itemId: string) => Promise<void> }) {
@@ -435,11 +482,87 @@ function PriceChart({ days: input }: { days: PricePoint[] }) {
   );
 }
 
+function usePriceGuide(itemKey: string, q: PriceQuery | null) {
+  const [guide, setGuide] = useState<PriceGuide | null>(null);
+  const sig = q ? JSON.stringify(q) : '';
+  useEffect(() => {
+    if (!q) return;
+    let alive = true;
+    const t = setTimeout(() => api.market.price(itemKey, q).then((g) => alive && setGuide(g), () => alive && setGuide(null)), 250);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemKey, sig]);
+  return guide;
+}
+
+function refTitle(r: { level: number; options: string[]; excellentOptionCount: number }) {
+  const exc = excOf(r.options);
+  const rest = r.options.filter((o) => !o.startsWith(EXC) && (o === 'Luck' || o === 'Skill' || o.startsWith('Opción')));
+  const parts = [r.level > 0 ? `+${r.level}` : '', exc.length > 0 ? exc.join(', ') : r.excellentOptionCount > 0 ? `${r.excellentOptionCount} exc` : '', ...rest].filter(Boolean);
+  return parts.length ? parts.join(' · ') : 'sin opciones';
+}
+
+/** The nearest sales and offers to a wanted item: first by options, then by level. */
+function GuideList({ guide, compact }: { guide: PriceGuide; compact?: boolean }) {
+  if (guide.references.length === 0) return <p className="muted small">Todavía no hay ventas ni publicaciones de este ítem.</p>;
+  const shown = compact ? guide.references.slice(0, 3) : guide.references;
+  return (
+    <div className="guide">
+      <p className="small">
+        {guide.suggestedPrice != null ? <>Precio sugerido <b className="mono">{num(guide.suggestedPrice)} WC</b>. </> : null}
+        <span className="muted">{guide.hasExact ? 'Hay ventas o publicaciones iguales.' : 'No hay ninguno igual; estos son los más parecidos, primero por opciones y después por nivel.'}</span>
+      </p>
+      <ul className="refs">
+        {shown.map((r, i) => (
+          <li key={i} className={r.isExact ? 'exact' : ''}>
+            <span className="ref-what">{refTitle(r)}</span>
+            <span className="muted small">{r.kind === 'sold' ? `vendido ${new Date(r.at).toLocaleDateString('es-AR')}` : 'en venta'}{r.isExact ? ' · igual' : ''}</span>
+            <Wc v={r.price} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PriceGuidePanel({ item }: { item: CatalogItem }) {
+  const [level, setLevel] = useState(0);
+  const [excs, setExcs] = useState<string[]>([]);
+  const [luck, setLuck] = useState(false);
+  const [skill, setSkill] = useState(false);
+  const [opt, setOpt] = useState(0);
+  const [open, setOpen] = useState(false);
+  const guide = usePriceGuide(item.key, open ? { level, exc: excs, luck, skill, opt } : null);
+  return (
+    <details className="mk-guide" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary>¿Cuánto vale el tuyo? Compará con ventas parecidas</summary>
+      <div className="mk-form-grid">
+        <label><span>Nivel</span>
+          <select value={level} onChange={(e) => setLevel(Number(e.target.value))}>{Array.from({ length: 16 }, (_, i) => <option key={i} value={i}>+{i}</option>)}</select>
+        </label>
+        <label><span>Opción</span>
+          <select value={opt} onChange={(e) => setOpt(Number(e.target.value))}>{Array.from({ length: 8 }, (_, i) => <option key={i} value={i}>{i === 0 ? 'Ninguna' : `+${i * 4}`}</option>)}</select>
+        </label>
+      </div>
+      <div className="mk-form-row">
+        <Check id="pg-luck" label="Luck" v={luck} set={setLuck} />
+        <Check id="pg-skill" label="Skill" v={skill} set={setSkill} />
+      </div>
+      {item.excellentOptions.length > 0 && <ExcPicker options={item.excellentOptions} value={excs} toggle={(c) => setExcs((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]))} />}
+      {guide ? <GuideList guide={guide} /> : open && <Loading what="los precios" />}
+    </details>
+  );
+}
+
 function BuyOrderForm({ item, mine, onDone }: { item: CatalogItem; mine: MyMarket; onDone: (text: string) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [price, setPrice] = useState(0);
   const [qty, setQty] = useState(1);
+  const [excs, setExcs] = useState<string[]>([]);
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -453,6 +576,7 @@ function BuyOrderForm({ item, mine, onDone }: { item: CatalogItem; mine: MyMarke
       price,
       quantity: qty,
       ownerName: String(f.get('bo-name') ?? '') || undefined,
+      excellentOptions: excs,
     };
     setBusy(true);
     setError(null);
@@ -493,6 +617,12 @@ function BuyOrderForm({ item, mine, onDone }: { item: CatalogItem; mine: MyMarke
           </label>
         )}
       </div>
+      {item.excellentOptions.length > 0 && (
+        <div className="mk-form-exc">
+          <span className="muted small">Opciones excelentes que tiene que tener (si no marcás ninguna, sirve cualquiera)</span>
+          <ExcPicker options={item.excellentOptions} value={excs} toggle={(c) => setExcs((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]))} />
+        </div>
+      )}
       <div className="mk-form-row">
         <label className="check" htmlFor="bo-luck"><input id="bo-luck" name="bo-luck" type="checkbox" /><span>Con luck</span></label>
         <label className="check" htmlFor="bo-skill"><input id="bo-skill" name="bo-skill" type="checkbox" /><span>Con skill</span></label>
@@ -636,10 +766,12 @@ function DepotCard({ item, names, commission, onSell }: { item: DepotItem; names
   const [name, setName] = useState(names[0] ?? '');
   const [busy, setBusy] = useState(false);
   const fee = Math.floor((price * commission) / 100);
+  const canSell = item.isTradable && !item.listedOrderId;
+  const guide = usePriceGuide(item.itemKey, canSell ? { level: item.level, exc: excOf(item.options), luck: item.hasLuck, skill: item.hasSkill, opt: item.optionLevel } : null);
   return (
     <li className="card depot-card">
       <span className="card-top">
-        <Glyph name={item.itemName} exc={item.excellentOptionCount > 0} />
+        <Glyph name={item.itemName} exc={item.excellentOptionCount > 0} image={item.image} />
         <span className="card-name">
           <span className={`itemname ${item.excellentOptionCount > 0 ? 'exc' : ''}`}>{itemTitle(item)}</span>
           <span className="opts">{item.options.join(' · ')}</span>
@@ -667,8 +799,12 @@ function DepotCard({ item, names, commission, onSell }: { item: DepotItem; names
           )}
           <button className="btn small-btn" type="submit" disabled={busy || price < 1}>Publicar</button>
           {price > 0 && <span className="muted small fee">Te llegan {num(price - fee)} WC</span>}
+          {guide?.suggestedPrice != null && price !== guide.suggestedPrice && (
+            <button type="button" className="link small" onClick={() => setPrice(guide.suggestedPrice ?? 0)}>Usar {num(guide.suggestedPrice)} WC</button>
+          )}
         </form>
       )}
+      {canSell && guide && <GuideList guide={guide} compact />}
       <A to="item" param={item.itemKey} className="small">Ver precios</A>
     </li>
   );

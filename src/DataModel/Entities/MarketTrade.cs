@@ -72,6 +72,11 @@ public class MarketTrade
     public byte ExcellentOptionCount { get; set; }
 
     /// <summary>
+    /// Gets or sets the options of the sold item, one per line, like <see cref="MarketOrder.Description"/>.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Gets or sets the price in WCoin (C) which the buyer paid.
     /// </summary>
     public int Price { get; set; }

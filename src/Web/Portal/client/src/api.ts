@@ -14,20 +14,23 @@ export type NewsItem = { date: string; title: string; body: string[] };
 
 export type CastleSiege = { isActive: boolean; ownerGuildName: string | null; ownerGuildLogo: string | null; state: string | null; stateName: string | null; stateEndsAtUtc: string | null; nextBattleUtc: string | null; guilds: { name: string; marks: number }[] };
 
-export type CatalogItem = { key: string; group: number; number: number; name: string; category: string; width: number; height: number; classes: string[]; canHaveExcellent: boolean };
+export type CatalogItem = { key: string; group: number; number: number; name: string; category: string; width: number; height: number; classes: string[]; canHaveExcellent: boolean; excellentOptions: string[]; image: string | null };
 export type MarketOrder = {
   id: string; kind: 'sell' | 'buy'; state: string; ownerName: string; ownerStatus: 'game' | 'web' | 'offline'; isMine: boolean;
   itemKey: string; itemName: string; category: string; level: number; excellentOptionCount: number; hasLuck: boolean; hasSkill: boolean;
   optionLevel: number; isAncient: boolean; socketCount: number; options: string[]; price: number; quantity: number; remainingQuantity: number;
-  createdAt: string; expiresAt: string;
+  createdAt: string; expiresAt: string; image: string | null;
 };
 export type PricePoint = { day: string; median: number; minimum: number; maximum: number; count: number };
 export type MarketStats = { median48h: number | null; lowest48h: number | null; sold48h: number; days: PricePoint[] };
 export type MarketItemPage = { item: CatalogItem; sell: MarketOrder[]; buy: MarketOrder[]; stats: MarketStats };
-export type MarketTrade = { at: string; itemKey: string; itemName: string; level: number; excellentOptionCount: number; price: number; sellerName: string; buyerName: string };
-export type DepotItem = { id: string; itemKey: string; itemName: string; level: number; excellentOptionCount: number; hasLuck: boolean; hasSkill: boolean; optionLevel: number; isAncient: boolean; socketCount: number; options: string[]; isTradable: boolean; listedOrderId: string | null };
+export type MarketTrade = { at: string; itemKey: string; itemName: string; level: number; excellentOptionCount: number; price: number; sellerName: string; buyerName: string; image: string | null };
+export type DepotItem = { id: string; itemKey: string; itemName: string; level: number; excellentOptionCount: number; hasLuck: boolean; hasSkill: boolean; optionLevel: number; isAncient: boolean; socketCount: number; options: string[]; isTradable: boolean; listedOrderId: string | null; image: string | null };
 export type MyMarket = { balance: number; reserved: number; commissionPercent: number; maximumOrders: number; characterNames: string[]; depot: DepotItem[]; depotReadable: boolean; orders: MarketOrder[]; history: MarketTrade[] };
-export type BuyOrderRequest = { itemKey: string; minimumLevel: number; minimumExcellentOptions: number; requiresLuck: boolean; requiresSkill: boolean; minimumOptionLevel: number; price: number; quantity: number; ownerName?: string };
+export type BuyOrderRequest = { itemKey: string; minimumLevel: number; minimumExcellentOptions: number; requiresLuck: boolean; requiresSkill: boolean; minimumOptionLevel: number; price: number; quantity: number; ownerName?: string; excellentOptions?: string[] };
+export type PriceReference = { kind: 'sold' | 'selling'; at: string; level: number; excellentOptionCount: number; options: string[]; price: number; optionDistance: number; levelDistance: number; isExact: boolean };
+export type PriceGuide = { itemKey: string; suggestedPrice: number | null; hasExact: boolean; references: PriceReference[] };
+export type PriceQuery = { level: number; exc: string[]; luck: boolean; skill: boolean; opt: number };
 
 export class ApiError extends Error {
   constructor(public code: string, public status: number) {
@@ -71,6 +74,8 @@ export const api = {
     catalog: () => call<CatalogItem[]>('/market/catalog'),
     orders: (kind: 'sell' | 'buy') => call<MarketOrder[]>(`/market/orders?kind=${kind}`),
     item: (key: string) => call<MarketItemPage>(`/market/items/${encodeURIComponent(key)}`),
+    price: (key: string, q: PriceQuery) =>
+      call<PriceGuide>(`/market/items/${encodeURIComponent(key)}/price?level=${q.level}&opt=${q.opt}&luck=${q.luck}&skill=${q.skill}&exc=${encodeURIComponent(q.exc.join('|'))}`),
     trades: (count = 20) => call<MarketTrade[]>(`/market/trades?count=${count}`),
     me: () => call<MyMarket>('/market/me'),
     sell: (d: { itemId: string; price: number; ownerName?: string }) => post<void>('/market/sell', d),
@@ -98,6 +103,7 @@ const messages: Record<string, string> = {
   unauthorized: 'Tu sesión venció. Entrá de nuevo.',
   market_closed: 'El mercado está cerrado en este momento. Avisale a Gabi.',
   invalid_price: 'El precio tiene que ser de 1 WC o más.',
+  invalid_options: 'Alguna de esas opciones excelentes no existe para ese ítem.',
   invalid_quantity: 'La cantidad tiene que ser de 1 a 50.',
   unknown_item: 'Ese ítem no existe en el catálogo.',
   too_many_orders: 'Llegaste al máximo de órdenes abiertas. Cancelá alguna para publicar otra.',

@@ -167,6 +167,16 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
             app.UseStaticFiles();
         }
 
+        if (PortalMarketImages.FindDirectory() is { } images)
+        {
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(images),
+                RequestPath = PortalMarketImages.UrlPrefix.TrimEnd('/'),
+                OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "public, max-age=604800",
+            });
+        }
+
         MapEndpoints(app);
 
         if (app.Environment.WebRootPath is { } spaRoot)
@@ -284,6 +294,19 @@ public sealed class PortalHost : IHostedService, IAsyncDisposable
 
         market.MapGet("/items/{key}", async (PortalMarketService service, ClaimsPrincipal user, string key, CancellationToken ct)
             => await service.GetItemPageAsync(key, Viewer(user), ct).ConfigureAwait(false) is { } page ? Results.Ok(page) : Results.NotFound());
+
+        market.MapGet("/items/{key}/price", async (PortalMarketService service, string key, byte? level, string? exc, bool? luck, bool? skill, byte? opt, CancellationToken ct) =>
+        {
+            var query = new MarketPriceQuery
+            {
+                Level = level ?? 0,
+                ExcellentOptions = string.IsNullOrEmpty(exc) ? null : exc.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                Luck = luck ?? false,
+                Skill = skill ?? false,
+                OptionLevel = opt ?? 0,
+            };
+            return await service.GetPriceGuideAsync(key, query, ct).ConfigureAwait(false) is { } guide ? Results.Ok(guide) : Results.NotFound();
+        });
 
         market.MapGet("/trades", async (PortalMarketService service, int? count, CancellationToken ct)
             => Results.Ok(await service.GetLatestTradesAsync(count ?? 20, ct).ConfigureAwait(false)));

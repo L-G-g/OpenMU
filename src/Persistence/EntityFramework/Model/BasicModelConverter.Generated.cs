@@ -2566,6 +2566,7 @@ internal sealed class BasicModelConverter
         target.ItemName = source.ItemName;
         target.Level = source.Level;
         target.ExcellentOptionCount = source.ExcellentOptionCount;
+        target.Description = source.Description;
         target.Price = source.Price;
         target.Commission = source.Commission;
         target.CreatedAt = source.CreatedAt;
