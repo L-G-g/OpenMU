@@ -204,3 +204,23 @@ struct TabMapHost
 // bool StartTabMap(const TabMapHost* host): se llama una vez, despues de StartEspectros.
 using StartTabMapFunction = bool (*)(const TabMapHost* host);
 constexpr const char* StartTabMapName = "StartTabMap";
+
+// --- Quests de skills (quests.dll) ---
+// camera3d.dll carga quests.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Quests]
+// Enabled=0), y llama a su funcion exportada StartQuests, despues de tabmap.dll. quests.dll encadena el reparto de
+// paquetes, el comienzo de la interfaz (como healthbars.dll), el dibujo despues de la interfaz y el mouse de las
+// ventanas a lo que haya.
+
+constexpr int QuestsHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a quests.dll.
+struct QuestsHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer las secciones [Quests] y [PeroniaUi]
+};
+
+// bool StartQuests(const QuestsHost* host): se llama una vez, despues de StartTabMap.
+using StartQuestsFunction = bool (*)(const QuestsHost* host);
+constexpr const char* StartQuestsName = "StartQuests";

@@ -470,6 +470,30 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 `camera3d.dll` le avisa al empezar cada cuadro, le pasa el teclado en cada paso de lógica y le pregunta antes de equipar un item con click derecho
 (`src/rightclick.cpp`): con la ventana abierta, el item va al espectro.
 
+## Quests de skills (quests.dll)
+
+Con `quests.dll` los NPC que enseñan skills (plugin "Skill quests" del servidor) muestran un signo flotando
+sobre la cabeza: `!` dorado si hay una quest para aceptar, `?` dorado si la quest está lista para entregar y
+`?` gris si está en curso. Un click en el signo (no en el NPC, que sigue abriendo su ventana de siempre) abre
+la ventana de la quest con los objetivos, el progreso y la recompensa, y el botón Aceptar o Entregar. Las
+quests activas se ven en un recuadro de seguimiento a la derecha. `camera3d.dll` la carga si está en la misma
+carpeta (`src/loadquests.cpp`):
+
+```
+[Quests]
+Enabled=1       ; 0: sin signos ni ventana
+TrackerLeft=470 ; lugar del seguimiento (640x480)
+TrackerTop=70
+MarkSize=1      ; tamaño de los signos (0.5 a 3)
+HeadMargin=70   ; altura del signo sobre la cabeza del NPC (unidades del mundo)
+```
+
+El servidor manda `C2 FF 10` (signos de los NPC cercanos, cada 3 segundos), `C2 FF 11` (seguimiento) y
+`C2 FF 12` (ventana de la quest); el código `0xFF` es el de la interfaz de PeroniaMU. La DLL contesta con el
+comando de chat `/quest`. `src/quests/quests.cpp` encadena el reparto de paquetes, el comienzo de la interfaz
+(`0x004D9C86`, como `healthbars.dll`: ahí proyecta los signos, sobre el mundo y debajo de las ventanas), el
+dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el estilo de `src/ui/peroniaui`.
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -486,6 +510,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/loadespectros.cpp`: carga de `espectros.dll` si está junto a la DLL.
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
+- `src/loadquests.cpp`: carga de `quests.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
@@ -495,6 +520,8 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/espectros/`: `espectros.dll`, ventana de espectros (Shift+S) y espectros transparentes.
 - `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
+- `src/quests/`: `quests.dll`, signos de quest sobre los NPC, ventana de la quest y seguimiento.
+- `src/ui/`: `peroniaui`, estilo de los botones nuevos (se compila dentro de cada DLL que lo usa).
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -510,7 +537,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp src\loadquests.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -518,6 +545,7 @@ cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\quests\quests.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -529,7 +557,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `tabmap.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `tabmap.dll` y `quests.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).
