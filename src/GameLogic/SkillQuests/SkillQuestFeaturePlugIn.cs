@@ -572,7 +572,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             if (questState?.ActiveQuest is { } active && group.Contains(active))
             {
                 var mark = IsCompleted(questState) ? SkillQuestMark.Ready : SkillQuestMark.InProgress;
-                if (mark > result.Mark || result.Mark == SkillQuestMark.Available)
+                if (mark > result.Mark || result.Mark is SkillQuestMark.Available or SkillQuestMark.Locked)
                 {
                     result = (mark, active, questState);
                 }
@@ -586,9 +586,21 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             }
 
             var next = GetNextQuest(player, group, questState);
-            if (next is not null && result.Mark == SkillQuestMark.None && this.IsQualified(player, next))
+            if (next is null)
             {
-                result = (SkillQuestMark.Available, next, questState);
+                continue;
+            }
+
+            if (this.IsQualified(player, next))
+            {
+                if (result.Mark is SkillQuestMark.None or SkillQuestMark.Locked)
+                {
+                    result = (SkillQuestMark.Available, next, questState);
+                }
+            }
+            else if (result.Mark == SkillQuestMark.None)
+            {
+                result = (SkillQuestMark.Locked, next, questState);
             }
         }
 
@@ -628,8 +640,14 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         }
 
         lines.Add(new(SkillQuestTextColor.Gold, quest.Name.GetTranslation(player.Culture) ?? string.Empty));
+        if (mark == SkillQuestMark.Locked)
+        {
+            lines.Add(new(SkillQuestTextColor.Gray, this.GetMissingRequirement(player, quest) ?? string.Empty));
+        }
+
         lines.Add(new(SkillQuestTextColor.White, mark switch
         {
+            SkillQuestMark.Locked => "Cuando puedas, vas a tener que:",
             SkillQuestMark.Available => "Si querés aprender, primero demostrá lo que valés:",
             SkillQuestMark.Ready => "Cumpliste. Ya podés aprender lo prometido:",
             _ => "Todavía te falta:",
@@ -639,7 +657,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         {
             var count = questState?.ActiveQuest == quest ? Math.Min(GetKillCount(questState, requirement), requirement.MinimumNumber) : 0;
             var done = count >= requirement.MinimumNumber;
-            var text = mark == SkillQuestMark.Available
+            var text = mark is SkillQuestMark.Available or SkillQuestMark.Locked
                 ? $"  Matar {requirement.MinimumNumber} {GetMonsterName(player, requirement)}"
                 : $"  {GetMonsterName(player, requirement)}: {count}/{requirement.MinimumNumber}";
             lines.Add(new(done ? SkillQuestTextColor.Green : SkillQuestTextColor.White, text));

@@ -15,7 +15,7 @@
 // Se contesta con el comando de chat /quest <objeto>, /quest aceptar <objeto> y /quest entregar <objeto>.
 //
 // Los signos: "!" dorado (quest disponible) y "?" dorado (lista para entregar) con el resplandor de peroniaui, y "?"
-// gris (en curso). Flotan sobre la cabeza del NPC, separados de el: un click en el signo abre la ventana de la quest
+// gris (en curso), "!" gris (la quest siguiente, sin los requisitos cumplidos). Flotan sobre la cabeza del NPC, separados de el: un click en el signo abre la ventana de la quest
 // (un click en el NPC sigue abriendo su ventana de siempre).
 //
 // Como funciona:
@@ -88,6 +88,7 @@ namespace
         MarkAvailable = 1,
         MarkInProgress = 2,
         MarkReady = 3,
+        MarkLocked = 4, // quest siguiente sin requisitos cumplidos: exclamacion gris
     };
 
     enum Action : BYTE
@@ -562,7 +563,7 @@ namespace
 
     void Glyph(BYTE mark, float cx, float top, float s, float expand)
     {
-        if (mark == MarkAvailable)
+        if (mark == MarkAvailable || mark == MarkLocked)
         {
             Exclamation(cx, top, s, expand);
         }
@@ -574,7 +575,7 @@ namespace
 
     void DrawMark(BYTE mark, float cx, float top, float s, bool hover)
     {
-        const bool gold = mark != MarkInProgress;
+        const bool gold = mark == MarkAvailable || mark == MarkReady;
         if (gold)
         {
             const Rect glowRect = { cx - 9 * s, top + 2 * s, 18 * s, 20 * s };
@@ -596,7 +597,7 @@ namespace
 
         Glyph(mark, cx, top, s, 0.0f);
         glColor4f(1.0f, 1.0f, 0.9f, gold ? 0.45f : 0.25f);
-        if (mark == MarkAvailable)
+        if (mark == MarkAvailable || mark == MarkLocked)
         {
             Quad(cx - 2.4f * s, top + 1.0f * s, cx - 0.6f * s, top + 1.0f * s, cx - 0.8f * s, top + 9.0f * s,
                 cx - 1.9f * s, top + 9.0f * s);
