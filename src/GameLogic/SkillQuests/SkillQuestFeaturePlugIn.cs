@@ -728,6 +728,8 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             }
         }
 
+        this.AddAvailableQuests(player, lines);
+
         var state = PlayerStates.GetOrCreateValue(player);
         var key = string.Join('\n', lines.Select(l => $"{(byte)l.Color}{l.Text}"));
         if (!force && key == state.LastTracker)
@@ -737,6 +739,50 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
 
         state.LastTracker = key;
         await player.InvokeViewPlugInAsync<ISkillQuestViewPlugIn>(p => p.ShowTrackerAsync(lines)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Adds the quests which the player can start to the tracker, with the NPC to talk to.
+    /// </summary>
+    private void AddAvailableQuests(Player player, List<SkillQuestLine> lines)
+    {
+        if (player.SelectedCharacter is not { } character)
+        {
+            return;
+        }
+
+        var configuration = player.GameContext.Configuration;
+        foreach (var group in GetAllSkillQuests(configuration).GroupBy(q => q.Group).OrderBy(g => g.Key))
+        {
+            var questState = character.QuestStates?.FirstOrDefault(s => s.Group == group.Key);
+            if (questState?.ActiveQuest is not null
+                || GetNextQuest(player, group, questState) is not { } next
+                || !this.IsQualified(player, next))
+            {
+                continue;
+            }
+
+            var giver = next.QuestGiver?.Designation.GetTranslation(player.Culture) ?? "un maestro";
+            var map = next.QuestGiver is { } npc ? GetSpawnMapName(player, configuration, npc) : null;
+            lines.Add(new(SkillQuestTextColor.Gold, $"Quest disponible: {next.Name.GetTranslation(player.Culture)}"));
+            lines.Add(new(SkillQuestTextColor.White, map is null ? $"  Hablá con {giver}" : $"  Hablá con {giver} ({map})"));
+        }
+    }
+
+    /// <summary>
+    /// Gets the name of the map where an NPC stands; <c>null</c> for a wandering NPC.
+    /// </summary>
+    private static string? GetSpawnMapName(Player player, GameConfiguration configuration, MonsterDefinition npc)
+    {
+        var spawn = configuration.Maps
+            .SelectMany(map => map.MonsterSpawns.Select(spawn => (Map: map, Spawn: spawn)))
+            .FirstOrDefault(s => s.Spawn.MonsterDefinition == npc);
+        if (spawn.Map is null || spawn.Spawn.SpawnTrigger == SpawnTrigger.Wandering)
+        {
+            return null;
+        }
+
+        return spawn.Map.Name.GetTranslation(player.Culture);
     }
 
     private sealed class ViewState
