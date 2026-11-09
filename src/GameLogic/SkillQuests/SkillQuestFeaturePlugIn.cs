@@ -450,7 +450,19 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             }
         }
 
-        return GetRewardSkills(player, quest).Any();
+        // The quest belongs to the player when its class or a later generation of it can use a reward,
+        // e.g. Rageful Blow of Hanzo III for a Dark Knight, who has to change class before learning it.
+        var family = new List<CharacterClass>();
+        for (var current = characterClass; current is not null && !family.Contains(current) && family.Count < 5; current = current.NextGenerationClass)
+        {
+            family.Add(current);
+        }
+
+        return quest.Rewards
+            .Where(r => r.RewardType == QuestRewardType.Skill)
+            .Select(r => r.SkillReward)
+            .OfType<Skill>()
+            .Any(s => s.QualifiedCharacters.Any(family.Contains));
     }
 
     private static bool IsFinished(Character character, QuestDefinition quest)
@@ -498,6 +510,11 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
 
         if (configuration.RequiresClassChange(quest.Number)
             && character.CharacterClass is { NextGenerationClass: { IsMasterClass: false } })
+        {
+            return "Volvé cuando hayas hecho tu primer cambio de clase.";
+        }
+
+        if (!GetRewardSkills(player, quest).Any())
         {
             return "Volvé cuando hayas hecho tu primer cambio de clase.";
         }
