@@ -451,7 +451,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         }
 
         // The quest belongs to the player when its class or a later generation of it can use a reward,
-        // e.g. Rageful Blow of Hanzo III for a Dark Knight, who has to change class before learning it.
+        // e.g. Death Stab of Hanzo IV for a Dark Knight, who has to change class before learning it.
         var family = new List<CharacterClass>();
         for (var current = characterClass; current is not null && !family.Contains(current) && family.Count < 5; current = current.NextGenerationClass)
         {

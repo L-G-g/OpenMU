@@ -50,7 +50,7 @@ internal class SkillQuestsDataTest
     private static void AssertQuests(GameConfiguration gameConfiguration)
     {
         var quests = gameConfiguration.Monsters.SelectMany(m => m.Quests).Where(q => q.IsSkillQuest()).ToList();
-        Assert.That(quests, Has.Count.EqualTo(33));
+        Assert.That(quests, Has.Count.EqualTo(31));
         Assert.That(quests.Select(q => q.QuestGiver!.Number).Distinct(), Is.EquivalentTo(new short[] { 251, 254, 242, 226, 243, 416, 568 }));
         Assert.That(quests.Select(q => (q.Group, q.Number, q.QualifiedCharacter!.Number)).Distinct().Count(), Is.EqualTo(quests.Count));
         Assert.That(quests.Where(q => q.QuestGiver!.Number == 243).Select(q => q.QualifiedCharacter!.Number).Distinct(), Is.EqualTo(new byte[] { 24 }), "Eo teaches only rage fighters");
@@ -72,6 +72,17 @@ internal class SkillQuestsDataTest
         var rhea = quests.Where(q => q.QuestGiver!.Number == 416).Select(q => q.Number);
         Assert.That(quests.Where(q => q.QuestGiver!.Number == 254 && q.QualifiedCharacter!.Number == 20).Select(q => q.Number), Is.EqualTo(new short[] { 1 }), "summoners do only the first quest of Pasi");
         Assert.That(rhea, Is.EquivalentTo(new short[] { 2, 3, 4 }));
+
+        int[] Rewards(short npc, short number, byte characterClass) => quests
+            .Single(q => q.QuestGiver!.Number == npc && q.Number == number && q.QualifiedCharacter!.Number == characterClass)
+            .Rewards.Select(r => (int)r.SkillReward!.Number).ToArray();
+        Assert.That(Rewards(251, 3, 4), Is.EquivalentTo(new[] { 48 }), "Hanzo III teaches Swell Life to the knights, without the class change");
+        Assert.That(Rewards(251, 4, 4), Does.Contain(42), "Hanzo IV teaches Rageful Blow");
+        Assert.That(Rewards(251, 1, 12), Does.Contain(47), "Hanzo I teaches Impale to the magic gladiators");
+        Assert.That(Rewards(254, 1, 12), Does.Contain(17), "Pasi I teaches Energy Ball to the magic gladiators");
+        Assert.That(Rewards(568, 3, 12), Is.EquivalentTo(new[] { 56, 55 }), "Zyro III teaches Power Slash and Fire Slash");
+        Assert.That(quests.Where(q => q.QualifiedCharacter!.Number == 12 && q.QuestGiver!.Number is 251 or 254).Select(q => ((int)q.QuestGiver!.Number, (int)q.Number)),
+            Is.EquivalentTo(new[] { (251, 1), (251, 2), (254, 1), (254, 2), (254, 3) }), "the magic gladiators end Hanzo at II and Pasi at III");
 
         var weaponsWithSkill = gameConfiguration.Items
             .Where(i => i.Group <= 6 && i.Skill is not null && i.Skill.Number is not (223 or 224 or 225))

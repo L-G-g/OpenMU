@@ -79,7 +79,7 @@ internal class FixItemDataFromClientTest
             Assert.That(darkBreaker.QualifiedCharacters.Select(c => (CharacterClassNumber)c.Number), Is.EquivalentTo(new[] { CharacterClassNumber.BladeKnight, CharacterClassNumber.BladeMaster }));
             Assert.That(GetRequirement(frostMace, Stats.Level), Is.EqualTo(380));
             Assert.That(GetRequirement(GetItem(gameConfiguration, 8, 45), Stats.Level), Is.EqualTo(380));
-            Assert.That(guardianShield.Skill?.Number, Is.EqualTo(18));
+            Assert.That(guardianShield.Skill, Is.Null, "shields don't give skills anymore, the skill quests teach them");
 
             Assert.That(helm44.DropLevel, Is.EqualTo(116));
             Assert.That(helm44.Durability, Is.EqualTo(86));
