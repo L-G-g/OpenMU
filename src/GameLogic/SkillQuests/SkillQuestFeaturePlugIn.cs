@@ -24,7 +24,7 @@ using MUnique.OpenMU.PlugIns;
 /// A player gets only the reward skills which its class can use, and a quest is only offered to a player whose class
 /// can use at least one of them. The number of a quest is its tier: a player does the tiers in order, so a quest is
 /// only offered when the quests of the lower tiers with rewards for its class (of every NPC) are done. The
-/// <see cref="SkillQuestConfiguration.TierRequirements"/> add resets and the first class change to a tier.
+/// tier settings of <see cref="SkillQuestConfiguration"/> add resets and the first class change to a tier.
 /// <para>
 /// The client (quests.dll) shows marks above the NPCs, a quest window and a tracker of the active quests. It answers
 /// with the chat command <c>/quest</c> (see <see cref="SkillQuestChatCommandPlugIn"/>).
@@ -488,14 +488,15 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             return "Ya superaste el nivel de esta lección.";
         }
 
-        var tier = this.CurrentConfiguration.TierRequirements?.FirstOrDefault(t => t.QuestNumber == quest.Number);
+        var configuration = this.CurrentConfiguration;
+        var minimumResets = configuration.GetMinimumResets(quest.Number);
         var resets = (int)(player.Attributes?[Stats.Resets] ?? 0);
-        if (tier is not null && resets < tier.MinimumResets)
+        if (resets < minimumResets)
         {
-            return $"Volvé cuando tengas {tier.MinimumResets} resets.";
+            return $"Volvé cuando tengas {minimumResets} resets.";
         }
 
-        if (tier?.RequiresClassChange == true
+        if (configuration.RequiresClassChange(quest.Number)
             && character.CharacterClass is { NextGenerationClass: { IsMasterClass: false } })
         {
             return "Volvé cuando hayas hecho tu primer cambio de clase.";

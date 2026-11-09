@@ -25,7 +25,7 @@ using MUnique.OpenMU.PlugIns;
 /// <list type="number">
 ///   <item>Kill 30 Budge Dragons, 30 Polluted Butterflies and 30 Chain Scorpions.</item>
 ///   <item>Level 150; kill 100 Skeleton Warriors (Lorencia), 100 Stone Golems (Noria) and 100 Captain Grizzlies (Elbeland).</item>
-///   <item>10 resets (see <see cref="SkillQuestConfiguration.TierRequirements"/>); kill 300 Elite Yetis (Devias) and 300 Dark Knights (Dungeon).</item>
+///   <item>10 resets (see <see cref="SkillQuestConfiguration.Tier3MinimumResets"/>); kill 300 Elite Yetis (Devias) and 300 Dark Knights (Dungeon).</item>
 ///   <item>25 resets and the first class change; kill 300 Shadows, 300 Bahamuts and 300 Mutants. It teaches the remaining skills.</item>
 /// </list>
 /// <para>

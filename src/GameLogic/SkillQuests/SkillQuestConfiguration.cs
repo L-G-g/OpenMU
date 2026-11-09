@@ -40,40 +40,39 @@ public class SkillQuestConfiguration
     public int MarkRepeatSeconds { get; set; } = 3;
 
     /// <summary>
-    /// Gets or sets the additional requirements of the quests by their number (tier), e.g. resets.
+    /// Gets or sets the minimum resets of the third quests (tier 3).
     /// </summary>
-    [Display(Name = "Tier requirements", Description = "Additional requirements of the skill quests by their number (tier): minimum resets, and whether the classes with a first class change must have done it. The minimum level is defined by the quest itself.")]
-    public List<SkillQuestTierRequirement> TierRequirements { get; set; } =
-    [
-        new() { QuestNumber = 3, MinimumResets = 10 },
-        new() { QuestNumber = 4, MinimumResets = 25, RequiresClassChange = true },
-    ];
-}
-
-/// <summary>
-/// Additional requirements of the skill quests with a number (tier).
-/// </summary>
-public class SkillQuestTierRequirement
-{
-    /// <summary>
-    /// Gets or sets the number of the quests (the tier).
-    /// </summary>
-    [Display(Name = "Quest number (tier)")]
-    public short QuestNumber { get; set; }
+    [Display(Name = "Tier 3: minimum resets", Description = "The minimum resets to start a skill quest with the number 3.")]
+    public int Tier3MinimumResets { get; set; } = 10;
 
     /// <summary>
-    /// Gets or sets the minimum resets.
+    /// Gets or sets the minimum resets of the fourth quests (tier 4).
     /// </summary>
-    [Display(Name = "Minimum resets")]
-    public int MinimumResets { get; set; }
+    [Display(Name = "Tier 4: minimum resets", Description = "The minimum resets to start a skill quest with the number 4.")]
+    public int Tier4MinimumResets { get; set; } = 25;
 
     /// <summary>
-    /// Gets or sets a value indicating whether a class with a first class change (wizard, knight, elf, summoner) must
-    /// have done it. Classes without one (magic gladiator, dark lord, rage fighter) don't need it.
+    /// Gets or sets a value indicating whether the fourth quests require the first class change.
     /// </summary>
-    [Display(Name = "Requires the first class change")]
-    public bool RequiresClassChange { get; set; }
+    [Display(Name = "Tier 4: requires the first class change", Description = "If enabled, wizards, knights, elves and summoners need their first class change to start a skill quest with the number 4. Magic gladiators, dark lords and rage fighters don't have one.")]
+    public bool Tier4RequiresClassChange { get; set; } = true;
 
-    /// <inheritdoc />
-    public override string ToString() => $"Quest {this.QuestNumber}: {this.MinimumResets} resets{(this.RequiresClassChange ? ", class change" : string.Empty)}";
+    /// <summary>
+    /// Gets the minimum resets of a quest number.
+    /// </summary>
+    /// <param name="questNumber">The quest number (tier).</param>
+    /// <returns>The minimum resets.</returns>
+    public int GetMinimumResets(short questNumber) => questNumber switch
+    {
+        3 => this.Tier3MinimumResets,
+        >= 4 => this.Tier4MinimumResets,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Determines whether a quest number requires the first class change.
+    /// </summary>
+    /// <param name="questNumber">The quest number (tier).</param>
+    /// <returns><c>true</c>, if it requires the first class change.</returns>
+    public bool RequiresClassChange(short questNumber) => questNumber >= 4 && this.Tier4RequiresClassChange;
 }
