@@ -109,19 +109,33 @@ internal static class SkillQuestsData
     /// </summary>
     private static readonly (short Group, short NpcNumber, string Name, CharacterClassNumber[] Classes, SkillNumber[][] Skills)[] Quests =
     [
-        (HanzoGroup, 251, "Lecciones de Hanzo", [CharacterClassNumber.DarkKnight, CharacterClassNumber.MagicGladiator],
+        (HanzoGroup, 251, "Lecciones de Hanzo", [CharacterClassNumber.DarkKnight],
         [
             [SkillNumber.FallingSlash, SkillNumber.Lunge, SkillNumber.Uppercut, SkillNumber.Cyclone, SkillNumber.Slash, SkillNumber.Defense],
             [SkillNumber.TwistingSlash],
-            [SkillNumber.RagefulBlow],
-            [SkillNumber.Impale, SkillNumber.SwellLife, SkillNumber.DeathStab, SkillNumber.StrikeofDestruction],
+            [SkillNumber.SwellLife],
+            [SkillNumber.Impale, SkillNumber.RagefulBlow, SkillNumber.DeathStab, SkillNumber.StrikeofDestruction],
         ]),
-        (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.DarkWizard, CharacterClassNumber.MagicGladiator, CharacterClassNumber.Summoner],
+        (HanzoGroup, 251, "Lecciones de Hanzo", [CharacterClassNumber.MagicGladiator],
+        [
+            [SkillNumber.FallingSlash, SkillNumber.Lunge, SkillNumber.Uppercut, SkillNumber.Cyclone, SkillNumber.Slash, SkillNumber.Defense, SkillNumber.Impale],
+            [SkillNumber.TwistingSlash],
+            [],
+            [],
+        ]),
+        (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.DarkWizard, CharacterClassNumber.Summoner],
         [
             [SkillNumber.FireBall, SkillNumber.Ice, SkillNumber.PowerWave, SkillNumber.Meteorite],
             [SkillNumber.Lightning, SkillNumber.Poison, SkillNumber.Flame, SkillNumber.Twister, SkillNumber.EvilSpirit],
             [SkillNumber.Cometfall, SkillNumber.AquaBeam, SkillNumber.Inferno, SkillNumber.Hellfire],
             [SkillNumber.EnergyBall, SkillNumber.Nova, SkillNumber.IceStorm, SkillNumber.Decay, SkillNumber.Teleport, SkillNumber.SoulBarrier, SkillNumber.TeleportAlly, SkillNumber.ExpansionofWizardry],
+        ]),
+        (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.MagicGladiator],
+        [
+            [SkillNumber.FireBall, SkillNumber.Ice, SkillNumber.PowerWave, SkillNumber.Meteorite, SkillNumber.EnergyBall],
+            [SkillNumber.Lightning, SkillNumber.Poison, SkillNumber.Flame, SkillNumber.Twister, SkillNumber.EvilSpirit],
+            [SkillNumber.Cometfall, SkillNumber.AquaBeam, SkillNumber.Inferno, SkillNumber.Hellfire],
+            [],
         ]),
         (LalaGroup, 242, "Lecciones de Lala", [CharacterClassNumber.FairyElf],
         [
@@ -155,8 +169,8 @@ internal static class SkillQuestsData
         [
             [],
             [],
-            [SkillNumber.PowerSlash],
-            [SkillNumber.FireSlash, SkillNumber.GiganticStorm, SkillNumber.FlameStrike],
+            [SkillNumber.PowerSlash, SkillNumber.FireSlash],
+            [SkillNumber.GiganticStorm, SkillNumber.FlameStrike],
         ]),
     ];
 
@@ -194,7 +208,7 @@ internal static class SkillQuestsData
 
                     if (!CanUseAny(gameConfiguration, characterClass, skillsPerTier[tier]))
                     {
-                        continue; // e.g. Rageful Blow of Hanzo for the magic gladiators
+                        continue; // e.g. Death Stab of Hanzo IV for the magic gladiators
                     }
 
                     CreateQuest(context, gameConfiguration, npc, characterClass, group, number, $"{name} {TierNames[tier]}", skillsPerTier[tier]);
