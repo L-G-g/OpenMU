@@ -118,6 +118,34 @@ Otros lugares del cliente que también lo frenan y no cambian: la zona segura (e
 el cambio de mapa (`0x006408F0`), el menú de Esc (`0x007D3320`) y el botón del menú principal
 (`0x00868470`).
 
+## Skills de arma sin el arma
+
+En PeroniaMU las armas no dan skills: las skills de arma (Defense, Falling Slash, Lunge, Uppercut, Cyclone,
+Slash, Triple Shot, Power Slash, Force Wave, Killing Blow, Beast Uppercut, Phoenix Shot) se aprenden con las
+quests de skills. El cliente original solo las deja usar si el arma equipada las trae; con `camera3d.dll` se
+usan con cualquier arma o sin arma, siempre que estén en la lista de skills que manda el servidor.
+
+```
+[WeaponSkills]
+Enabled=1   ; 0: las skills de arma necesitan el arma, como el juego original
+```
+
+`src/weaponskills.cpp` cambia tres lugares del cliente (una skill de arma tiene `+0x54 == 1` en la tabla de
+skills `[0x08128ABC]`, `0x58` bytes por skill):
+
+- `0x004EAC90` (`bool __thiscall (skill)`): devuelve true para una skill de arma solo si el item de una mano
+  (`[0x08128AC4] +0x1240` o `+0x12AB`) la tiene. Lo usan el icono de la skill (gris), el lanzamiento y el
+  árbol de maestría. Se reemplaza: true si la skill de arma está en la lista de skills del personaje, si no lo
+  original.
+- `0x005AD1A2` (`JNZ 0x005AFF59`): en el lanzamiento de los guerreros (`0x005AD040`), sin arma en la mano
+  derecha o con un bastón solo siguen unas pocas skills. Las skills de arma aprendidas siguen.
+- `0x005B554A` y `0x005B557B`: las llamadas que lanzan la skill con el item de cada mano (`0x0059B580`,
+  `0x005A0A30`) solo la lanzan si está en la lista de skills del item (`+0x25` cantidad, `+0x26` números).
+  Reciben una copia del item con la skill elegida en su lista.
+
+Lo que no cambia: montado en Uniria, Dinorant o Fenrir, Defense a Slash y algunas skills del Rage Fighter
+siguen sin poder usarse, como en el juego original.
+
 ## Barras de vida de los monstruos (healthbars.dll)
 
 Sobre los monstruos dañados se dibuja una barra chica de tamaño fijo: fondo oscuro con borde y relleno
@@ -502,6 +530,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
 - `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
 - `src/muhelper.cpp`: el MU Helper sigue con el inventario abierto.
+- `src/weaponskills.cpp`: las skills de arma aprendidas se usan sin el arma.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
@@ -537,7 +566,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp src\loadquests.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp src\loadquests.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib

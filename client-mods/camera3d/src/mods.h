@@ -32,6 +32,10 @@ bool InstallMiniMapHotspots(LogFunction log);
 // MU Helper: con camera3d.ini [MuHelper] SeguirConInventario=1 (por defecto) el inventario no lo frena.
 bool InstallMuHelperInventory(LogFunction log);
 
+// Skills de arma: con camera3d.ini [WeaponSkills] Enabled=1 (por defecto) las que estan en la lista de skills del
+// personaje se usan sin el arma que las trae (en PeroniaMU se aprenden con las quests).
+bool InstallWeaponSkills(LogFunction log);
+
 // Herramientas de prueba: carga muauto.dll si esta junto a camera3d.dll (los jugadores no la tienen).
 // TestToolsTick se llama en cada paso de logica, despues de que el juego actualiza sus teclas.
 void LoadTestTools(HMODULE module, LogFunction log);

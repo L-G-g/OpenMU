@@ -388,6 +388,7 @@ namespace
         InstallRightClick(&Log);
         InstallMiniMapHotspots(&Log);
         InstallMuHelperInventory(&Log);
+        InstallWeaponSkills(&Log);
         LoadHealthBars(&Log);
         LoadElites(&Log);
         LoadResets(&Log);
