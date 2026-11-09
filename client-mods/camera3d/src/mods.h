@@ -32,6 +32,10 @@ bool InstallMiniMapHotspots(LogFunction log);
 // MU Helper: con camera3d.ini [MuHelper] SeguirConInventario=1 (por defecto) el inventario no lo frena.
 bool InstallMuHelperInventory(LogFunction log);
 
+// Skills de arma: con camera3d.ini [WeaponSkills] Enabled=1 (por defecto) las que estan en la lista de skills del
+// personaje se usan sin el arma que las trae (en PeroniaMU se aprenden con las quests).
+bool InstallWeaponSkills(LogFunction log);
+
 // Herramientas de prueba: carga muauto.dll si esta junto a camera3d.dll (los jugadores no la tienen).
 // TestToolsTick se llama en cada paso de logica, despues de que el juego actualiza sus teclas.
 void LoadTestTools(HMODULE module, LogFunction log);
@@ -66,6 +70,9 @@ void SetEspectrosKeyTick(KeyTickCallback callback);
 // Mapa del TAB completo: carga tabmap.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadTabMap(LogFunction log);
 void SetTabMapKeyTick(KeyTickCallback callback);
+
+// Quests de skills: carga quests.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadQuests(LogFunction log);
 
 // Movimiento fluido de personajes y monstruos: antes de dibujar pone posiciones intermedias entre pasos
 // de logica (stepped: hubo paso desde el cuadro anterior; t: 0 a 1 del tiempo desde el ultimo paso) y

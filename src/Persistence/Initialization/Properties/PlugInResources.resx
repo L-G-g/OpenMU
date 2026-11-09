@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
 	<!-- 
 		Microsoft ResX Schema
@@ -202,6 +202,8 @@
   <data name="AddManaRaysForMagicGladiator_Description" xml:space="preserve"><value>Adds the Mana Rays skill (active in castle siege) to a created magic gladiator character.</value></data>
   <data name="AddFireBlastForDarkLord_Name" xml:space="preserve"><value>AddFireBlastForDarkLord</value></data>
   <data name="AddFireBlastForDarkLord_Description" xml:space="preserve"><value>Adds the Fire Blast skill (active in castle siege) to a created dark lord character.</value></data>
+  <data name="AddAbolishMagicForDarkLord_Name" xml:space="preserve"><value>AddAbolishMagicForDarkLord</value></data>
+  <data name="AddAbolishMagicForDarkLord_Description" xml:space="preserve"><value>Adds the Abolish Magic skill (active in castle siege) to a created dark lord character.</value></data>
   <data name="AddSpiralSlashForMagicGladiator_Name" xml:space="preserve"><value>AddSpiralSlashForMagicGladiator</value></data>
   <data name="AddSpiralSlashForMagicGladiator_Description" xml:space="preserve"><value>Adds the Spiral Slash skill (active in castle siege) to a created magic gladiator character.</value></data>
   <data name="FixWeaponRisePercentagePlugInSeason6_Name" xml:space="preserve"><value>Fix Weapon Rise Percentage, Summoner Items Wizardry/Curse Options, and Several 3rd Level Wing Damage Rates</value></data>

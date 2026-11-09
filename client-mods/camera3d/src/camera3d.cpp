@@ -388,6 +388,7 @@ namespace
         InstallRightClick(&Log);
         InstallMiniMapHotspots(&Log);
         InstallMuHelperInventory(&Log);
+        InstallWeaponSkills(&Log);
         LoadHealthBars(&Log);
         LoadElites(&Log);
         LoadResets(&Log);
@@ -395,6 +396,7 @@ namespace
         LoadLoot(&Log);
         LoadEspectros(&Log);
         LoadTabMap(&Log);
+        LoadQuests(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())
