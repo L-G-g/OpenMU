@@ -106,7 +106,7 @@ public class MapDifficultyScalerConfiguration
     /// <returns>The default multipliers of the maps.</returns>
     internal static List<DifficultyMultipliers> CreateDefaultMaps() =>
     [
-        new(2, 8.86f, 4.19f, 2.46f, 4.49f, 9.5f), // Devias, 2 resets
+        new(2, 5.21f, 3.82f, 2.07f, 4.41f, 7.56f), // Devias, below the weakest monsters of Dungeon (each stat 3 % lower), so a bit less than 2 resets
         new(1, 4.92f, 3.78f, 1.92f, 4.24f, 7.43f), // Dungeon, 8 resets
         new(4, 5.13f, 4.56f, 2.1f, 5.65f, 7.6f), // Lost Tower, 19 resets
         new(7, 4.07f, 3.99f, 1.76f, 7.11f, 7.66f), // Atlans, 33 resets
