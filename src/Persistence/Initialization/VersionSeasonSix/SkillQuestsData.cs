@@ -8,6 +8,7 @@ using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.DataModel.Configuration.Quests;
 using MUnique.OpenMU.GameLogic.SkillQuests;
+using MUnique.OpenMU.Persistence.Initialization.CharacterClasses;
 using MUnique.OpenMU.Persistence.Initialization.PlugIns.CharacterCreated;
 using MUnique.OpenMU.Persistence.Initialization.Skills;
 using MUnique.OpenMU.PlugIns;
@@ -106,51 +107,51 @@ internal static class SkillQuestsData
     /// <summary>
     /// The NPCs and the reward skills of each tier (empty: the NPC has no quest of this tier).
     /// </summary>
-    private static readonly (short Group, short NpcNumber, string Name, SkillNumber[][] Skills)[] Quests =
+    private static readonly (short Group, short NpcNumber, string Name, CharacterClassNumber[] Classes, SkillNumber[][] Skills)[] Quests =
     [
-        (HanzoGroup, 251, "Lecciones de Hanzo",
+        (HanzoGroup, 251, "Lecciones de Hanzo", [CharacterClassNumber.DarkKnight, CharacterClassNumber.MagicGladiator],
         [
             [SkillNumber.FallingSlash, SkillNumber.Lunge, SkillNumber.Uppercut, SkillNumber.Cyclone, SkillNumber.Slash, SkillNumber.Defense],
             [SkillNumber.TwistingSlash],
             [SkillNumber.RagefulBlow],
             [SkillNumber.Impale, SkillNumber.SwellLife, SkillNumber.DeathStab, SkillNumber.StrikeofDestruction],
         ]),
-        (PasiGroup, 254, "Lecciones de Pasi",
+        (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.DarkWizard, CharacterClassNumber.MagicGladiator, CharacterClassNumber.Summoner],
         [
             [SkillNumber.FireBall, SkillNumber.Ice, SkillNumber.PowerWave, SkillNumber.Meteorite],
             [SkillNumber.Lightning, SkillNumber.Poison, SkillNumber.Flame, SkillNumber.Twister, SkillNumber.EvilSpirit],
             [SkillNumber.Cometfall, SkillNumber.AquaBeam, SkillNumber.Inferno, SkillNumber.Hellfire],
             [SkillNumber.EnergyBall, SkillNumber.Nova, SkillNumber.IceStorm, SkillNumber.Decay, SkillNumber.Teleport, SkillNumber.SoulBarrier, SkillNumber.TeleportAlly, SkillNumber.ExpansionofWizardry],
         ]),
-        (LalaGroup, 242, "Lecciones de Lala",
+        (LalaGroup, 242, "Lecciones de Lala", [CharacterClassNumber.FairyElf],
         [
             [SkillNumber.Penetration, SkillNumber.Heal, SkillNumber.SummonGoblin],
             [SkillNumber.TripleShot, SkillNumber.GreaterDefense, SkillNumber.SummonStoneGolem, SkillNumber.SummonAssassin],
             [SkillNumber.GreaterDamage, SkillNumber.SummonEliteYeti, SkillNumber.SummonDarkKnight],
             [SkillNumber.SummonBali, SkillNumber.SummonSoldier, SkillNumber.MultiShot, SkillNumber.IceArrow, SkillNumber.Recovery, SkillNumber.InfinityArrow],
         ]),
-        (TrainerGroup, 226, "Lecciones del Entrenador",
+        (TrainerGroup, 226, "Lecciones del Entrenador", [CharacterClassNumber.DarkLord],
         [
             [SkillNumber.FallingSlash, SkillNumber.Lunge, SkillNumber.Uppercut, SkillNumber.Cyclone, SkillNumber.Slash, SkillNumber.Defense],
             [SkillNumber.ForceWave, SkillNumber.FireBurst],
             [SkillNumber.Force, SkillNumber.ElectricSpike, SkillNumber.FireScream],
             [SkillNumber.ChaoticDiseier, SkillNumber.IncreaseCriticalDamage, SkillNumber.Summon],
         ]),
-        (EoGroup, 243, "Lecciones de Eo",
+        (EoGroup, 243, "Lecciones de Eo", [CharacterClassNumber.RageFighter],
         [
             [SkillNumber.FallingSlash, SkillNumber.KillingBlow, SkillNumber.BeastUppercut, SkillNumber.PhoenixShot],
             [SkillNumber.ChainDrive, SkillNumber.DragonRoar, SkillNumber.IncreaseHealth],
             [SkillNumber.DragonSlasher, SkillNumber.IncreaseBlock],
             [SkillNumber.DarkSide, SkillNumber.IgnoreDefense, SkillNumber.Charge],
         ]),
-        (RheaGroup, 416, "Lecciones de Rhea",
+        (RheaGroup, 416, "Lecciones de Rhea", [CharacterClassNumber.Summoner],
         [
             [],
             [SkillNumber.DrainLife, SkillNumber.ChainLightning],
             [SkillNumber.DamageReflection, SkillNumber.Berserker],
             [SkillNumber.LightningShock, SkillNumber.Sleep, SkillNumber.Weakness, SkillNumber.Innovation],
         ]),
-        (ZyroGroup, 568, "Lecciones de Zyro",
+        (ZyroGroup, 568, "Lecciones de Zyro", [CharacterClassNumber.MagicGladiator],
         [
             [],
             [],
@@ -168,7 +169,7 @@ internal static class SkillQuestsData
     /// <returns>The task.</returns>
     internal static async ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
     {
-        foreach (var (group, npcNumber, name, skillsPerTier) in Quests)
+        foreach (var (group, npcNumber, name, classes, skillsPerTier) in Quests)
         {
             if (gameConfiguration.Monsters.FirstOrDefault(m => m.Number == npcNumber && m.ObjectKind != NpcObjectKind.Monster) is not { } npc)
             {
@@ -178,47 +179,25 @@ internal static class SkillQuestsData
             for (var tier = 0; tier < Tiers.Length; tier++)
             {
                 var number = (short)(tier + 1);
-                if (skillsPerTier[tier].Length == 0 || npc.Quests.Any(q => q.Group == group && q.Number == number))
+                if (skillsPerTier[tier].Length == 0)
                 {
                     continue;
                 }
 
-                var quest = context.CreateNew<QuestDefinition>();
-                quest.SetGuid(group, number, 0);
-                npc.Quests.Add(quest);
-                quest.QuestGiver = npc;
-                quest.Name = $"{name} {TierNames[tier]}";
-                quest.Group = group;
-                quest.Number = number;
-                quest.StartingNumber = number;
-                quest.MinimumCharacterLevel = Tiers[tier].MinimumLevel;
-
-                foreach (var (monsterNumber, amount) in Tiers[tier].Kills)
+                foreach (var classNumber in classes)
                 {
-                    if (MapLevelLadder.GetOriginalMonster(gameConfiguration, monsterNumber) is not { } monster)
+                    if (gameConfiguration.CharacterClasses.FirstOrDefault(c => c.Number == (byte)classNumber) is not { } characterClass
+                        || npc.Quests.Any(q => q.Group == group && q.Number == number && q.QualifiedCharacter == characterClass))
                     {
                         continue;
                     }
 
-                    var requirement = context.CreateNew<QuestMonsterKillRequirement>();
-                    requirement.SetGuid(group, monsterNumber, (byte)number);
-                    requirement.Monster = monster;
-                    requirement.MinimumNumber = amount;
-                    quest.RequiredMonsterKills.Add(requirement);
-                }
-
-                foreach (var skillNumber in skillsPerTier[tier])
-                {
-                    if (gameConfiguration.Skills.FirstOrDefault(s => s.Number == (short)skillNumber) is not { } skill)
+                    if (!CanUseAny(gameConfiguration, characterClass, skillsPerTier[tier]))
                     {
-                        continue;
+                        continue; // e.g. Rageful Blow of Hanzo for the magic gladiators
                     }
 
-                    var reward = context.CreateNew<QuestReward>();
-                    reward.SetGuid(group, (short)skillNumber, (byte)number);
-                    reward.RewardType = QuestRewardType.Skill;
-                    reward.SkillReward = skill;
-                    quest.Rewards.Add(reward);
+                    CreateQuest(context, gameConfiguration, npc, characterClass, group, number, $"{name} {TierNames[tier]}", skillsPerTier[tier]);
                 }
             }
         }
@@ -226,6 +205,68 @@ internal static class SkillQuestsData
         await RemoveQuestSkillItemsAsync(context, gameConfiguration).ConfigureAwait(false);
         RemoveWeaponSkills(gameConfiguration);
         DisableInitialSkills(context, gameConfiguration);
+    }
+
+    /// <summary>
+    /// Determines whether a class or one of its next generations can use at least one of the skills.
+    /// </summary>
+    private static bool CanUseAny(GameConfiguration gameConfiguration, CharacterClass characterClass, SkillNumber[] skills)
+    {
+        var family = new List<CharacterClass>();
+        for (var current = characterClass; current is not null && !family.Contains(current); current = current.NextGenerationClass)
+        {
+            family.Add(current);
+        }
+
+        return gameConfiguration.Skills
+            .Where(s => skills.Contains((SkillNumber)s.Number))
+            .Any(s => s.QualifiedCharacters.Any(family.Contains));
+    }
+
+    /// <summary>
+    /// Creates a quest for a class family (the class and its next generations, see <see cref="QuestDefinition.QualifiedCharacter"/>).
+    /// </summary>
+    private static void CreateQuest(IContext context, GameConfiguration gameConfiguration, MonsterDefinition npc, CharacterClass characterClass, short group, short number, string name, SkillNumber[] skills)
+    {
+        var tier = Tiers[number - 1];
+        var quest = context.CreateNew<QuestDefinition>();
+        quest.SetGuid(group, number, characterClass.Number);
+        npc.Quests.Add(quest);
+        quest.QuestGiver = npc;
+        quest.QualifiedCharacter = characterClass;
+        quest.Name = name;
+        quest.Group = group;
+        quest.Number = number;
+        quest.StartingNumber = number;
+        quest.MinimumCharacterLevel = tier.MinimumLevel;
+
+        foreach (var (monsterNumber, amount) in tier.Kills)
+        {
+            if (MapLevelLadder.GetOriginalMonster(gameConfiguration, monsterNumber) is not { } monster)
+            {
+                continue;
+            }
+
+            var requirement = context.CreateNew<QuestMonsterKillRequirement>();
+            requirement.SetGuid(group, (short)((number * 1000) + monsterNumber), characterClass.Number);
+            requirement.Monster = monster;
+            requirement.MinimumNumber = amount;
+            quest.RequiredMonsterKills.Add(requirement);
+        }
+
+        foreach (var skillNumber in skills)
+        {
+            if (gameConfiguration.Skills.FirstOrDefault(s => s.Number == (short)skillNumber) is not { } skill)
+            {
+                continue;
+            }
+
+            var reward = context.CreateNew<QuestReward>();
+            reward.SetGuid(group, (short)((number * 1000) + (short)skillNumber), characterClass.Number);
+            reward.RewardType = QuestRewardType.Skill;
+            reward.SkillReward = skill;
+            quest.Rewards.Add(reward);
+        }
     }
 
     /// <summary>

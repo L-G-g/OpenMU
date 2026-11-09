@@ -423,6 +423,36 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             .ToList());
     }
 
+    /// <summary>
+    /// Determines whether a quest is meant for the class of the player: its <see cref="QuestDefinition.QualifiedCharacter"/>
+    /// is the class or one of its previous generations, and the class can use at least one of its reward skills.
+    /// </summary>
+    private static bool IsForPlayer(Player player, QuestDefinition quest)
+    {
+        var characterClass = player.SelectedCharacter?.CharacterClass;
+        if (characterClass is null)
+        {
+            return false;
+        }
+
+        if (quest.QualifiedCharacter is { } qualified)
+        {
+            var current = qualified;
+            var generations = 0;
+            while (current is not null && !Equals(current, characterClass) && generations++ < 5)
+            {
+                current = current.NextGenerationClass;
+            }
+
+            if (current is null || !Equals(current, characterClass))
+            {
+                return false;
+            }
+        }
+
+        return GetRewardSkills(player, quest).Any();
+    }
+
     private static bool IsFinished(Character character, QuestDefinition quest)
     {
         return character.QuestStates?.FirstOrDefault(s => s.Group == quest.Group)?.LastFinishedQuest?.Number >= quest.Number;
@@ -434,7 +464,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
     private static QuestDefinition? GetNextQuest(Player player, IEnumerable<QuestDefinition> group, CharacterQuestState? questState)
     {
         var lastNumber = questState?.LastFinishedQuest?.Number ?? 0;
-        return group.Where(q => q.Number > lastNumber && GetRewardSkills(player, q).Any()).OrderBy(q => q.Number).FirstOrDefault();
+        return group.Where(q => q.Number > lastNumber && IsForPlayer(player, q)).OrderBy(q => q.Number).FirstOrDefault();
     }
 
     /// <summary>
@@ -443,12 +473,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
     /// </summary>
     private string? GetMissingRequirement(Player player, QuestDefinition quest)
     {
-        if (player.SelectedCharacter is not { } character || !GetRewardSkills(player, quest).Any())
-        {
-            return "No tengo nada para enseñarle a tu clase.";
-        }
-
-        if (quest.QualifiedCharacter is not null && !Equals(quest.QualifiedCharacter, character.CharacterClass))
+        if (player.SelectedCharacter is not { } character || !IsForPlayer(player, quest))
         {
             return "No tengo nada para enseñarle a tu clase.";
         }
@@ -477,7 +502,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         }
 
         var missing = GetAllSkillQuests(player.GameContext.Configuration)
-            .Where(q => q.Number < quest.Number && GetRewardSkills(player, q).Any() && !IsFinished(character, q))
+            .Where(q => q.Number < quest.Number && IsForPlayer(player, q) && !IsFinished(character, q))
             .OrderBy(q => q.Number)
             .FirstOrDefault();
         if (missing is not null)
@@ -568,7 +593,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
                 .ToList();
             if (nextQuests.Count == 0)
             {
-                var anyQuestForClass = GetSkillQuests(npc.Definition).Any(q => GetRewardSkills(player, q).Any());
+                var anyQuestForClass = GetSkillQuests(npc.Definition).Any(q => IsForPlayer(player, q));
                 lines.Add(new(SkillQuestTextColor.White, anyQuestForClass
                     ? "Ya te enseñé todo lo que sé."
                     : "No tengo nada para enseñarle a tu clase."));
