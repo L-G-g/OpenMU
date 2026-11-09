@@ -18,9 +18,6 @@ public class MapDifficultyScalerTest
     private const short LorenciaNumber = 0;
     private const short GoldenBudgeDragonNumber = 43;
     private const short SpiderNumber = 3;
-    private const short DungeonNumber = 1;
-    private const short DevilSquareNumber = 9;
-    private const short AllMaps = MapDifficultyScalerConfiguration.DifficultyMultipliers.AllMaps;
 
     /// <summary>
     /// Tests that the multipliers of a configured monster are used instead of the ones of its map.
@@ -31,8 +28,8 @@ public class MapDifficultyScalerTest
         var configuration = new MapDifficultyScalerConfiguration();
         configuration.Maps.Add(new MapDifficultyScalerConfiguration.DifficultyMultipliers { Number = LorenciaNumber, Health = 2 });
 
-        Assert.That(MapDifficultyScaler.GetKey(configuration, LorenciaNumber, GoldenBudgeDragonNumber), Is.EqualTo((true, GoldenBudgeDragonNumber, AllMaps)));
-        Assert.That(MapDifficultyScaler.GetKey(configuration, LorenciaNumber, SpiderNumber), Is.EqualTo((false, LorenciaNumber, AllMaps)));
+        Assert.That(MapDifficultyScaler.GetKey(configuration, LorenciaNumber, GoldenBudgeDragonNumber), Is.EqualTo((true, GoldenBudgeDragonNumber)));
+        Assert.That(MapDifficultyScaler.GetKey(configuration, LorenciaNumber, SpiderNumber), Is.EqualTo((false, LorenciaNumber)));
     }
 
     /// <summary>
@@ -59,43 +56,7 @@ public class MapDifficultyScalerTest
         Assert.That(raklion.Defense, Is.GreaterThan(1));
         Assert.That(configuration.Maps.Concat(configuration.Monsters).SelectMany(m => new[] { m.Health, m.Damage, m.Defense, m.AttackRate, m.DefenseRate }), Has.All.GreaterThanOrEqualTo(1));
         Assert.That(configuration.Maps.Select(m => m.Number), Is.Unique);
-        Assert.That(configuration.Monsters.Select(m => (m.Number, m.MapNumber)), Is.Unique);
-    }
-
-    /// <summary>
-    /// Tests that the multipliers of a monster on a map come before the ones of the monster on all maps,
-    /// and only apply on that map.
-    /// </summary>
-    [Test]
-    public void MonsterOnMapComesFirst()
-    {
-        var configuration = new MapDifficultyScalerConfiguration();
-        configuration.Maps.Add(new MapDifficultyScalerConfiguration.DifficultyMultipliers { Number = LorenciaNumber, Health = 2 });
-        configuration.Monsters.Add(new MapDifficultyScalerConfiguration.DifficultyMultipliers { Number = SpiderNumber, Health = 3, MapNumber = DungeonNumber });
-
-        Assert.That(MapDifficultyScaler.GetKey(configuration, DungeonNumber, SpiderNumber), Is.EqualTo((true, SpiderNumber, DungeonNumber)));
-        Assert.That(MapDifficultyScaler.GetKey(configuration, LorenciaNumber, SpiderNumber), Is.EqualTo((false, LorenciaNumber, AllMaps)));
-
-        configuration.Monsters.Add(new MapDifficultyScalerConfiguration.DifficultyMultipliers { Number = SpiderNumber, Health = 4 });
-        Assert.That(MapDifficultyScaler.GetKey(configuration, DungeonNumber, SpiderNumber), Is.EqualTo((true, SpiderNumber, DungeonNumber)));
-        Assert.That(MapDifficultyScaler.GetKey(configuration, LorenciaNumber, SpiderNumber), Is.EqualTo((true, SpiderNumber, AllMaps)));
-    }
-
-    /// <summary>
-    /// Tests that the defaults give the monsters of Dungeon which also spawn in other maps (e.g. Devil Square)
-    /// their multipliers only on the map Dungeon.
-    /// </summary>
-    [Test]
-    public void DungeonMonstersOnlyOnDungeon()
-    {
-        var configuration = new MapDifficultyScalerConfiguration();
-        const short skeletonWarriorNumber = 14;
-        const short gorgonNumber = 18;
-
-        Assert.That(MapDifficultyScaler.GetKey(configuration, DungeonNumber, skeletonWarriorNumber), Is.EqualTo((true, skeletonWarriorNumber, DungeonNumber)));
-        Assert.That(MapDifficultyScaler.GetKey(configuration, DungeonNumber, gorgonNumber), Is.EqualTo((true, gorgonNumber, DungeonNumber)));
-        Assert.That(MapDifficultyScaler.GetKey(configuration, LorenciaNumber, skeletonWarriorNumber), Is.Null);
-        Assert.That(MapDifficultyScaler.GetKey(configuration, DevilSquareNumber, gorgonNumber), Is.EqualTo((false, DevilSquareNumber, AllMaps)));
+        Assert.That(configuration.Monsters.Select(m => m.Number), Is.Unique);
     }
 
     /// <summary>

@@ -1770,16 +1770,10 @@
     <value>Monsters</value>
   </data>
   <data name="MapDifficultyScalerConfiguration_Monsters_Description" xml:space="preserve">
-    <value>The multipliers of a monster, by the number of the monster, on all maps or on one map, e.g. the golden monsters of the invasions. They replace the multipliers of the map.</value>
+    <value>The multipliers of a monster, by the number of the monster, e.g. the golden monsters of the invasions. They replace the multipliers of the map.</value>
   </data>
   <data name="DifficultyMultipliers_Number_Name" xml:space="preserve">
     <value>Number</value>
-  </data>
-  <data name="DifficultyMultipliers_MapNumber_Name" xml:space="preserve">
-    <value>Map number</value>
-  </data>
-  <data name="DifficultyMultipliers_MapNumber_Description" xml:space="preserve">
-    <value>Only for monsters: the number of the map on which the multipliers apply, or -1 for all maps. The multipliers of a monster on a map come before the ones on all maps.</value>
   </data>
   <data name="DifficultyMultipliers_Health_Name" xml:space="preserve">
     <value>Health multiplier</value>

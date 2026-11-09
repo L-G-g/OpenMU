@@ -965,12 +965,6 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized PotionStacksUpdatePlugIn_Description text.</summary>
         public static string PotionStacksUpdatePlugIn_Description => ResourceManager.GetString("PotionStacksUpdatePlugIn_Description", resourceCulture)!;
 
-        /// <summary>Gets the localized DungeonAboveDeviasDifficultyUpdatePlugIn_Name text.</summary>
-        public static string DungeonAboveDeviasDifficultyUpdatePlugIn_Name => ResourceManager.GetString("DungeonAboveDeviasDifficultyUpdatePlugIn_Name", resourceCulture)!;
-
-        /// <summary>Gets the localized DungeonAboveDeviasDifficultyUpdatePlugIn_Description text.</summary>
-        public static string DungeonAboveDeviasDifficultyUpdatePlugIn_Description => ResourceManager.GetString("DungeonAboveDeviasDifficultyUpdatePlugIn_Description", resourceCulture)!;
-
         /// <summary>Gets the localized IceQueenDungeonUpdatePlugIn_Name text.</summary>
         public static string IceQueenDungeonUpdatePlugIn_Name => ResourceManager.GetString("IceQueenDungeonUpdatePlugIn_Name", resourceCulture)!;
 
