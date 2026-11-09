@@ -64,6 +64,14 @@ public class ItemSerializerTests<T>
         this._contextProvider = new InMemoryPersistenceContextProvider();
         await new DataInitialization(this._contextProvider, new NullLoggerFactory()).CreateInitialDataAsync(3, true).ConfigureAwait(false);
         this._gameConfiguration = (await this._contextProvider.CreateNewConfigurationContext().GetAsync<GameConfiguration>().ConfigureAwait(false)).First();
+
+        // The skill quests of PeroniaMU take the skills off the weapons; the tests need a weapon with a skill.
+        var fallingSlash = this._gameConfiguration.Skills.First(s => s.Number == 19);
+        foreach (var weapon in this._gameConfiguration.Items.Where(i => i.Name.ValueInNeutralLanguage is "Blade" or "Lighting Sword"))
+        {
+            weapon.Skill ??= fallingSlash;
+        }
+
         this._itemSerializer = new T();
     }
 

@@ -104,6 +104,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         PotionStacks.Apply(this.Context, this.GameConfiguration);
         IceQueenDungeon.Apply(this.Context, this.GameConfiguration);
         SpectreHubSetup.Apply(this.Context, this.GameConfiguration);
+        SkillQuestsData.ApplyAsync(this.Context, this.GameConfiguration).AsTask().GetAwaiter().GetResult();
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
         MapDropsAndInvasions.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();

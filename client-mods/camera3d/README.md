@@ -118,6 +118,34 @@ Otros lugares del cliente que también lo frenan y no cambian: la zona segura (e
 el cambio de mapa (`0x006408F0`), el menú de Esc (`0x007D3320`) y el botón del menú principal
 (`0x00868470`).
 
+## Skills de arma sin el arma
+
+En PeroniaMU las armas no dan skills: las skills de arma (Defense, Falling Slash, Lunge, Uppercut, Cyclone,
+Slash, Triple Shot, Power Slash, Force Wave, Killing Blow, Beast Uppercut, Phoenix Shot) se aprenden con las
+quests de skills. El cliente original solo las deja usar si el arma equipada las trae; con `camera3d.dll` se
+usan con cualquier arma o sin arma, siempre que estén en la lista de skills que manda el servidor.
+
+```
+[WeaponSkills]
+Enabled=1   ; 0: las skills de arma necesitan el arma, como el juego original
+```
+
+`src/weaponskills.cpp` cambia tres lugares del cliente (una skill de arma tiene `+0x54 == 1` en la tabla de
+skills `[0x08128ABC]`, `0x58` bytes por skill):
+
+- `0x004EAC90` (`bool __thiscall (skill)`): devuelve true para una skill de arma solo si el item de una mano
+  (`[0x08128AC4] +0x1240` o `+0x12AB`) la tiene. Lo usan el icono de la skill (gris), el lanzamiento y el
+  árbol de maestría. Se reemplaza: true si la skill de arma está en la lista de skills del personaje, si no lo
+  original.
+- `0x005AD1A2` (`JNZ 0x005AFF59`): en el lanzamiento de los guerreros (`0x005AD040`), sin arma en la mano
+  derecha o con un bastón solo siguen unas pocas skills. Las skills de arma aprendidas siguen.
+- `0x005B554A` y `0x005B557B`: las llamadas que lanzan la skill con el item de cada mano (`0x0059B580`,
+  `0x005A0A30`) solo la lanzan si está en la lista de skills del item (`+0x25` cantidad, `+0x26` números).
+  Reciben una copia del item con la skill elegida en su lista.
+
+Lo que no cambia: montado en Uniria, Dinorant o Fenrir, Defense a Slash y algunas skills del Rage Fighter
+siguen sin poder usarse, como en el juego original.
+
 ## Barras de vida de los monstruos (healthbars.dll)
 
 Sobre los monstruos dañados se dibuja una barra chica de tamaño fijo: fondo oscuro con borde y relleno
@@ -617,6 +645,29 @@ ojos) y los ángulos (inclinación -90 = horizonte, giro hacia el espectro), y `
 zoom ni su inclinación y agranda el terreno visible. El click: en el paso de lógica (`camera3d.dll`), si
 se aprieta el botón izquierdo con un rival marcado bajo el mouse (`0x00E61730`), se borran los botones del
 juego (`0x08793384`) para que el personaje no camine ni ataque.
+## Quests de skills (quests.dll)
+
+Con `quests.dll` los NPC que enseñan skills (plugin "Skill quests" del servidor) muestran un signo flotando
+sobre la cabeza: `!` dorado si hay una quest para aceptar, `?` dorado si la quest está lista para entregar y
+`?` gris si está en curso. Un click en el signo (no en el NPC, que sigue abriendo su ventana de siempre) abre
+la ventana de la quest con los objetivos, el progreso y la recompensa, y el botón Aceptar o Entregar. Las
+quests activas se ven en un recuadro de seguimiento a la derecha. `camera3d.dll` la carga si está en la misma
+carpeta (`src/loadquests.cpp`):
+
+```
+[Quests]
+Enabled=1       ; 0: sin signos ni ventana
+TrackerLeft=470 ; lugar del seguimiento (640x480)
+TrackerTop=70
+MarkSize=1      ; tamaño de los signos (0.5 a 3)
+HeadMargin=70   ; altura del signo sobre la cabeza del NPC (unidades del mundo)
+```
+
+El servidor manda `C2 FF 10` (signos de los NPC cercanos, cada 3 segundos), `C2 FF 11` (seguimiento) y
+`C2 FF 12` (ventana de la quest); el código `0xFF` es el de la interfaz de PeroniaMU. La DLL contesta con el
+comando de chat `/quest`. `src/quests/quests.cpp` encadena el reparto de paquetes, el comienzo de la interfaz
+(`0x004D9C86`, como `healthbars.dll`: ahí proyecta los signos, sobre el mundo y debajo de las ventanas), el
+dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el estilo de `src/ui/peroniaui`.
 
 ## Archivos
 
@@ -626,6 +677,7 @@ juego (`0x08793384`) para que el personaje no camine ni ataque.
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
 - `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
 - `src/muhelper.cpp`: el MU Helper sigue con el inventario abierto.
+- `src/weaponskills.cpp`: las skills de arma aprendidas se usan sin el arma.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
@@ -637,6 +689,7 @@ juego (`0x08793384`) para que el personaje no camine ni ataque.
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
 - `src/loadflight.cpp`: carga de `flight.dll` si está junto a la DLL.
 - `src/loadresetbutton.cpp`: carga de `resetbutton.dll` si está junto a la DLL.
+- `src/loadquests.cpp`: carga de `quests.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `cinematicas.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
@@ -650,6 +703,8 @@ juego (`0x08793384`) para que el personaje no camine ni ataque.
 - `src/flight/`: `flight.dll`, monturas voladoras.
 - `src/resetbutton/`: `resetbutton.dll`, botón Reset cuando el personaje puede resetear.
 - `src/ui/`: estilo de PeroniaMU para ventanas y botones nuevos (marco de metal, letras doradas, resplandor).
+- `src/quests/`: `quests.dll`, signos de quest sobre los NPC, ventana de la quest y seguimiento.
+- `src/ui/`: `peroniaui`, estilo de los botones nuevos (se compila dentro de cada DLL que lo usa).
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -665,7 +720,7 @@ juego (`0x08793384`) para que el personaje no camine ni ataque.
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadquests.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -676,6 +731,7 @@ cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp user32.lib opengl32
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\quests\quests.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -688,6 +744,7 @@ addimport.exe main.exe main_camera3d.exe
 ```
 
 y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll` y `flight.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `tabmap.dll` y `quests.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

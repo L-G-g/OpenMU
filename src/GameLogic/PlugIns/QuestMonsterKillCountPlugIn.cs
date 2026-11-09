@@ -37,8 +37,9 @@ public class QuestMonsterKillCountPlugIn : IAttackableGotKilledPlugIn, ISupportC
 
         foreach (var questState in player.SelectedCharacter.QuestStates)
         {
-            if (questState.ActiveQuest is null)
+            if (questState.ActiveQuest is null || SkillQuests.SkillQuestGroups.IsSkillQuestGroup(questState.Group))
             {
+                // The skill quests count their kills themselves (SkillQuestFeaturePlugIn).
                 continue;
             }
 
