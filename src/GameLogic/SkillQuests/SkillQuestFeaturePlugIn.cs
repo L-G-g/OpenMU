@@ -417,7 +417,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
 
     private static IReadOnlyList<QuestDefinition> GetAllSkillQuests(GameConfiguration configuration)
     {
-        return AllSkillQuests.GetValue(configuration, c => c.Monsters
+        return AllSkillQuests.GetValue(configuration, c => (c.Monsters ?? Enumerable.Empty<MonsterDefinition>())
             .SelectMany(m => m.Quests ?? Enumerable.Empty<QuestDefinition>())
             .Where(q => q.IsSkillQuest())
             .ToList());
@@ -774,8 +774,8 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
     /// </summary>
     private static string? GetSpawnMapName(Player player, GameConfiguration configuration, MonsterDefinition npc)
     {
-        var spawn = configuration.Maps
-            .SelectMany(map => map.MonsterSpawns.Select(spawn => (Map: map, Spawn: spawn)))
+        var spawn = (configuration.Maps ?? Enumerable.Empty<GameMapDefinition>())
+            .SelectMany(map => (map.MonsterSpawns ?? Enumerable.Empty<MonsterSpawnArea>()).Select(spawn => (Map: map, Spawn: spawn)))
             .FirstOrDefault(s => s.Spawn.MonsterDefinition == npc);
         if (spawn.Map is null || spawn.Spawn.SpawnTrigger == SpawnTrigger.Wandering)
         {
