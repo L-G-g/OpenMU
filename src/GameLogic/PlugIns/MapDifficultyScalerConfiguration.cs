@@ -23,6 +23,11 @@ using MUnique.OpenMU.DataModel.Composition;
 public class MapDifficultyScalerConfiguration
 {
     /// <summary>
+    /// The number of the map Dungeon.
+    /// </summary>
+    private const short DungeonMapNumber = 1;
+
+    /// <summary>
     /// Gets or sets the multipliers of the monsters of the maps, by the number of the map.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.MapDifficultyScalerConfiguration_Maps_Name), Description = nameof(PlugInResources.MapDifficultyScalerConfiguration_Maps_Description))]
@@ -31,7 +36,8 @@ public class MapDifficultyScalerConfiguration
     public ICollection<DifficultyMultipliers> Maps { get; set; } = CreateDefaultMaps();
 
     /// <summary>
-    /// Gets or sets the multipliers of monsters, by the number of the monster. They replace the multipliers of the map.
+    /// Gets or sets the multipliers of monsters, by the number of the monster, on all maps or on one map.
+    /// They replace the multipliers of the map.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.MapDifficultyScalerConfiguration_Monsters_Name), Description = nameof(PlugInResources.MapDifficultyScalerConfiguration_Monsters_Description))]
     [MemberOfAggregate]
@@ -64,6 +70,34 @@ public class MapDifficultyScalerConfiguration
         new(315, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Werewolf Hero, like Swamp of Calmness, 252 resets
         new(316, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Balram, like Swamp of Calmness, 252 resets
         new(317, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Soram, like Swamp of Calmness, 252 resets
+        .. CreateDungeonAboveDeviasMonsters(),
+    ];
+
+    /// <summary>
+    /// Creates the multipliers of the monsters of Dungeon which would be weaker than the strongest ones of Devias, the map before it on the ladder.
+    /// </summary>
+    /// <remarks>
+    /// Devias needs fewer resets than Dungeon, but the equipment of Devias is weaker, so the multipliers of Devias are higher.
+    /// With the multipliers of their map, the strongest monsters of Devias were stronger than the weakest half of Dungeon,
+    /// and the Ice Queen stronger than the Gorgon. These monsters of Dungeon (on map 1 only, because they also spawn in Lorencia or
+    /// Devil Square) get stats which rise from 3 % above the strongest monster of Devias, at level 30, up to the Dark Knight
+    /// at level 38, which keeps the multipliers of the map. The Gorgon gets 5 % more than the Ice Queen of Devias.
+    /// Stats which are already higher keep the multipliers of the map.
+    /// </remarks>
+    /// <returns>The multipliers of the monsters of Dungeon.</returns>
+    public static List<DifficultyMultipliers> CreateDungeonAboveDeviasMonsters() =>
+    [
+        new(14, 8.36f, 4.14f, 2.28f, 4.32f, 9.33f, DungeonMapNumber), // Skeleton Warrior, Dungeon
+        new(12, 8.61f, 4.16f, 2.32f, 4.3f, 9.15f, DungeonMapNumber), // Larva, Dungeon
+        new(11, 7.0f, 3.93f, 2.03f, 4.24f, 8.79f, DungeonMapNumber), // Ghost, Dungeon
+        new(17, 8.02f, 4.08f, 2.22f, 4.32f, 9.17f, DungeonMapNumber), // Cyclops, Dungeon
+        new(15, 6.48f, 3.89f, 1.94f, 4.24f, 8.64f, DungeonMapNumber), // Skeleton Archer, Dungeon
+        new(5, 6.08f, 3.92f, 1.97f, 4.24f, 8.67f, DungeonMapNumber), // Hell Hound, Dungeon
+        new(13, 5.39f, 3.85f, 2.03f, 4.24f, 8.38f, DungeonMapNumber), // Hell Spider, Dungeon
+        new(9, 5.18f, 3.83f, 1.95f, 4.24f, 7.71f, DungeonMapNumber), // Thunder Lich, Dungeon
+        new(16, 5.33f, 3.87f, 1.97f, 4.24f, 8.12f, DungeonMapNumber), // Elite Skeleton, Dungeon
+        new(8, 4.92f, 3.81f, 1.92f, 4.24f, 7.51f, DungeonMapNumber), // Poison Bull, Dungeon
+        new(18, 5.97f, 4.11f, 2.18f, 4.24f, 9.46f, DungeonMapNumber), // Gorgon (boss), Dungeon
     ];
 
     /// <summary>
@@ -118,6 +152,11 @@ public class MapDifficultyScalerConfiguration
     public class DifficultyMultipliers
     {
         /// <summary>
+        /// The value of <see cref="MapNumber"/> for the multipliers of a monster which apply on all maps.
+        /// </summary>
+        public const short AllMaps = -1;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="DifficultyMultipliers"/> class.
         /// </summary>
         public DifficultyMultipliers()
@@ -133,9 +172,11 @@ public class MapDifficultyScalerConfiguration
         /// <param name="defense">The multiplier of the defense.</param>
         /// <param name="attackRate">The multiplier of the attack rate.</param>
         /// <param name="defenseRate">The multiplier of the defense rate.</param>
-        internal DifficultyMultipliers(short number, float health, float damage, float defense, float attackRate, float defenseRate)
+        /// <param name="mapNumber">The number of the map on which the multipliers of a monster apply, or -1 for all maps.</param>
+        internal DifficultyMultipliers(short number, float health, float damage, float defense, float attackRate, float defenseRate, short mapNumber = AllMaps)
         {
             this.Number = number;
+            this.MapNumber = mapNumber;
             this.Health = health;
             this.Damage = damage;
             this.Defense = defense;
@@ -148,6 +189,13 @@ public class MapDifficultyScalerConfiguration
         /// </summary>
         [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DifficultyMultipliers_Number_Name))]
         public short Number { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of the map on which the multipliers of a monster apply, or -1 (<see cref="AllMaps"/>) for all maps.
+        /// It's not used for the multipliers of a map.
+        /// </summary>
+        [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DifficultyMultipliers_MapNumber_Name), Description = nameof(PlugInResources.DifficultyMultipliers_MapNumber_Description))]
+        public short MapNumber { get; set; } = AllMaps;
 
         /// <summary>
         /// Gets or sets the multiplier of the maximum health.

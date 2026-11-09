@@ -4972,6 +4972,12 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         /// <summary>Gets the localized DifficultyMultipliers_Number_Name text.</summary>
         public static string DifficultyMultipliers_Number_Name => ResourceManager.GetString("DifficultyMultipliers_Number_Name", resourceCulture)!;
 
+        /// <summary>Gets the localized DifficultyMultipliers_MapNumber_Name text.</summary>
+        public static string DifficultyMultipliers_MapNumber_Name => ResourceManager.GetString("DifficultyMultipliers_MapNumber_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DifficultyMultipliers_MapNumber_Description text.</summary>
+        public static string DifficultyMultipliers_MapNumber_Description => ResourceManager.GetString("DifficultyMultipliers_MapNumber_Description", resourceCulture)!;
+
         /// <summary>Gets the localized DifficultyMultipliers_Health_Name text.</summary>
         public static string DifficultyMultipliers_Health_Name => ResourceManager.GetString("DifficultyMultipliers_Health_Name", resourceCulture)!;
 

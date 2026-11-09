@@ -17,7 +17,8 @@ using DifficultyMultipliers = MUnique.OpenMU.GameLogic.PlugIns.MapDifficultyScal
 /// so that the maps need more resets without changing the level of the monsters.
 /// </summary>
 /// <remarks>
-/// The multipliers of a monster replace the ones of its map. They are added to the monsters when they appear on a map,
+/// The multipliers of a monster replace the ones of its map. The ones of a monster on one map come before the ones
+/// of the monster on all maps. They are added to the monsters when they appear on a map,
 /// so they also apply to instances of a map, e.g. the dungeon of Devias. Changes of the multipliers take effect
 /// immediately; a map or monster which is added to the configuration applies to the monsters which appear afterwards.
 /// Monsters which are summoned by players aren't changed.
@@ -30,7 +31,7 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
     ISupportDefaultCustomConfiguration,
     IDisabledByDefault
 {
-    private readonly ConcurrentDictionary<(bool IsMonster, short Number), Multipliers> _multipliers = new();
+    private readonly ConcurrentDictionary<(bool IsMonster, short Number, short MapNumber), Multipliers> _multipliers = new();
 
     private readonly ConcurrentDictionary<AttackableNpcBase, Multipliers> _appliedMultipliers = new();
 
@@ -45,7 +46,7 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
             this._configuration = value;
             foreach (var (key, multipliers) in this._multipliers)
             {
-                multipliers.SetValues(Find(value, key.IsMonster, key.Number));
+                multipliers.SetValues(Find(value, key));
             }
         }
     }
@@ -72,7 +73,7 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
             return ValueTask.CompletedTask;
         }
 
-        var multipliers = this._multipliers.GetOrAdd(key.Value, k => new Multipliers(Find(this.Configuration, k.IsMonster, k.Number)));
+        var multipliers = this._multipliers.GetOrAdd(key.Value, k => new Multipliers(Find(this.Configuration, k)));
         if (!this._appliedMultipliers.TryAdd(npc, multipliers))
         {
             return ValueTask.CompletedTask;
@@ -100,31 +101,42 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
     }
 
     /// <summary>
-    /// Gets the key of the multipliers which apply to a monster: the ones of the monster, if configured, else the ones of the map.
+    /// Gets the key of the multipliers which apply to a monster: the ones of the monster on the map, if configured,
+    /// else the ones of the monster on all maps, else the ones of the map.
     /// </summary>
     /// <param name="configuration">The configuration.</param>
     /// <param name="mapNumber">The number of the map.</param>
     /// <param name="monsterNumber">The number of the monster.</param>
     /// <returns>The key, or <c>null</c> if neither the monster nor the map is configured.</returns>
-    internal static (bool IsMonster, short Number)? GetKey(MapDifficultyScalerConfiguration configuration, short mapNumber, short monsterNumber)
+    internal static (bool IsMonster, short Number, short MapNumber)? GetKey(MapDifficultyScalerConfiguration configuration, short mapNumber, short monsterNumber)
     {
-        if (Find(configuration, true, monsterNumber) is not null)
-        {
-            return (true, monsterNumber);
-        }
+        (bool IsMonster, short Number, short MapNumber)[] candidates =
+        [
+            (true, monsterNumber, mapNumber),
+            (true, monsterNumber, DifficultyMultipliers.AllMaps),
+            (false, mapNumber, DifficultyMultipliers.AllMaps),
+        ];
 
-        if (Find(configuration, false, mapNumber) is not null)
+        foreach (var candidate in candidates)
         {
-            return (false, mapNumber);
+            if (Find(configuration, candidate) is not null)
+            {
+                return candidate;
+            }
         }
 
         return null;
     }
 
-    private static DifficultyMultipliers? Find(MapDifficultyScalerConfiguration? configuration, bool isMonster, short number)
+    private static DifficultyMultipliers? Find(MapDifficultyScalerConfiguration? configuration, (bool IsMonster, short Number, short MapNumber) key)
     {
-        var entries = isMonster ? configuration?.Monsters : configuration?.Maps;
-        return entries?.FirstOrDefault(e => e.Number == number);
+        if (key.IsMonster)
+        {
+            // A value below -1 is treated like -1, so that it's not ignored.
+            return configuration?.Monsters?.FirstOrDefault(e => e.Number == key.Number && Math.Max(e.MapNumber, DifficultyMultipliers.AllMaps) == key.MapNumber);
+        }
+
+        return configuration?.Maps?.FirstOrDefault(e => e.Number == key.Number);
     }
 
     /// <summary>
