@@ -80,17 +80,28 @@ internal static class SkillQuestsData
 
     private static readonly short[] SummonerBookSkills = [(short)SkillNumber.Explosion223, (short)SkillNumber.Requiem, (short)SkillNumber.Pollution];
 
+    /// <summary>
+    /// The plugins which add skills to new characters which are now taught by the quests: they are disabled.
+    /// </summary>
     private static readonly Type[] InitialSkillPlugIns =
     [
         typeof(AddEnergyBallForDarkWizard),
+        typeof(AddForceForDarkLord),
+        typeof(AddChargeForRageFighter),
+    ];
+
+    /// <summary>
+    /// The plugins which add the castle siege skills to new characters: they stay active.
+    /// </summary>
+    private static readonly Type[] CastleSiegeSkillPlugIns =
+    [
         typeof(AddCrescentMoonSlashForDarkKnight),
         typeof(AddStarfallForFairyElf),
         typeof(AddManaRaysForMagicGladiator),
         typeof(AddSpiralSlashForMagicGladiator),
-        typeof(AddForceForDarkLord),
         typeof(AddFireBlastForDarkLord),
+        typeof(AddAbolishMagicForDarkLord),
         typeof(AddLanceForSummoner),
-        typeof(AddChargeForRageFighter),
     ];
 
     /// <summary>
@@ -111,10 +122,10 @@ internal static class SkillQuestsData
     [
         (HanzoGroup, 251, "Lecciones de Hanzo", [CharacterClassNumber.DarkKnight],
         [
-            [SkillNumber.FallingSlash, SkillNumber.Lunge, SkillNumber.Uppercut, SkillNumber.Cyclone, SkillNumber.Slash, SkillNumber.Defense],
+            [SkillNumber.FallingSlash, SkillNumber.Lunge, SkillNumber.Uppercut, SkillNumber.Cyclone, SkillNumber.Slash, SkillNumber.Defense, SkillNumber.Impale],
             [SkillNumber.TwistingSlash],
             [SkillNumber.SwellLife],
-            [SkillNumber.Impale, SkillNumber.RagefulBlow, SkillNumber.DeathStab, SkillNumber.StrikeofDestruction],
+            [SkillNumber.RagefulBlow, SkillNumber.DeathStab, SkillNumber.StrikeofDestruction],
         ]),
         (HanzoGroup, 251, "Lecciones de Hanzo", [CharacterClassNumber.MagicGladiator],
         [
@@ -123,18 +134,25 @@ internal static class SkillQuestsData
             [],
             [],
         ]),
-        (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.DarkWizard, CharacterClassNumber.Summoner],
+        (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.DarkWizard],
         [
-            [SkillNumber.FireBall, SkillNumber.Ice, SkillNumber.PowerWave, SkillNumber.Meteorite],
+            [SkillNumber.FireBall, SkillNumber.Ice, SkillNumber.PowerWave, SkillNumber.Meteorite, SkillNumber.EnergyBall],
             [SkillNumber.Lightning, SkillNumber.Poison, SkillNumber.Flame, SkillNumber.Twister, SkillNumber.EvilSpirit],
             [SkillNumber.Cometfall, SkillNumber.AquaBeam, SkillNumber.Inferno, SkillNumber.Hellfire],
-            [SkillNumber.EnergyBall, SkillNumber.Nova, SkillNumber.IceStorm, SkillNumber.Decay, SkillNumber.Teleport, SkillNumber.SoulBarrier, SkillNumber.TeleportAlly, SkillNumber.ExpansionofWizardry],
+            [SkillNumber.Nova, SkillNumber.IceStorm, SkillNumber.Decay, SkillNumber.Teleport, SkillNumber.SoulBarrier, SkillNumber.TeleportAlly, SkillNumber.ExpansionofWizardry, SkillNumber.Lance],
         ]),
         (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.MagicGladiator],
         [
             [SkillNumber.FireBall, SkillNumber.Ice, SkillNumber.PowerWave, SkillNumber.Meteorite, SkillNumber.EnergyBall],
             [SkillNumber.Lightning, SkillNumber.Poison, SkillNumber.Flame, SkillNumber.Twister, SkillNumber.EvilSpirit],
             [SkillNumber.Cometfall, SkillNumber.AquaBeam, SkillNumber.Inferno, SkillNumber.Hellfire],
+            [],
+        ]),
+        (PasiGroup, 254, "Lecciones de Pasi", [CharacterClassNumber.Summoner],
+        [
+            [SkillNumber.FireBall, SkillNumber.Ice, SkillNumber.PowerWave, SkillNumber.Meteorite],
+            [],
+            [],
             [],
         ]),
         (LalaGroup, 242, "Lecciones de Lala", [CharacterClassNumber.FairyElf],
@@ -169,8 +187,8 @@ internal static class SkillQuestsData
         [
             [],
             [],
-            [SkillNumber.PowerSlash, SkillNumber.FireSlash],
-            [SkillNumber.GiganticStorm, SkillNumber.FlameStrike],
+            [SkillNumber.PowerSlash, SkillNumber.FireSlash, SkillNumber.FlameStrike],
+            [SkillNumber.GiganticStorm],
         ]),
     ];
 
@@ -299,7 +317,7 @@ internal static class SkillQuestsData
     }
 
     /// <summary>
-    /// New characters don't get skills anymore: the plugins which add them are disabled.
+    /// New characters only get the castle siege skills: the plugins which add the skills of the quests are disabled.
     /// </summary>
     private static void DisableInitialSkills(IContext context, GameConfiguration gameConfiguration)
     {
@@ -314,6 +332,14 @@ internal static class SkillQuestsData
             }
 
             plugInConfiguration.IsActive = false;
+        }
+
+        foreach (var plugInType in CastleSiegeSkillPlugIns)
+        {
+            if (gameConfiguration.PlugInConfigurations.FirstOrDefault(c => c.TypeId == plugInType.GUID) is { } plugInConfiguration)
+            {
+                plugInConfiguration.IsActive = true;
+            }
         }
     }
 

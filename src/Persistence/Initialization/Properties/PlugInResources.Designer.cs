@@ -371,6 +371,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized AddManaRaysForMagicGladiator_Description text.</summary>
         public static string AddManaRaysForMagicGladiator_Description => ResourceManager.GetString("AddManaRaysForMagicGladiator_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized AddAbolishMagicForDarkLord_Name text.</summary>
+        public static string AddAbolishMagicForDarkLord_Name => ResourceManager.GetString("AddAbolishMagicForDarkLord_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized AddAbolishMagicForDarkLord_Description text.</summary>
+        public static string AddAbolishMagicForDarkLord_Description => ResourceManager.GetString("AddAbolishMagicForDarkLord_Description", resourceCulture)!;
+
         /// <summary>Gets the localized AddFireBlastForDarkLord_Name text.</summary>
         public static string AddFireBlastForDarkLord_Name => ResourceManager.GetString("AddFireBlastForDarkLord_Name", resourceCulture)!;
 
