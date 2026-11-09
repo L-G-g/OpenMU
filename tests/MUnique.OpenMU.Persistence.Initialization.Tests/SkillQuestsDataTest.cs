@@ -68,7 +68,7 @@ internal class SkillQuestsDataTest
         }
 
         var pasi = quests.Single(q => q.QuestGiver!.Number == 254 && q.Number == 1 && q.QualifiedCharacter!.Number == 0);
-        Assert.That(pasi.Rewards.Select(r => (int)r.SkillReward!.Number), Is.EquivalentTo(new[] { 4, 7, 11, 2 }));
+        Assert.That(pasi.Rewards.Select(r => (int)r.SkillReward!.Number), Is.EquivalentTo(new[] { 4, 7, 11, 2, 17 }));
         var rhea = quests.Where(q => q.QuestGiver!.Number == 416).Select(q => q.Number);
         Assert.That(quests.Where(q => q.QuestGiver!.Number == 254 && q.QualifiedCharacter!.Number == 20).Select(q => q.Number), Is.EqualTo(new short[] { 1 }), "summoners do only the first quest of Pasi");
         Assert.That(rhea, Is.EquivalentTo(new short[] { 2, 3, 4 }));
@@ -80,7 +80,9 @@ internal class SkillQuestsDataTest
         Assert.That(Rewards(251, 4, 4), Does.Contain(42), "Hanzo IV teaches Rageful Blow");
         Assert.That(Rewards(251, 1, 12), Does.Contain(47), "Hanzo I teaches Impale to the magic gladiators");
         Assert.That(Rewards(254, 1, 12), Does.Contain(17), "Pasi I teaches Energy Ball to the magic gladiators");
-        Assert.That(Rewards(568, 3, 12), Is.EquivalentTo(new[] { 56, 55 }), "Zyro III teaches Power Slash and Fire Slash");
+        Assert.That(Rewards(568, 3, 12), Is.EquivalentTo(new[] { 56, 55, 236 }), "Zyro III teaches Power Slash, Fire Slash and Flame Strike");
+        Assert.That(Rewards(251, 1, 4), Does.Contain(47), "Hanzo I teaches Impale to the knights too");
+        Assert.That(Rewards(254, 4, 0), Does.Contain(45), "Pasi IV teaches Lance to the soul masters");
         Assert.That(quests.Where(q => q.QualifiedCharacter!.Number == 12 && q.QuestGiver!.Number is 251 or 254).Select(q => ((int)q.QuestGiver!.Number, (int)q.Number)),
             Is.EquivalentTo(new[] { (251, 1), (251, 2), (254, 1), (254, 2), (254, 3) }), "the magic gladiators end Hanzo at II and Pasi at III");
 
