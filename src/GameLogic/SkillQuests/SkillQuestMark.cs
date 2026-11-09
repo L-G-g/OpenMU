@@ -1,4 +1,4 @@
-// <copyright file="SkillQuestMark.cs" company="MUnique">
+﻿// <copyright file="SkillQuestMark.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -28,6 +28,12 @@ public enum SkillQuestMark : byte
     /// The player has completed the objectives of a quest of the NPC and can deliver it (golden question mark).
     /// </summary>
     Ready = 3,
+
+    /// <summary>
+    /// The NPC has the next quest of the player, but the player doesn't meet its requirements yet,
+    /// e.g. the level (gray exclamation mark).
+    /// </summary>
+    Locked = 4,
 }
 
 /// <summary>
