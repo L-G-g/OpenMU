@@ -382,6 +382,7 @@ public sealed class DungeonContext : MiniGameContext
         try
         {
             string? nextHint = null;
+            var isFinished = false;
             lock (this._stageLock)
             {
                 if (stageIndex != this._stageIndex)
@@ -396,10 +397,18 @@ public sealed class DungeonContext : MiniGameContext
                 {
                     nextHint = this._stages[this._stageIndex].Stage.Hint;
                 }
+                else
+                {
+                    isFinished = true;
+                }
             }
 
             await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossKilledFormat, boss.Definition.Designation.ValueInNeutralLanguage)).ConfigureAwait(false);
             await this.ShowGoldenTextAsync(nextHint ?? DungeonMessages.Completed).ConfigureAwait(false);
+            if (isFinished && Story.StoryModeFeaturePlugIn.Get(this.GameContext) is { } story)
+            {
+                await this.ForEachPlayerAsync(player => story.OnDungeonFinishedAsync(player).AsTask()).ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {

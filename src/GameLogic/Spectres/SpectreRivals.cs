@@ -45,6 +45,21 @@ internal static class SpectreRivals
     private const byte RulesVersion = 4;
 
     /// <summary>
+    /// The first byte of the key configuration of a rival of the story mode, see <see cref="GetStoryKey"/>.
+    /// </summary>
+    private const byte StoryMarker = (byte)'S';
+
+    /// <summary>
+    /// The version of the rules by which the rivals of the story mode are created.
+    /// </summary>
+    private const byte StoryRulesVersion = 1;
+
+    /// <summary>
+    /// The first character slot of the rivals of the story mode, above the slots of the rivals of the hub.
+    /// </summary>
+    private const byte StorySlotOffset = 200;
+
+    /// <summary>
     /// The build variant of the stats of the rivals: the damage build, e.g. the archer elf instead of the support elf.
     /// </summary>
     private const int DamageBuildVariant = 0;
@@ -146,6 +161,109 @@ internal static class SpectreRivals
 
         owner.Logger.LogInformation("Created the rival {Kind} E{Tier} of {Owner}.", kind, tier, ownerCharacter.Name);
         return name;
+    }
+
+    /// <summary>
+    /// Gets the name of the character of the rival of a duel of the story mode, and creates it if it doesn't exist yet or
+    /// if the duel changed (e.g. its level by the configuration of the story mode).
+    /// </summary>
+    /// <param name="owner">The player.</param>
+    /// <param name="duel">The duel.</param>
+    /// <returns>The name of the character, or <c>null</c> if it couldn't be created.</returns>
+    internal static async ValueTask<string?> GetOrCreateStoryCharacterAsync(Player owner, StoryDuel duel)
+    {
+        var gameContext = owner.GameContext;
+        var ownerAccount = owner.Account!;
+        var ownerCharacter = owner.SelectedCharacter!;
+        var loginName = GetLoginName(ownerAccount);
+        var slot = (byte)(StorySlotOffset + ownerCharacter.CharacterSlot);
+        var key = GetStoryKey(duel);
+
+        using var context = gameContext.PersistenceContextProvider.CreateNewPlayerContext(gameContext.Configuration);
+        var account = await context.GetAccountByLoginNameAsync(loginName).ConfigureAwait(false);
+        if (account is null)
+        {
+            account = context.CreateNew<Account>();
+            account.LoginName = loginName;
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), 4);
+            account.EMail = ownerAccount.LoginName;
+            account.Vault = context.CreateNew<ItemStorage>();
+        }
+        else if (account.EMail != ownerAccount.LoginName)
+        {
+            owner.Logger.LogError("The rival account {LoginName} belongs to {Other}, not to {Owner}.", loginName, account.EMail, ownerAccount.LoginName);
+            return null;
+        }
+        else if (account.Characters.FirstOrDefault(c => c.CharacterSlot == slot) is { } existing)
+        {
+            if (existing.KeyConfiguration is { } existingKey && existingKey.AsSpan().SequenceEqual(key))
+            {
+                return existing.Name;
+            }
+
+            account.Characters.Remove(existing);
+            await context.DeleteAsync(existing).ConfigureAwait(false);
+            if (!await context.SaveChangesAsync().ConfigureAwait(false))
+            {
+                return null;
+            }
+        }
+        else
+        {
+            // The rival is created below.
+        }
+
+        var characterClass = gameContext.Configuration.CharacterClasses.FirstOrDefault(c => c.Number == SpectreClasses.GetClassNumber(duel.Kind));
+        if (characterClass is null)
+        {
+            owner.Logger.LogError("The character class of the story rival {Kind} doesn't exist.", duel.Kind);
+            return null;
+        }
+
+        var name = $"S{GetHash(ownerCharacter.Id)}{SpectreClasses.GetLetter(duel.Kind)}";
+        var generator = new BotGenerator(gameContext, owner.Logger);
+        var character = generator.CreateCharacter(
+            context,
+            account,
+            name,
+            characterClass,
+            Math.Clamp(duel.Level, 1, Level),
+            slot,
+            gameContext.ExperienceTable,
+            Math.Max(duel.Resets, 0),
+            0,
+            false,
+            BotResetHandler.GetResetConfiguration(gameContext),
+            capVitality: false,
+            buildVariant: DamageBuildVariant);
+        character.Inventory!.Money = 0;
+        character.KeyConfiguration = key;
+        await ClearInventoryAsync(context, character).ConfigureAwait(false);
+        await SpectreGrowth.ApplyAsync(context, gameContext.Configuration, character, duel.Kind, duel.SkillTier).ConfigureAwait(false);
+        foreach (var (group, number) in duel.Equipment)
+        {
+            if (gameContext.Configuration.Items.FirstOrDefault(i => i.Group == group && i.Number == number) is { } definition
+                && IsQualified(definition, character.CharacterClass!))
+            {
+                AddToFreeSlot(context, character.Inventory, definition, duel.ItemLevel);
+            }
+        }
+
+        if (!await context.SaveChangesAsync().ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        owner.Logger.LogInformation("Created the story rival {Name} of {Owner}.", duel.RivalName, ownerCharacter.Name);
+        return name;
+    }
+
+    private static byte[] GetStoryKey(StoryDuel duel)
+    {
+        // What the character was created from, so that a changed duel creates it again.
+        var text = $"{StoryRulesVersion}|{duel.Kind}|{duel.Level}|{duel.Resets}|{duel.SkillTier}|{duel.ItemLevel}|{string.Join(',', duel.Equipment)}";
+        var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text));
+        return [StoryMarker, .. hash[..8]];
     }
 
     private static int GetTier(Character character)

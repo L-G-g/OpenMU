@@ -12,6 +12,7 @@ using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.Offline;
 using MUnique.OpenMU.GameLogic.PlayerActions.Quests;
 using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Story;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
@@ -347,6 +348,56 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         return null;
     }
 
+    /// <summary>
+    /// Gets the NPC with the first skill quest of the class of a player, e.g. for the story mode.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <returns>The name of the NPC and of its map, or <c>null</c> if there's no skill quest for the class.</returns>
+    public static (string Name, string Map)? GetFirstTeacher(Player player)
+    {
+        var configuration = player.GameContext.Configuration;
+        var quest = GetAllSkillQuests(configuration)
+            .Where(q => IsForPlayer(player, q) && q.QuestGiver is not null)
+            .OrderBy(q => q.Number)
+            .ThenBy(q => q.Group)
+            .FirstOrDefault();
+        if (quest?.QuestGiver is not { } giver)
+        {
+            return null;
+        }
+
+        return (giver.Designation.GetTranslation(player.Culture) ?? "tu maestro", GetSpawnMapName(player, configuration, giver) ?? "el camino");
+    }
+
+    /// <summary>
+    /// Sends the marks and the tracker of a player again, e.g. after a step of the story mode.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <returns>The task.</returns>
+    public async ValueTask RefreshPlayerAsync(Player player)
+    {
+        var state = PlayerStates.GetOrCreateValue(player);
+        state.LastTracker = null;
+        state.LastMarks = null;
+        await this.UpdatePlayerAsync(player, this.CurrentConfiguration).ConfigureAwait(false);
+    }
+
+    private static bool HasStartedSkillQuests(Character character)
+    {
+        return character.QuestStates.Any(s => SkillQuestGroups.IsSkillQuestGroup(s.Group) && (s.LastFinishedQuest is not null || s.ActiveQuest is not null));
+    }
+
+    private SkillQuestMark GetMark(Player player, MonsterDefinition npc, StoryModeFeaturePlugIn? story)
+    {
+        // The story first: its actors (e.g. Lumen) may also have skill quests one day.
+        if (story?.GetMark(player, npc) is { } storyMark and not SkillQuestMark.None)
+        {
+            return storyMark;
+        }
+
+        return npc.Quests.Any(q => q.IsSkillQuest()) ? this.Evaluate(player, npc).Mark : SkillQuestMark.None;
+    }
+
     private static bool IsRealPlayer(Player player)
     {
         return player is not OfflinePlayer
@@ -498,6 +549,11 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         if (quest.MaximumCharacterLevel > 0 && quest.MaximumCharacterLevel < player.Level)
         {
             return "Ya superaste el nivel de esta lección.";
+        }
+
+        if (StoryModeFeaturePlugIn.Get(player.GameContext)?.BlocksSkillQuests(player, HasStartedSkillQuests(character)) is true)
+        {
+            return "Primero hablá con Lumen en Lorencia.";
         }
 
         var configuration = this.CurrentConfiguration;
@@ -722,11 +778,16 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             return;
         }
 
-        var marks = map.GetNpcsInRange(player.Position, configuration.MarkRange)
-            .Where(npc => npc is not Monster && npc.Definition.Quests.Any(q => q.IsSkillQuest()))
-            .Select(npc => (Npc: npc, Mark: this.Evaluate(player, npc.Definition).Mark))
+        var story = StoryModeFeaturePlugIn.Get(player.GameContext);
+        var npcs = map.GetNpcsInRange(player.Position, configuration.MarkRange).Where(npc => npc is not Monster).ToList();
+        var marks = npcs
+            .Select(npc => (Npc: npc, Mark: this.GetMark(player, npc.Definition, story)))
             .Where(entry => entry.Mark != SkillQuestMark.None)
             .ToList();
+        if (story is not null)
+        {
+            await story.UpdatePlayerAsync(player, npcs).ConfigureAwait(false);
+        }
 
         var state = PlayerStates.GetOrCreateValue(player);
         var markKey = string.Join(';', marks.Select(m => $"{m.Npc.Id}:{(byte)m.Mark}"));
@@ -744,6 +805,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
     private async ValueTask SendTrackerAsync(Player player, bool force)
     {
         var lines = new List<SkillQuestLine>();
+        StoryModeFeaturePlugIn.Get(player.GameContext)?.AddTrackerLines(player, lines);
         foreach (var questState in GetActiveSkillQuestStates(player))
         {
             var quest = questState.ActiveQuest!;

@@ -57,6 +57,11 @@ public sealed class SkillQuestChatCommandPlugIn : IChatCommandPlugIn
             case "entregar" when arguments.Count == 2 && TryFindNpc(player, arguments[1]) is { } npc:
                 await feature.DeliverAsync(player, npc).ConfigureAwait(false);
                 return;
+            case not null when arguments.Count == 1 && TryFindStoryNpc(player, action) is { } storyNpc
+                                && Story.StoryModeFeaturePlugIn.Get(player.GameContext) is { } story
+                                && await story.TryShowSceneAsync(player, storyNpc, true).ConfigureAwait(false):
+                // The mark belongs to the story mode.
+                return;
             case not null when arguments.Count == 1 && TryFindNpc(player, action) is { } npc:
                 await feature.ShowDialogAsync(player, npc).ConfigureAwait(false);
                 return;
@@ -64,6 +69,11 @@ public sealed class SkillQuestChatCommandPlugIn : IChatCommandPlugIn
                 // quests.dll sends the commands; a player who types something else gets no answer.
                 return;
         }
+    }
+
+    private static NPC.NonPlayerCharacter? TryFindStoryNpc(Player player, string id)
+    {
+        return ushort.TryParse(id, out var npcId) ? Story.StoryChatCommandPlugIn.FindActor(player, npcId) : null;
     }
 
     private static NPC.NonPlayerCharacter? TryFindNpc(Player player, string id)

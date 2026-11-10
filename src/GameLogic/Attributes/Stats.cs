@@ -159,6 +159,17 @@ public class Stats
     public static AttributeDefinition DungeonLastEntry { get; } = new(new Guid("6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1E01"), "Dungeon last entry", "The time of the last entry into a dungeon, in minutes since 2026-01-01 (UTC).");
 
     /// <summary>
+    /// Gets the attribute definition for the progress of a character in the story mode: the number of its last
+    /// finished step (see <see cref="Story.StoryScript"/>).
+    /// </summary>
+    public static AttributeDefinition StoryProgress { get; } = new(new Guid("3A7C9E15-6B2D-4F81-A4C3-8E1D5B7F2A60"), "Story progress", "The number of the last finished step of the story mode.");
+
+    /// <summary>
+    /// Gets the attribute definition for the flags of a character in the story mode (see <see cref="Story.StoryFlags"/>).
+    /// </summary>
+    public static AttributeDefinition StoryFlags { get; } = new(new Guid("3A7C9E15-6B2D-4F81-A4C3-8E1D5B7F2A61"), "Story flags", "The flags of the story mode: 1 = finished the dungeon of Devias, 2 = won the duel against the stranger.");
+
+    /// <summary>
     /// Gets the registered renas / items attribute definition.
     /// </summary>
     public static AttributeDefinition RegisteredRenas { get; } = new(new Guid("45B1C2A3-3E4F-5A6B-7C8D-9E0F1A2B3C4D"), "Registered Renas", "Progress towards next item registration reward");

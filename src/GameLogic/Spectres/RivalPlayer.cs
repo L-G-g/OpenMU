@@ -16,6 +16,8 @@ using MUnique.OpenMU.Pathfinding;
 /// </summary>
 public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
 {
+    private readonly string? _storyName;
+
     private RivalIntelligence? _intelligence;
 
     /// <summary>
@@ -26,9 +28,11 @@ public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
     /// <param name="kind">The kind.</param>
     /// <param name="tier">The tier.</param>
     /// <param name="spot">The position of the rival on its map.</param>
-    public RivalPlayer(IGameContext gameContext, Player owner, SpectreKind kind, int tier, Point spot)
+    /// <param name="storyName">The name of the rival, if it's a character of the story mode instead of a rival of the hub.</param>
+    public RivalPlayer(IGameContext gameContext, Player owner, SpectreKind kind, int tier, Point spot, string? storyName = null)
         : base(gameContext)
     {
+        this._storyName = storyName;
         this.Owner = owner;
         this.Kind = kind;
         this.Tier = tier;
@@ -55,13 +59,13 @@ public sealed class RivalPlayer : OfflinePlayer, ISpectreCharacter
     public Point Spot { get; }
 
     /// <inheritdoc />
-    public override string DisplayName => SpectreHub.GetRivalName(this.Kind);
+    public override string DisplayName => this._storyName ?? SpectreHub.GetRivalName(this.Kind);
 
     /// <summary>
     /// Gets the name of the rival as the client of the PeroniaMU shows it, e.g. "Guerrero Olvidado", or the name of the spectre
     /// when its story is finished, e.g. "Godofredo el Legendario".
     /// </summary>
-    public string Title => SpectreHub.GetTitle(this.Owner, this.Kind, this.Tier);
+    public string Title => this._storyName ?? SpectreHub.GetTitle(this.Owner, this.Kind, this.Tier);
 
     /// <inheritdoc />
     public override bool RespawnAndContinue => true;

@@ -14,6 +14,12 @@
 //     la escena. "Duelo" manda /espectro duelo [objeto].
 // Los demas paquetes FD siguen a espectros.dll.
 //
+// El modo historia (OpenMU, plugin "Story mode") usa la misma escena con cualquier NPC:
+//   - C2 [largo] FF 30 [objeto, 2 bytes big endian] [paginas] [botones] y los textos (Latin-1, cada uno termina en 0):
+//     el nombre del NPC, una nota (puede estar vacia), las paginas y, por cada boton, [id] y su texto. Las paginas se
+//     pasan con "Continuar" (o un click en la caja); los botones salen en la ultima. Un boton con id mayor a 0 manda
+//     /historia [id] [objeto]; el id 0 solo cierra la escena. Los demas paquetes FF siguen a quests.dll y las otras.
+//
 // Como funciona:
 //   - El reparto de paquetes (0x0065FD79), el dibujo despues de la interfaz (0x004D9CCC), los eventos del mouse de las
 //     ventanas (0x00860998) y el "mouse sobre la interfaz" (0x00860910) se encadenan a lo que ya haya (espectros.dll,
@@ -35,6 +41,7 @@
 
 #include <deque>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -86,6 +93,9 @@ namespace
     constexpr int CodeSpectres = 0xFD;
     constexpr BYTE SubCodeDialogue = 0x04, SubCodeRival = 0x05;
     constexpr DWORD RivalMarkDuration = 10000; // la marca se repite cada 4 segundos
+    constexpr int CodeInterface = 0xFF;        // interfaz de PeroniaMU
+    constexpr BYTE SubCodeStoryScene = 0x30;
+    constexpr size_t MaxButtons = 3;
 
     // --- Escena ---
     constexpr DWORD FadeDuration = 400;    // ms de cada fundido a negro
@@ -133,8 +143,16 @@ namespace
     DWORD g_sceneStart = 0;
     int g_sceneMap = -1;
     WORD g_rival = 0;
-    bool g_canDuel = false;
-    bool g_choseDuel = false;
+    struct SceneButton
+    {
+        std::string label;
+        std::string command; // lo que se manda por chat al elegirlo; vacio solo cierra la escena
+    };
+
+    std::vector<SceneButton> g_buttons;  // los de la ultima pagina, de izquierda a derecha
+    std::vector<std::string> g_pages;
+    size_t g_page = 0;
+    std::string g_chosenCommand;
     std::string g_title;
     std::string g_reason;
     std::deque<std::string> g_lines; // el texto, cortado al ancho de la caja
@@ -166,20 +184,27 @@ namespace
         float height;
     };
 
-    enum Button
-    {
-        ButtonNone = -1,
-        ButtonDuel = 0,
-        ButtonLater = 1,
-    };
+    constexpr int ButtonNone = -1;
+    constexpr int ButtonClose = -2; // Escape: cierra sin elegir
 
+    bool LastPage()
+    {
+        return g_page + 1 >= g_pages.size();
+    }
+
+    // Los botones a la vista: en la ultima pagina los de la escena, antes solo "Continuar".
+    int VisibleButtons()
+    {
+        return LastPage() ? static_cast<int>(g_buttons.size()) : 1;
+    }
+
+    // Alineados a la derecha, en orden.
     Rect ButtonRect(int button)
     {
         const float top = BoxTop + BoxHeight - ButtonHeight - 8.0f;
         const float right = BoxLeft + BoxWidth - 10.0f;
-        return button == ButtonLater
-            ? Rect{ right - ButtonWidth, top, ButtonWidth, ButtonHeight }
-            : Rect{ right - 2 * ButtonWidth - 8.0f, top, ButtonWidth, ButtonHeight };
+        const int fromRight = VisibleButtons() - 1 - button;
+        return Rect{ right - ButtonWidth - fromRight * (ButtonWidth + 8.0f), top, ButtonWidth, ButtonHeight };
     }
 
     bool Inside(const Rect& rect, float x, float y)
@@ -212,12 +237,20 @@ namespace
 
         const float x = static_cast<float>(*MouseX);
         const float y = static_cast<float>(*MouseY);
-        if (g_canDuel && Inside(ButtonRect(ButtonDuel), x, y))
+        for (int button = 0; button < VisibleButtons(); button++)
         {
-            return ButtonDuel;
+            if (Inside(ButtonRect(button), x, y))
+            {
+                return button;
+            }
         }
 
-        return Inside(ButtonRect(ButtonLater), x, y) ? ButtonLater : ButtonNone;
+        return ButtonNone;
+    }
+
+    bool MouseInBox()
+    {
+        return Inside({ BoxLeft, BoxTop, BoxWidth, BoxHeight }, static_cast<float>(*MouseX), static_cast<float>(*MouseY));
     }
 
     // --- Chat ---
@@ -335,6 +368,13 @@ namespace
         g_loggedCamera = false;
     }
 
+    void ShowPage(size_t page)
+    {
+        g_page = page;
+        Wrap(g_page < g_pages.size() ? g_pages[g_page].c_str() : "");
+        g_revealed = 0.0f;
+    }
+
     void Choose(int button)
     {
         if (button == ButtonNone)
@@ -342,8 +382,31 @@ namespace
             return;
         }
 
-        g_choseDuel = button == ButtonDuel && g_canDuel;
+        if (button >= 0 && !LastPage())
+        {
+            ShowPage(g_page + 1); // "Continuar"
+            return;
+        }
+
+        g_chosenCommand = button >= 0 && button < static_cast<int>(g_buttons.size()) ? g_buttons[button].command : "";
         SetPhase(Phase::FadeOut);
+    }
+
+    void StartScene(WORD id)
+    {
+        g_rival = id;
+        g_chosenCommand.clear();
+        ShowPage(0);
+        g_sceneMap = *CurrentMap;
+        g_sceneStart = GetTickCount();
+        if (CameraOnRival())
+        {
+            SetPhase(Phase::Showing); // otro dialogo durante la escena: sin fundido
+        }
+        else
+        {
+            SetPhase(Phase::FadeIn);
+        }
     }
 
     void OnDialogue(const BYTE* packet, int size)
@@ -371,25 +434,111 @@ namespace
             offset += static_cast<int>(length) + 1;
         }
 
-        g_rival = id;
-        g_canDuel = canDuel;
-        g_choseDuel = false;
         g_title = strings[0];
         g_reason = strings[2];
-        Wrap(strings[1]);
-        g_revealed = 0.0f;
-        g_sceneMap = *CurrentMap;
-        g_sceneStart = GetTickCount();
-        if (CameraOnRival())
+        g_pages.assign(1, strings[1]);
+        g_buttons.clear();
+        if (canDuel)
         {
-            SetPhase(Phase::Showing); // otro dialogo durante la escena: sin fundido
-        }
-        else
-        {
-            SetPhase(Phase::FadeIn);
+            char command[48];
+            sprintf_s(command, "/espectro duelo %d", id);
+            g_buttons.push_back({ "Duelo", command });
         }
 
+        g_buttons.push_back({ "Volver m\xE1s tarde", "" });
+        StartScene(id);
         g_log("Cinematicas: dialogo de %s (objeto %d, duelo %d).", g_title.c_str(), id, canDuel ? 1 : 0);
+    }
+
+    // Lee un texto terminado en 0; devuelve false si el paquete se corta antes.
+    bool ReadText(const BYTE* packet, int size, int& offset, std::string& text)
+    {
+        if (offset >= size)
+        {
+            return false;
+        }
+
+        const char* start = reinterpret_cast<const char*>(packet + offset);
+        const size_t length = strnlen(start, static_cast<size_t>(size - offset));
+        if (offset + static_cast<int>(length) >= size)
+        {
+            return false; // sin el 0 del final
+        }
+
+        text.assign(start, length);
+        offset += static_cast<int>(length) + 1;
+        return true;
+    }
+
+    // C2 [largo] FF 30 [objeto] [paginas] [botones] titulo, nota, paginas y botones ([id] texto).
+    void OnStoryScene(const BYTE* packet, int size)
+    {
+        if (size < 11)
+        {
+            return;
+        }
+
+        const WORD id = static_cast<WORD>(((packet[5] << 8) | packet[6]) & IdMask);
+        const int pageCount = packet[7];
+        const int buttonCount = packet[8];
+        int offset = 9;
+        std::string title, note, text;
+        std::vector<std::string> pages;
+        std::vector<SceneButton> buttons;
+        if (pageCount < 1 || !ReadText(packet, size, offset, title) || !ReadText(packet, size, offset, note))
+        {
+            return;
+        }
+
+        for (int i = 0; i < pageCount; i++)
+        {
+            if (!ReadText(packet, size, offset, text))
+            {
+                return;
+            }
+
+            pages.push_back(text);
+        }
+
+        for (int i = 0; i < buttonCount; i++)
+        {
+            if (offset >= size)
+            {
+                return;
+            }
+
+            const int buttonId = packet[offset++];
+            if (!ReadText(packet, size, offset, text))
+            {
+                return;
+            }
+
+            if (buttons.size() < MaxButtons)
+            {
+                char command[48] = "";
+                if (buttonId > 0)
+                {
+                    sprintf_s(command, "/historia %d %d", buttonId, id);
+                }
+
+                buttons.push_back({ text, command });
+            }
+        }
+
+        if (buttons.empty())
+        {
+            buttons.push_back({ "Cerrar", "" });
+        }
+
+        g_title = title;
+        g_reason = note;
+        g_pages = pages;
+        g_buttons = buttons;
+        g_rivalMounted = false;
+        g_turnedRival = false;
+        StartScene(id);
+        g_log("Cinematicas: escena de %s (objeto %d, %d paginas, %d botones).", g_title.c_str(), id, pageCount,
+            static_cast<int>(g_buttons.size()));
     }
 
     void OnSpectresPacket(const BYTE* packet, int size)
@@ -414,6 +563,12 @@ namespace
                 OnSpectresPacket(packet, size);
                 return 1;
             }
+        }
+        else if (code == CodeInterface && packet != nullptr && size >= 5 && packet[0] == 0xC2
+            && packet[4] == SubCodeStoryScene)
+        {
+            OnStoryScene(packet, size);
+            return 1;
         }
 
         return g_nextDispatch(code, packet, size, encrypted);
@@ -457,11 +612,10 @@ namespace
         case Phase::FadeOut:
             if (elapsed >= FadeDuration)
             {
-                if (g_choseDuel)
+                if (!g_chosenCommand.empty())
                 {
-                    char text[48];
-                    sprintf_s(text, "/espectro duelo %d", g_rival);
-                    QueueChat(text);
+                    QueueChat(g_chosenCommand.c_str());
+                    g_chosenCommand.clear();
                 }
 
                 SetPhase(Phase::Returning);
@@ -667,6 +821,10 @@ namespace
             {
                 g_revealed = static_cast<float>(g_textLength); // un click muestra todo el texto
             }
+            else if (ButtonsEnabled() && !LastPage() && MouseInBox())
+            {
+                ShowPage(g_page + 1); // un click en la caja pasa de pagina
+            }
         }
 
         return 1;
@@ -733,7 +891,7 @@ namespace
                     keyStates[VK_ESCAPE] = KeyUp;
                     if (g_phase == Phase::Showing)
                     {
-                        Choose(ButtonLater);
+                        Choose(ButtonClose);
                     }
                 }
 
@@ -825,13 +983,8 @@ namespace
             Outline(box, 0.55f, 0.35f, 0.8f, 0.9f);
             if (ButtonsEnabled())
             {
-                for (int button : { ButtonDuel, ButtonLater })
+                for (int button = 0; button < VisibleButtons(); button++)
                 {
-                    if (button == ButtonDuel && !g_canDuel)
-                    {
-                        continue;
-                    }
-
                     const Rect rect = ButtonRect(button);
                     const bool hovered = button == hover;
                     Fill(rect, hovered ? 0.4f : 0.12f, hovered ? 0.25f : 0.08f, hovered ? 0.55f : 0.18f, 0.95f);
@@ -897,24 +1050,26 @@ namespace
             top += LineHeight;
         }
 
+        if (g_pages.size() > 1)
+        {
+            char pageNumber[24];
+            sprintf_s(pageNumber, "%u / %u", static_cast<unsigned>(g_page + 1), static_cast<unsigned>(g_pages.size()));
+            Text(pageNumber, BoxLeft + BoxWidth - 72, BoxTop + 8, 60, SortCenter, Color(150, 130, 180), false);
+        }
+
         if (ButtonsEnabled())
         {
-            if (!g_reason.empty() && g_revealed >= g_textLength)
+            if (LastPage() && !g_reason.empty() && g_revealed >= g_textLength)
             {
                 Text(g_reason.c_str(), BoxLeft + 12, BoxTop + BoxHeight - ButtonHeight - 26, BoxWidth - 24, SortLeft,
                     Color(255, 150, 110), false);
             }
 
-            for (int button : { ButtonDuel, ButtonLater })
+            for (int button = 0; button < VisibleButtons(); button++)
             {
-                if (button == ButtonDuel && !g_canDuel)
-                {
-                    continue;
-                }
-
                 const Rect rect = ButtonRect(button);
-                Text(button == ButtonDuel ? "Duelo" : "Volver m\xE1s tarde", rect.left, rect.top + 3, rect.width, SortCenter,
-                    button == hover ? Color(255, 240, 255) : Color(220, 200, 240), false);
+                Text(LastPage() ? g_buttons[button].label.c_str() : "Continuar", rect.left, rect.top + 3, rect.width,
+                    SortCenter, button == hover ? Color(255, 240, 255) : Color(220, 200, 240), false);
             }
         }
 

@@ -24,6 +24,7 @@ public sealed class SpectreDuelContext : MiniGameContext
     private Player? _owner;
     private SpectreKind _kind;
     private int _tier;
+    private StoryDuel? _story;
     private RivalPlayer? _rival;
     private int _result;
     private int _rivalSpawnStarted;
@@ -78,16 +79,18 @@ public sealed class SpectreDuelContext : MiniGameContext
     /// <param name="owner">The player.</param>
     /// <param name="kind">The kind of the rival.</param>
     /// <param name="tier">The tier of the rival.</param>
+    /// <param name="story">The duel of the story mode, if the rival is a character of the story instead of a rival of the hub.</param>
     /// <returns><c>true</c>, if the duel is prepared for this rival.</returns>
-    internal bool Prepare(Player owner, SpectreKind kind, int tier)
+    internal bool Prepare(Player owner, SpectreKind kind, int tier, StoryDuel? story = null)
     {
         if (Interlocked.CompareExchange(ref this._owner, owner, null) is { } existingOwner)
         {
-            return ReferenceEquals(existingOwner, owner) && this._kind == kind && this._tier == tier;
+            return ReferenceEquals(existingOwner, owner) && this._kind == kind && this._tier == tier && ReferenceEquals(this._story, story);
         }
 
         this._kind = kind;
         this._tier = tier;
+        this._story = story;
         return true;
     }
 
@@ -164,7 +167,7 @@ public sealed class SpectreDuelContext : MiniGameContext
 
         if (this._rival is not { } rival)
         {
-            await owner.ShowBlueMessageAsync("El espectro no llego al duelo.").ConfigureAwait(false);
+            await owner.ShowBlueMessageAsync(this._story is null ? "El espectro no llego al duelo." : "Tu rival no llego al duelo.").ConfigureAwait(false);
             this.FinishEvent();
             return;
         }
@@ -192,15 +195,23 @@ public sealed class SpectreDuelContext : MiniGameContext
         }
 
         await owner.InvokeViewPlugInAsync<IDuelEndedPlugIn>(p => p.DuelEndedAsync()).ConfigureAwait(false);
-        var rivalName = SpectreEvolution.GetTitleWithArticle(this._kind, this._tier);
+        var rivalName = this._story?.RivalNameWithArticle ?? SpectreEvolution.GetTitleWithArticle(this._kind, this._tier);
         switch ((DuelResult)this._result)
         {
+            case DuelResult.Victory when this._story is { } story:
+                await story.FinishedAsync(owner, true).ConfigureAwait(false);
+                break;
             case DuelResult.Victory:
                 await this.WinAsync(owner, rivalName).ConfigureAwait(false);
                 break;
             case DuelResult.Defeat:
                 await owner.ShowGoldenMessageAsync($"{char.ToUpperInvariant(rivalName[0])}{rivalName[1..]} te vencio").ConfigureAwait(false);
                 await owner.ShowBlueMessageAsync("Podes volver a desafiarlo cuando quieras.").ConfigureAwait(false);
+                if (this._story is { } lostStory)
+                {
+                    await lostStory.FinishedAsync(owner, false).ConfigureAwait(false);
+                }
+
                 break;
             default:
                 await owner.ShowGoldenMessageAsync("Empate: se termino el tiempo").ConfigureAwait(false);
@@ -300,8 +311,11 @@ public sealed class SpectreDuelContext : MiniGameContext
     {
         try
         {
+            var story = this._story;
             if (owner.Account is not { } account
-                || await SpectreRivals.GetOrCreateCharacterAsync(owner, this._kind, this._tier).ConfigureAwait(false) is not { } characterName)
+                || await (story is null
+                    ? SpectreRivals.GetOrCreateCharacterAsync(owner, this._kind, this._tier)
+                    : SpectreRivals.GetOrCreateStoryCharacterAsync(owner, story)).ConfigureAwait(false) is not { } characterName)
             {
                 return;
             }
@@ -313,7 +327,7 @@ public sealed class SpectreDuelContext : MiniGameContext
                 await Task.Delay(100, cancellationToken).ConfigureAwait(false);
             }
 
-            var rival = new RivalPlayer(this.GameContext, owner, this._kind, this._tier, SpectreHub.DuelRivalStart);
+            var rival = new RivalPlayer(this.GameContext, owner, this._kind, this._tier, SpectreHub.DuelRivalStart, story?.RivalName);
             rival.CurrentMiniGame = this;
             this._rival = rival;
             if (!await rival.InitializeAsync(SpectreRivals.GetLoginName(account), characterName).ConfigureAwait(false))
@@ -331,7 +345,7 @@ public sealed class SpectreDuelContext : MiniGameContext
                 return;
             }
 
-            await owner.ShowGoldenMessageAsync($"Duelo contra {SpectreEvolution.GetTitleWithArticle(this._kind, this._tier)}").ConfigureAwait(false);
+            await owner.ShowGoldenMessageAsync($"Duelo contra {story?.RivalNameWithArticle ?? SpectreEvolution.GetTitleWithArticle(this._kind, this._tier)}").ConfigureAwait(false);
             await owner.ShowBlueMessageAsync("Pierde el primero que se queda sin vida. Nadie muere.").ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -352,7 +366,11 @@ public sealed class SpectreDuelContext : MiniGameContext
             await this.StopRivalAsync().ConfigureAwait(false);
             if (ReferenceEquals(owner.CurrentMiniGame, this) && owner.PlayerState.CurrentState == PlayerState.EnteredWorld)
             {
-                if (!await SpectreHub.EnterHubAsync(owner).ConfigureAwait(false))
+                if (this._story is { } story)
+                {
+                    await story.ReturnAsync(owner).ConfigureAwait(false);
+                }
+                else if (!await SpectreHub.EnterHubAsync(owner).ConfigureAwait(false))
                 {
                     await owner.WarpToSafezoneAsync().ConfigureAwait(false);
                 }

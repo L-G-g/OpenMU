@@ -162,6 +162,15 @@ public static class SpectreHub
     /// </summary>
     /// <param name="kind">The kind.</param>
     /// <returns>The name.</returns>
+    /// <summary>
+    /// Lets the player enter a duel of the story mode, see <see cref="StoryDuel"/>.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="duel">The duel.</param>
+    /// <returns><c>true</c>, if the player entered the duel.</returns>
+    internal static ValueTask<bool> EnterStoryDuelAsync(Player player, StoryDuel duel)
+        => EnterAsync(player, DuelGameLevel, game => (game as SpectreDuelContext)?.Prepare(player, duel.Kind, duel.SkillTier, duel) is true);
+
     internal static string GetRivalName(SpectreKind kind)
     {
         var name = SpectreClasses.GetName(kind);
