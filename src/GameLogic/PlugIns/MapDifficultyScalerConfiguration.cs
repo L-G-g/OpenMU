@@ -56,14 +56,14 @@ public class MapDifficultyScalerConfiguration
 
         // The monsters of Crywolf have the stats of the ones of Swamp of Calmness, so they get its multipliers, too.
         // The army of Balgass of the event keeps the multipliers of the map.
-        new(310, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Hammer Scout, like Swamp of Calmness, 252 resets
-        new(311, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Lance Scout, like Swamp of Calmness, 252 resets
-        new(312, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Bow Scout, like Swamp of Calmness, 252 resets
-        new(313, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Werewolf, like Swamp of Calmness, 252 resets
-        new(314, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Scout Hero, like Swamp of Calmness, 252 resets
-        new(315, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Werewolf Hero, like Swamp of Calmness, 252 resets
-        new(316, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Balram, like Swamp of Calmness, 252 resets
-        new(317, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Soram, like Swamp of Calmness, 252 resets
+        new(310, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Hammer Scout, like Swamp of Calmness, 252 resets
+        new(311, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Lance Scout, like Swamp of Calmness, 252 resets
+        new(312, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Bow Scout, like Swamp of Calmness, 252 resets
+        new(313, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Werewolf, like Swamp of Calmness, 252 resets
+        new(314, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Scout Hero, like Swamp of Calmness, 252 resets
+        new(315, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Werewolf Hero, like Swamp of Calmness, 252 resets
+        new(316, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Balram, like Swamp of Calmness, 252 resets
+        new(317, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Soram, like Swamp of Calmness, 252 resets
     ];
 
     /// <summary>
@@ -72,20 +72,20 @@ public class MapDifficultyScalerConfiguration
     /// <returns>The default multipliers of the maps.</returns>
     internal static List<DifficultyMultipliers> CreateDefaultMaps() =>
     [
-        new(2, 8.86f, 4.19f, 2.46f, 4.49f, 9.5f), // Devias, 2 resets
+        new(2, 5.21f, 3.82f, 2.07f, 4.41f, 7.56f), // Devias, below the weakest monsters of Dungeon (each stat 3 % lower), so a bit less than 2 resets
         new(1, 4.92f, 3.78f, 1.92f, 4.24f, 7.43f), // Dungeon, 8 resets
-        new(4, 5.13f, 4.56f, 2.1f, 5.65f, 7.6f), // Lost Tower, 19 resets
-        new(7, 4.07f, 3.99f, 1.76f, 7.11f, 7.66f), // Atlans, 33 resets
-        new(8, 4.75f, 5.03f, 2.23f, 9.04f, 8.88f), // Tarkan, 52 resets
-        new(33, 4.19f, 6.3f, 2.37f, 9.64f, 8.79f), // Aida, 75 resets
-        new(10, 4.09f, 5.15f, 2.45f, 9.95f, 8.89f), // Icarus, 102 resets
-        new(37, 4.07f, 5.91f, 2.17f, 10.13f, 8.85f), // Kanturu Ruins, 133 resets
+        new(4, 4.84f, 4.07f, 1.93f, 5.65f, 7.6f), // Lost Tower, 19 resets
+        new(7, 4.52f, 3.99f, 1.91f, 7.11f, 7.66f), // Atlans, 33 resets
+        new(8, 4.46f, 5.03f, 2.23f, 9.04f, 8.88f), // Tarkan, 52 resets
+        new(33, 4.36f, 5.07f, 2.37f, 9.64f, 8.79f), // Aida, 75 resets
+        new(10, 4.22f, 5.15f, 2.33f, 9.95f, 8.78f), // Icarus, 102 resets
+        new(37, 4.18f, 5.83f, 2.23f, 10.13f, 8.85f), // Kanturu Ruins, 133 resets
         new(38, 5.57f, 5.93f, 2.59f, 11.96f, 10.02f), // Kanturu Relics, 169 resets
-        new(80, 6.64f, 8.39f, 2.85f, 13.21f, 10.5f), // Karutan, 208 resets
-        new(81, 6.64f, 8.39f, 2.85f, 13.21f, 10.5f), // Karutan, 208 resets
-        new(56, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Swamp of Calmness, 252 resets
-        new(57, 3.14f, 4.21f, 2.37f, 3.32f, 3.37f), // Raklion, 300 resets
-        new(58, 3.14f, 4.21f, 2.37f, 3.32f, 3.37f), // Raklion, 300 resets
+        new(80, 5.5f, 6.05f, 2.8f, 12.32f, 10.26f), // Karutan, 208 resets
+        new(81, 5.5f, 6.05f, 2.8f, 12.32f, 10.26f), // Karutan, 208 resets
+        new(56, 4.48f, 5.27f, 2.62f, 11.25f, 8.04f), // Swamp of Calmness, 252 resets
+        new(57, 4.5f, 5.17f, 2.59f, 11.04f, 8.25f), // Raklion, 300 resets
+        new(58, 4.5f, 5.17f, 2.59f, 11.04f, 8.25f), // Raklion, 300 resets
         new(12, 1.62f, 3.05f, 1f, 3.85f, 4.52f), // Blood Castle 2, 29 resets
         new(13, 2.43f, 3.91f, 1.23f, 6.16f, 5.66f), // Blood Castle 3, 57 resets
         new(14, 2.78f, 4.1f, 1.47f, 7.66f, 6.58f), // Blood Castle 4, 86 resets
