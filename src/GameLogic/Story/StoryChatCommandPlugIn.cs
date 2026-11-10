@@ -14,11 +14,12 @@ using MUnique.OpenMU.PlugIns;
 /// <c>/historia &lt;button id&gt; &lt;npc id&gt;</c> presses a button of the scene of the NPC, and
 /// <c>/historia hablar &lt;npc id&gt;</c> starts the scene of an NPC. Game masters can also use
 /// <c>/historia paso &lt;number&gt;</c> (sets the last finished step, 0 starts again), <c>/historia dungeon</c>
-/// (counts the dungeon of Devias as finished) and <c>/historia info</c>.
+/// (counts the dungeon of Devias as finished), <c>/historia resets &lt;number&gt;</c> (sets the resets of the character,
+/// for tests) and <c>/historia info</c>.
 /// </summary>
 [Guid("2F8C5A17-6D3E-4B91-A7C4-5E9B1D3F8A62")]
 [PlugIn]
-[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>. Game masters: /historia paso <number>, /historia dungeon, /historia info.")]
+[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>. Game masters: /historia paso <number>, /historia dungeon, /historia resets <number>, /historia info.")]
 [ChatCommandHelp(Command, CharacterStatus.Normal)]
 public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
 {
@@ -66,6 +67,12 @@ public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
             case "dungeon" when isGameMaster:
                 StoryProgress.AddFlag(player, StoryFlags.DungeonFinished);
                 await story.SetProgressAsync(player, StoryProgress.GetFinishedStep(player.SelectedCharacter!)).ConfigureAwait(false);
+                await ShowInfoAsync(player, story).ConfigureAwait(false);
+                return;
+            case "resets" when isGameMaster && arguments.Count == 2 && int.TryParse(arguments[1], out var resets) && player.Attributes is { } attributes:
+                attributes[Attributes.Stats.Resets] = Math.Max(resets, 0);
+                await story.SetProgressAsync(player, StoryProgress.GetFinishedStep(player.SelectedCharacter!)).ConfigureAwait(false);
+                await player.ShowBlueMessageAsync($"Resets: {Math.Max(resets, 0)}.").ConfigureAwait(false);
                 await ShowInfoAsync(player, story).ConfigureAwait(false);
                 return;
             case "info":

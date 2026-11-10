@@ -154,7 +154,7 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         if (!configuration.LockMaps
             || !IsStoryPlayer(player)
             || player.SelectedCharacter is not { } character
-            || character.CharacterStatus >= CharacterStatus.GameMaster
+            || (configuration.GameMastersIgnoreLocks && character.CharacterStatus >= CharacterStatus.GameMaster)
             || !StoryProgress.IsAvailable(player.GameContext.Configuration))
         {
             return null;

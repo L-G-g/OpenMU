@@ -42,8 +42,14 @@ public class StoryConfiguration
     /// <summary>
     /// Gets or sets a value indicating whether the maps are locked until the story opens them.
     /// </summary>
-    [Display(Name = "Lock maps", Description = "If enabled, the players can't warp or walk to the maps below until the story opens them. Game masters can always enter.")]
+    [Display(Name = "Lock maps", Description = "If enabled, the players can't warp or walk to the maps below until the story opens them.")]
     public bool LockMaps { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether game masters can enter the locked maps.
+    /// </summary>
+    [Display(Name = "Game masters ignore the map locks", Description = "If enabled, game masters can always enter the locked maps. Disable it to test the story with a game master.")]
+    public bool GameMastersIgnoreLocks { get; set; } = true;
 
     /// <summary>
     /// Gets or sets the numbers of the maps which the stranger opens after the duel (step 3).
