@@ -1,4 +1,4 @@
-# C1 FE - CharacterLevelUpPoints (by server)
+# C1 FF 20 - CharacterLevelUpPoints (by server)
 
 ## Is sent when
 
@@ -13,6 +13,7 @@ The client keeps up to 65535 points itself and shows the real amount in the char
 | Index | Length | Data Type | Value | Description |
 |-------|--------|-----------|-------|-------------|
 | 0 | 1 |   Byte   | 0xC1  | [Packet type](PacketTypes.md) |
-| 1 | 1 |    Byte   |   7   | Packet header - length of the packet |
-| 2 | 1 |    Byte   | 0xFE  | Packet header - packet type identifier |
-| 3 | 4 | IntegerBigEndian |  | LevelUpPoints; Gets or sets the free level up points of the character. |
+| 1 | 1 |    Byte   |   8   | Packet header - length of the packet |
+| 2 | 1 |    Byte   | 0xFF  | Packet header - packet type identifier |
+| 3 | 1 |    Byte   | 0x20  | Packet header - sub packet type identifier |
+| 4 | 4 | IntegerBigEndian |  | LevelUpPoints; Gets or sets the free level up points of the character. |

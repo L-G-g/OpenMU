@@ -1325,14 +1325,14 @@ public class PacketStructureTests
     public void CharacterLevelUpPoints_PacketSizeValidation()
     {
         // Fixed-length packet validation
-        const int expectedLength = 7;
+        const int expectedLength = 8;
         var actualLength = CharacterLevelUpPointsRef.Length;
         
         Assert.That(actualLength, Is.EqualTo(expectedLength), 
             "Packet length mismatch: declared length does not match calculated size");
         
         // Validate field 'LevelUpPoints' boundary
-        Assert.That(3 + 4, Is.LessThanOrEqualTo(expectedLength), 
+        Assert.That(4 + 4, Is.LessThanOrEqualTo(expectedLength), 
             "Field 'LevelUpPoints' exceeds packet boundary");
     }
 
