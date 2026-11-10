@@ -338,4 +338,4 @@
   * [C3 F9 01 - OpenNpcDialog (by server)](C3-F9-01-OpenNpcDialog_by-server.md)
   * [C1 FA - ObjectHealthStatus (by server)](C1-FA-ObjectHealthStatus_by-server.md)
   * [C1 FB - CharacterResetCount (by server)](C1-FB-CharacterResetCount_by-server.md)
-  * [C1 FE - CharacterLevelUpPoints (by server)](C1-FE-CharacterLevelUpPoints_by-server.md)
+  * [C1 FF 20 - CharacterLevelUpPoints (by server)](C1-FF-20-CharacterLevelUpPoints_by-server.md)

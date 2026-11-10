@@ -393,9 +393,9 @@ carga si está en la misma carpeta, después de `tabmap.dll` (`src/loadpoints.cp
 Enabled=1                 ; 0: no se carga points.dll
 ```
 
-El servidor (OpenMU) manda `C1 07 FE [puntos, 4 bytes big endian]` cuando el personaje tiene más de
+El servidor (OpenMU) manda `C1 08 FF 20 [puntos, 4 bytes big endian]` cuando el personaje tiene más de
 65535 puntos (o tenía, antes de repartir): después de la información del personaje (`C3 F3 03`), de subir
-de nivel (`C3 F3 05`) y de repartir puntos. El `main.exe` original lo ignora (códigos mayores a `0xF9`).
+de nivel (`C3 F3 05`) y de repartir puntos. El `main.exe` original lo ignora (códigos mayores a `0xF9`). `0xFE` es de `flight.dll`.
 Sin `points.dll` el cliente muestra hasta 65535 y, al llegar a 0, los puntos que quedan se reparten con
 `/add` o se ven al volver a entrar.
 
@@ -403,8 +403,8 @@ Sin `points.dll` el cliente muestra hasta 65535 y, al llegar a 0, los puntos que
 
 | Dirección | Qué es | Uso |
 |---|---|---|
-| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por las otras DLL si están) | Se encadena. `0xFE` se queda en la DLL: pone `min(puntos, 65535)` en los puntos del cliente (`+0x74` de `[0x08128AC8]`) y recuerda los reales; con `C3 F3 03` se olvidan hasta el `0xFE` siguiente |
-| `0x0077FC06` | CALL a `sprintf` (`0x0050D100`) del texto "Point: %d" (texto 217), de 128 bytes en `[EBP-0x238]` | Escribe los puntos reales más lo que el cliente ya descontó desde el último `0xFE` |
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por las otras DLL si están) | Se encadena. `0xFF 0x20` se queda en la DLL (los otros subcódigos de `0xFF` siguen): pone `min(puntos, 65535)` en los puntos del cliente (`+0x74` de `[0x08128AC8]`) y recuerda los reales; con `C3 F3 03` se olvidan hasta el paquete siguiente |
+| `0x0077FC06` | CALL a `sprintf` (`0x0050D100`) del texto "Point: %d" (texto 217), de 128 bytes en `[EBP-0x238]` | Escribe los puntos reales más lo que el cliente ya descontó desde el último paquete |
 
 La experiencia de más de 65535 no necesita DLL: el `main.exe` 1.04d entiende `C3 9C` (experiencia
 de 4 bytes) y el servidor la manda en lugar de varios `C3 16` de hasta 65535.

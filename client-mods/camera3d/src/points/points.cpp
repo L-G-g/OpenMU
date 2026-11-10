@@ -3,20 +3,21 @@
 //
 // El cliente original guarda los puntos libres en un WORD (CHARACTER_ATTRIBUTE +0x74): no sabe de mas de
 // 65535, y al repartir los descuenta el mismo (C1 F3 06, uno por punto). Con mas puntos llegaba a 0 aunque
-// al personaje le quedaban. El servidor (OpenMU) manda C1 07 FE [puntos, 4 bytes big endian] cuando el
+// al personaje le quedaban. El servidor (OpenMU) manda C1 08 FF 20 [puntos, 4 bytes big endian] cuando el
 // personaje tiene mas de 65535 (o tenia, antes de repartir): despues de la informacion del personaje
-// (C3 F3 03), de subir de nivel (C3 F3 05) y de repartir puntos. El main.exe original ignora el codigo 0xFE:
-// su reparto de paquetes (0x006639D0) manda los codigos mayores a 0xF9 al caso por defecto.
+// (C3 F3 03), de subir de nivel (C3 F3 05) y de repartir puntos. El main.exe original ignora el codigo 0xFF:
+// su reparto de paquetes (0x006639D0) manda los codigos mayores a 0xF9 al caso por defecto. 0xFF lo comparten
+// varias DLL por subcodigo (resetbutton.dll 0x00, quests.dll 0x10 a 0x12); 0xFE es de flight.dll.
 //
 // Como funciona:
 //   - La llamada al reparto de paquetes (0x0065FD79) ya puede estar redirigida por otras DLL: se lee a donde
-//     apunta y se llama a eso. El paquete 0xFE se queda aca y no llega al juego: el WORD del cliente pasa a
+//     apunta y se llama a eso. El paquete 0xFF 0x20 se queda aca y no llega al juego: el WORD del cliente pasa a
 //     ser min(puntos, 65535), asi se pueden seguir repartiendo, y se recuerdan los puntos reales. Con
-//     C3 F3 03 (otro personaje, o el mismo despues de un reset) se olvidan hasta el 0xFE siguiente.
+//     C3 F3 03 (otro personaje, o el mismo despues de un reset) se olvidan hasta el 0xFF 0x20 siguiente.
 //   - El texto "Point: %d" de la ventana (texto 217) se escribe con sprintf (0x0077FC06, CALL 0x0050D100 con
 //     el lugar del texto de 128 bytes, el formato y el WORD). Esa llamada pasa por PointTextHook: si se
-//     conocen los puntos reales, escribe esos, mas lo que cambio el WORD desde el ultimo 0xFE (los puntos
-//     que el cliente ya desconto antes de que llegue el 0xFE siguiente).
+//     conocen los puntos reales, escribe esos, mas lo que cambio el WORD desde el ultimo paquete (los
+//     puntos que el cliente ya desconto antes de que llegue el siguiente).
 
 #include "../shared.h"
 
@@ -34,14 +35,15 @@ namespace
     constexpr DWORD LevelUpPointsOffset = 0x74;      // WORD
 
     // --- Paquetes ---
-    constexpr int CodeCharacterInfo = 0xF3, SubCodeCharacterInfo = 0x03, CodePoints = 0xFE;
+    constexpr int CodeCharacterInfo = 0xF3, SubCodeCharacterInfo = 0x03, CodeInterface = 0xFF;
+    constexpr BYTE SubCodePoints = 0x20;
 
     using DispatchType = int(__cdecl*)(int, BYTE*, int, int);
 
     LogFunction g_log = nullptr;
     DispatchType g_nextDispatch = nullptr;
     bool g_known = false;   // false: el servidor no mando puntos de mas (o todavia no llego el paquete)
-    DWORD g_points = 0;     // puntos reales del ultimo 0xFE
+    DWORD g_points = 0;     // puntos reales del ultimo paquete de puntos
     WORD g_clientPoints = 0; // lo que se puso en el WORD del cliente con ese paquete
 
     WORD* ClientPoints()
@@ -55,12 +57,12 @@ namespace
         if (packet != nullptr)
         {
             const int header = packet[0] == 0xC2 || packet[0] == 0xC4 ? 4 : 3;
-            if (code == CodePoints)
+            if (code == CodeInterface && packet[0] == 0xC1 && size >= 8 && packet[3] == SubCodePoints)
             {
                 WORD* clientPoints = ClientPoints();
-                if (packet[0] == 0xC1 && size >= 7 && clientPoints != nullptr)
+                if (clientPoints != nullptr)
                 {
-                    g_points = (static_cast<DWORD>(packet[3]) << 24) | (packet[4] << 16) | (packet[5] << 8) | packet[6];
+                    g_points = (static_cast<DWORD>(packet[4]) << 24) | (packet[5] << 16) | (packet[6] << 8) | packet[7];
                     g_clientPoints = g_points > 0xFFFF ? 0xFFFF : static_cast<WORD>(g_points);
                     *clientPoints = g_clientPoints;
                     g_known = true;

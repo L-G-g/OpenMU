@@ -6883,6 +6883,7 @@ public readonly struct CharacterLevelUpPoints
             header.Type = HeaderType;
             header.Code = Code;
             header.Length = (byte)Math.Min(data.Length, Length);
+            header.SubCode = SubCode;
         }
     }
 
@@ -6894,25 +6895,31 @@ public readonly struct CharacterLevelUpPoints
     /// <summary>
     /// Gets the operation code of this data packet.
     /// </summary>
-    public static byte Code => 0xFE;
+    public static byte Code => 0xFF;
+
+    /// <summary>
+    /// Gets the operation sub-code of this data packet.
+    /// The <see cref="Code" /> is used as a grouping key.
+    /// </summary>
+    public static byte SubCode => 0x20;
 
     /// <summary>
     /// Gets the initial length of this data packet. When the size is dynamic, this value may be bigger than actually needed.
     /// </summary>
-    public static int Length => 7;
+    public static int Length => 8;
 
     /// <summary>
     /// Gets the header of this packet.
     /// </summary>
-    public C1Header Header => new (this._data);
+    public C1HeaderWithSubCode Header => new (this._data);
 
     /// <summary>
     /// Gets or sets gets or sets the free level up points of the character.
     /// </summary>
     public uint LevelUpPoints
     {
-        get => ReadUInt32BigEndian(this._data.Span[3..]);
-        set => WriteUInt32BigEndian(this._data.Span[3..], value);
+        get => ReadUInt32BigEndian(this._data.Span[4..]);
+        set => WriteUInt32BigEndian(this._data.Span[4..], value);
     }
 
     /// <summary>
