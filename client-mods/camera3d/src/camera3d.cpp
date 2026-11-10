@@ -424,6 +424,7 @@ namespace
         LoadFlight(&Log);
         LoadResetButton(&Log);
         LoadQuests(&Log);
+        LoadPoints(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())

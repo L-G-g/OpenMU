@@ -97,6 +97,24 @@ namespace MUnique.OpenMU.GameServer.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The implementation of the IAddExperiencePlugIn for the season 6 client, which sends more than 65535 experience points in one packet..
+        /// </summary>
+        public static string AddExperienceLargePlugIn_Description {
+            get {
+                return ResourceManager.GetString("AddExperienceLargePlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add Experience (season 6).
+        /// </summary>
+        public static string AddExperienceLargePlugIn_Name {
+            get {
+                return ResourceManager.GetString("AddExperienceLargePlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The default implementation of the IAddExperiencePlugIn which is forwarding everything to the game client with specific data packets..
         /// </summary>
         public static string AddExperiencePlugIn_Description {

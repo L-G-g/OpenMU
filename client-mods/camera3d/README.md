@@ -528,6 +528,34 @@ juego). La idea es pasar después a este estilo las ventanas y botones de las ot
 (`0x0065FD79`), dibujo después de la interfaz (`0x004D9CCC`), mouse de las ventanas (`0x00860998`) y el salto en
 "mouse sobre la interfaz" (`0x00860910`).
 
+## Puntos libres de más de 65535 (points.dll)
+
+El cliente original guarda los puntos libres en un número de 16 bits: no sabe de más de 65535, y al
+repartir los descuenta él mismo, así que con más puntos llegaba a 0 aunque al personaje le quedaban.
+`points.dll` muestra en la ventana del personaje (tecla C) los puntos reales (`Point: 72000`) y mantiene
+en el cliente hasta 65535, así se pueden seguir repartiendo con el `+` hasta el último. `camera3d.dll` la
+carga si está en la misma carpeta, después de `tabmap.dll` (`src/loadpoints.cpp`):
+
+```
+[Points]
+Enabled=1                 ; 0: no se carga points.dll
+```
+
+El servidor (OpenMU) manda `C1 07 FE [puntos, 4 bytes big endian]` cuando el personaje tiene más de
+65535 puntos (o tenía, antes de repartir): después de la información del personaje (`C3 F3 03`), de subir
+de nivel (`C3 F3 05`) y de repartir puntos. El `main.exe` original lo ignora (códigos mayores a `0xF9`).
+Sin `points.dll` el cliente muestra hasta 65535 y, al llegar a 0, los puntos que quedan se reparten con
+`/add` o se ven al volver a entrar.
+
+`src/points/points.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por las otras DLL si están) | Se encadena. `0xFE` se queda en la DLL: pone `min(puntos, 65535)` en los puntos del cliente (`+0x74` de `[0x08128AC8]`) y recuerda los reales; con `C3 F3 03` se olvidan hasta el `0xFE` siguiente |
+| `0x0077FC06` | CALL a `sprintf` (`0x0050D100`) del texto "Point: %d" (texto 217), de 128 bytes en `[EBP-0x238]` | Escribe los puntos reales más lo que el cliente ya descontó desde el último `0xFE` |
+
+La experiencia de más de 65535 no necesita DLL: el `main.exe` 1.04d entiende `C3 9C` (experiencia
+de 4 bytes) y el servidor la manda en lugar de varios `C3 16` de hasta 65535.
 ## Ventana de botín de las dungeons (loot.dll)
 
 En una dungeon de OpenMU (plugin "Dungeon") los drops se reparten con una tirada: cada jugador de la
@@ -690,6 +718,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/loadflight.cpp`: carga de `flight.dll` si está junto a la DLL.
 - `src/loadresetbutton.cpp`: carga de `resetbutton.dll` si está junto a la DLL.
 - `src/loadquests.cpp`: carga de `quests.dll` si está junto a la DLL.
+- `src/loadpoints.cpp`: carga de `points.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `cinematicas.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
@@ -705,6 +734,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/ui/`: estilo de PeroniaMU para ventanas y botones nuevos (marco de metal, letras doradas, resplandor).
 - `src/quests/`: `quests.dll`, signos de quest sobre los NPC, ventana de la quest y seguimiento.
 - `src/ui/`: `peroniaui`, estilo de los botones nuevos (se compila dentro de cada DLL que lo usa).
+- `src/points/`: `points.dll`, puntos libres de más de 65535 en la ventana del personaje.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -720,7 +750,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadquests.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadquests.cpp src\loadpoints.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -732,6 +762,7 @@ cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\quests\quests.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\points\points.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -743,8 +774,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll` y `flight.dll`. `muauto.dll`
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `tabmap.dll` y `quests.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `quests.dll` y `points.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

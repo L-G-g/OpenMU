@@ -45,7 +45,7 @@ public class UpdateCharacterStatsPlugIn : IUpdateCharacterStatsPlugIn
             this._player.SelectedCharacter!.CurrentMap!.Number.ToUnsigned(),
             (ulong)this._player.SelectedCharacter.Experience,
             (ulong)this._player.GameServerContext.ExperienceTable[(int)this._player.Attributes![Stats.Level] + 1],
-            (ushort)Math.Max(0, this._player.SelectedCharacter.LevelUpPoints),
+            (ushort)Math.Clamp(this._player.SelectedCharacter.LevelUpPoints, 0, ushort.MaxValue),
             (ushort)this._player.Attributes[Stats.BaseStrength],
             (ushort)this._player.Attributes[Stats.BaseAgility],
             (ushort)this._player.Attributes[Stats.BaseVitality],
@@ -74,6 +74,8 @@ public class UpdateCharacterStatsPlugIn : IUpdateCharacterStatsPlugIn
             // Not part of the original protocol: the client mod resets.dll shows it in the character information window.
             await connection.SendCharacterResetCountAsync((uint)this._player.Attributes[Stats.Resets]).ConfigureAwait(false);
         }
+
+        await this._player.SendLevelUpPointsAboveClientLimitAsync().ConfigureAwait(false);
 
         if (this._player.SelectedCharacter.CharacterClass!.IsMasterClass)
         {
