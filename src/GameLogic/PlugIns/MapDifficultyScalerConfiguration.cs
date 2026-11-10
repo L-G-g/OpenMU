@@ -54,8 +54,6 @@ public class MapDifficultyScalerConfiguration
         new(80, 12.38f, 6.33f, 1f, 26.34f, 20.07f), // Golden Lizard King, Box of Kundun +4, 175 resets
         new(82, 10.72f, 8.07f, 1f, 30.86f, 20.23f), // Golden Tantallos, Box of Kundun +5, 225 resets
 
-        new(25, 1.56f, 2.93f, 1.15f, 3.06f, 4.3f), // Ice Queen, below the weakest monster of Dungeon (each stat 3 % lower), also the boss of the dungeon of Devias
-
         // The monsters of Crywolf have the stats of the ones of Swamp of Calmness, so they get its multipliers, too.
         // The army of Balgass of the event keeps the multipliers of the map.
         new(310, 3.49f, 4.83f, 2.62f, 9.86f, 4.73f), // Hammer Scout, like Swamp of Calmness, 252 resets
