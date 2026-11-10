@@ -204,3 +204,22 @@ struct TabMapHost
 // bool StartTabMap(const TabMapHost* host): se llama una vez, despues de StartEspectros.
 using StartTabMapFunction = bool (*)(const TabMapHost* host);
 constexpr const char* StartTabMapName = "StartTabMap";
+
+// --- Puntos libres de mas de 65535 en la ventana del personaje (points.dll) ---
+// camera3d.dll carga points.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Points]
+// Enabled=0), y llama a su funcion exportada StartPoints, despues de tabmap.dll. points.dll encadena la
+// llamada del reparto de paquetes igual que resets.dll.
+
+constexpr int PointsHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a points.dll.
+struct PointsHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Points]
+};
+
+// bool StartPoints(const PointsHost* host): se llama una vez, despues de StartTabMap.
+using StartPointsFunction = bool (*)(const PointsHost* host);
+constexpr const char* StartPointsName = "StartPoints";

@@ -63,5 +63,9 @@ public class StatIncreaseResultPlugIn : IStatIncreaseResultPlugIn
         {
             await connection.SendCharacterStatIncreaseResponseAsync(true, statType, updatedDependentMaximumStat, updatedMaximumShield, updatedMaximumAbility).ConfigureAwait(false);
         }
+
+        // The client counted the points down by itself, which runs out with more than it can know.
+        var previousLevelUpPoints = (this._player.SelectedCharacter?.LevelUpPoints ?? 0) + addedPoints;
+        await this._player.SendLevelUpPointsAboveClientLimitAsync(previousLevelUpPoints).ConfigureAwait(false);
     }
 }

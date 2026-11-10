@@ -21,6 +21,7 @@
   * [C1 15 - ObjectMoved (by server)](C1-15-ObjectMoved_by-server.md)
   * [C3 16 - ExperienceGained (by server)](C3-16-ExperienceGained_by-server.md)
   * [C3 16 - ExperienceGainedExtended (by server)](C3-16-ExperienceGainedExtended_by-server.md)
+  * [C3 9C - ExperienceGainedLarge (by server)](C3-9C-ExperienceGainedLarge_by-server.md)
   * [C1 17 - ObjectGotKilled (by server)](C1-17-ObjectGotKilled_by-server.md)
   * [C1 18 - ObjectAnimation (by server)](C1-18-ObjectAnimation_by-server.md)
   * [C3 19 - SkillAnimation (by server)](C3-19-SkillAnimation_by-server.md)
@@ -337,3 +338,4 @@
   * [C3 F9 01 - OpenNpcDialog (by server)](C3-F9-01-OpenNpcDialog_by-server.md)
   * [C1 FA - ObjectHealthStatus (by server)](C1-FA-ObjectHealthStatus_by-server.md)
   * [C1 FB - CharacterResetCount (by server)](C1-FB-CharacterResetCount_by-server.md)
+  * [C1 FF 20 - CharacterLevelUpPoints (by server)](C1-FF-20-CharacterLevelUpPoints_by-server.md)
