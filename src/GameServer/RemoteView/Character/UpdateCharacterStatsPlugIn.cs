@@ -75,6 +75,8 @@ public class UpdateCharacterStatsPlugIn : IUpdateCharacterStatsPlugIn
             await connection.SendCharacterResetCountAsync((uint)this._player.Attributes[Stats.Resets]).ConfigureAwait(false);
         }
 
+        await this._player.SendLevelUpPointsAboveClientLimitAsync().ConfigureAwait(false);
+
         if (this._player.SelectedCharacter.CharacterClass!.IsMasterClass)
         {
             await this._player.InvokeViewPlugInAsync<IUpdateMasterStatsPlugIn>(p => p.SendMasterStatsAsync()).ConfigureAwait(false);

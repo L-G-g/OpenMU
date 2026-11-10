@@ -64,44 +64,8 @@ public class StatIncreaseResultPlugIn : IStatIncreaseResultPlugIn
             await connection.SendCharacterStatIncreaseResponseAsync(true, statType, updatedDependentMaximumStat, updatedMaximumShield, updatedMaximumAbility).ConfigureAwait(false);
         }
 
-        await this.ResendLevelUpPointsIfClientRanOutAsync(addedPoints).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// The client only knows up to <see cref="ushort.MaxValue"/> level up points and counts them
-    /// down by itself when points are added. With more points, it would show 0 while the character
-    /// still has points left. Whenever the points fall below a multiple of <see cref="ushort.MaxValue"/>,
-    /// the client has at most that many points left, so we send it the current amount again.
-    /// The level update packet is the only one of these clients which sets the points without
-    /// warping the character, but it plays the level up effect, so we send it as rarely as possible.
-    /// </summary>
-    private async ValueTask ResendLevelUpPointsIfClientRanOutAsync(ushort addedPoints)
-    {
-        if (this._player.SelectedCharacter is not { } selectedCharacter
-            || this._player.Attributes is not { } charStats
-            || this._player.Connection is not { } connection)
-        {
-            return;
-        }
-
-        var pointsAfter = selectedCharacter.LevelUpPoints;
-        var pointsBefore = pointsAfter + addedPoints;
-        if (pointsBefore <= ushort.MaxValue
-            || (pointsBefore - 1) / ushort.MaxValue == (pointsAfter - 1) / ushort.MaxValue)
-        {
-            return;
-        }
-
-        await connection.SendCharacterLevelUpdateAsync(
-            (ushort)charStats[Stats.Level],
-            (ushort)Math.Clamp(pointsAfter, 0, ushort.MaxValue),
-            charStats[Stats.MaximumHealth].ToUInt16Clamped(),
-            charStats[Stats.MaximumMana].ToUInt16Clamped(),
-            charStats[Stats.MaximumShield].ToUInt16Clamped(),
-            charStats[Stats.MaximumAbility].ToUInt16Clamped(),
-            (ushort)selectedCharacter.UsedFruitPoints,
-            selectedCharacter.GetMaximumFruitPoints(),
-            (ushort)selectedCharacter.UsedNegFruitPoints,
-            selectedCharacter.GetMaximumFruitPoints()).ConfigureAwait(false);
+        // The client counted the points down by itself, which runs out with more than it can know.
+        var previousLevelUpPoints = (this._player.SelectedCharacter?.LevelUpPoints ?? 0) + addedPoints;
+        await this._player.SendLevelUpPointsAboveClientLimitAsync(previousLevelUpPoints).ConfigureAwait(false);
     }
 }

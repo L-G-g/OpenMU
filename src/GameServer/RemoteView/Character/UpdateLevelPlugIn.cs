@@ -51,6 +51,7 @@ public class UpdateLevelPlugIn : IUpdateLevelPlugIn
             selectedCharacter.GetMaximumFruitPoints(),
             (ushort)selectedCharacter.UsedNegFruitPoints,
             selectedCharacter.GetMaximumFruitPoints()).ConfigureAwait(false);
+        await this._player.SendLevelUpPointsAboveClientLimitAsync().ConfigureAwait(false);
 
         await this._player.ShowLocalizedBlueMessageAsync(nameof(PlayerMessage.LevelUpCongrats), charStats[Stats.Level]).ConfigureAwait(false);
     }

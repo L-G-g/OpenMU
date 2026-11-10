@@ -2513,6 +2513,22 @@
     </Packet>
     <Packet>
       <HeaderType>C1Header</HeaderType>
+      <Code>FE</Code>
+      <Name>CharacterLevelUpPoints</Name>
+      <Length>7</Length>
+      <Direction>ServerToClient</Direction>
+      <SentWhen>The character has more level up points than the original season 6 client can know (65535), and the points were sent to the client or changed by adding stat points. This packet is not part of the original protocol; it's understood by the client mod points.dll of the PeroniaMU season 6 client. The original client ignores it.</SentWhen>
+      <CausedReaction>The client keeps up to 65535 points itself and shows the real amount in the character information window.</CausedReaction>
+      <Fields>
+        <Field>
+          <Index>3</Index>
+          <Type>IntegerBigEndian</Type>
+          <Name>LevelUpPoints</Name>
+          <Description>Gets or sets the free level up points of the character.</Description>
+        </Field>
+      </Fields>
+    </Packet>    <Packet>
+      <HeaderType>C1Header</HeaderType>
       <Code>15</Code>
       <Name>ObjectMoved</Name>
       <Length>8</Length>
@@ -2785,6 +2801,38 @@
       </Enums>
     </Packet>
     <Packet>
+      <HeaderType>C3Header</HeaderType>
+      <Code>9C</Code>
+      <Name>ExperienceGainedLarge</Name>
+      <Length>12</Length>
+      <Direction>ServerToClient</Direction>
+      <SentWhen>A player gained experience. In contrast to ExperienceGained, it can carry more than 65535 experience points at once.</SentWhen>
+      <CausedReaction>The experience is added to the experience counter and bar, and the gained experience is shown in the chat.</CausedReaction>
+      <Fields>
+        <Field>
+          <Index>3</Index>
+          <Type>ShortBigEndian</Type>
+          <Name>KilledObjectId</Name>
+        </Field>
+        <Field>
+          <Index>6</Index>
+          <Type>ShortLittleEndian</Type>
+          <Name>AddedExperienceHigh</Name>
+          <Description>The upper 16 bits of the added experience.</Description>
+        </Field>
+        <Field>
+          <Index>8</Index>
+          <Type>ShortLittleEndian</Type>
+          <Name>AddedExperienceLow</Name>
+          <Description>The lower 16 bits of the added experience.</Description>
+        </Field>
+        <Field>
+          <Index>10</Index>
+          <Type>ShortBigEndian</Type>
+          <Name>DamageOfLastHit</Name>
+        </Field>
+      </Fields>
+    </Packet>    <Packet>
       <HeaderType>C3HeaderWithSubCode</HeaderType>
       <Code>1C</Code>
       <SubCode>0F</SubCode>
