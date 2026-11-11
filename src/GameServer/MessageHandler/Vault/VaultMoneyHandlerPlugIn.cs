@@ -34,6 +34,12 @@ internal class VaultMoneyHandlerPlugIn : IPacketHandlerPlugIn
         switch (request.Direction)
         {
             case VaultMoveMoneyRequest.VaultMoneyMoveDirection.InventoryToVault:
+                if (player.IsMarketDepotOpen())
+                {
+                    await player.ShowBlueMessageAsync("El depósito del mercado no guarda zen.").ConfigureAwait(false);
+                    break;
+                }
+
                 player.TryDepositVaultMoney(request.Amount);
                 break;
             case VaultMoveMoneyRequest.VaultMoneyMoveDirection.VaultToInventory:

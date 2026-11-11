@@ -53,4 +53,9 @@ public enum MiniGameType
     /// A dungeon: an instance of a hunting map for a party, with stronger monsters and a boss.
     /// </summary>
     Dungeon,
+
+    /// <summary>
+    /// The spectre hub: an instance for one player, where the player duels the abandoned spectres to unlock and evolve them.
+    /// </summary>
+    SpectreHub,
 }

@@ -204,3 +204,112 @@ struct TabMapHost
 // bool StartTabMap(const TabMapHost* host): se llama una vez, despues de StartEspectros.
 using StartTabMapFunction = bool (*)(const TabMapHost* host);
 constexpr const char* StartTabMapName = "StartTabMap";
+
+// --- Monturas voladoras (flight.dll) ---
+// camera3d.dll carga flight.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Flight]
+// Enabled=0), y llama a su funcion exportada StartFlight, despues de tabmap.dll. flight.dll encadena el reparto
+// de paquetes; camera3d.dll le avisa antes y despues del dibujo de la escena principal (despues del movimiento
+// fluido) y en cada paso de logica.
+
+constexpr int FlightHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a flight.dll.
+struct FlightHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Flight]
+    void (*setRenderHooks)(BeforeRenderCallback before, BeforeRenderCallback after);
+    void (*setKeyTick)(KeyTickCallback callback);
+};
+
+// bool StartFlight(const FlightHost* host): se llama una vez, despues de StartTabMap.
+using StartFlightFunction = bool (*)(const FlightHost* host);
+constexpr const char* StartFlightName = "StartFlight";
+
+// float FlightHeroLift(): altura de vuelo dibujada del personaje propio (0 en el suelo). Opcional.
+using FlightHeroLiftFunction = float (*)();
+constexpr const char* FlightHeroLiftName = "FlightHeroLift";
+
+// --- Escenas de dialogo con los espectros (cinematicas.dll) ---
+// camera3d.dll carga cinematicas.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Cinematicas]
+// Enabled=0), y llama a su funcion exportada StartCinematicas, despues de espectros.dll (asi ve primero los paquetes FD
+// y le pasa a espectros.dll los que no son suyos). cinematicas.dll encadena el reparto de paquetes, el dibujo despues de
+// la interfaz y el mouse de las ventanas a lo que haya. La camara y el teclado los recibe de camera3d.dll.
+
+constexpr int CinematicasHostVersion = 1;
+
+// Se llama en cada cuadro, despues de que camera3d.dll calculo la camara (posicion x, y, z y angulos: inclinacion, -,
+// giro). Devuelve true si la cambio: camera3d.dll no le aplica su zoom ni su inclinacion.
+using CameraOverride = bool (*)(float* position, float* angle);
+
+// Lo que camera3d.dll le ofrece a cinematicas.dll.
+struct CinematicasHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Cinematicas]
+    void (*setCameraOverride)(CameraOverride callback);
+    void (*setKeyTick)(KeyTickCallback callback);
+};
+
+// bool StartCinematicas(const CinematicasHost* host): se llama una vez, despues de StartEspectros.
+using StartCinematicasFunction = bool (*)(const CinematicasHost* host);
+constexpr const char* StartCinematicasName = "StartCinematicas";
+
+// --- Boton de reset (resetbutton.dll) ---
+// camera3d.dll carga resetbutton.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([ResetButton]
+// Enabled=0), y llama a su funcion exportada StartResetButton, despues de tabmap.dll. resetbutton.dll encadena el
+// reparto de paquetes, el dibujo despues de la interfaz y el mouse de las ventanas que ya redirigieron otras DLL.
+
+constexpr int ResetButtonHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a resetbutton.dll.
+struct ResetButtonHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [ResetButton]
+};
+
+// bool StartResetButton(const ResetButtonHost* host): se llama una vez, despues de StartTabMap.
+using StartResetButtonFunction = bool (*)(const ResetButtonHost* host);
+constexpr const char* StartResetButtonName = "StartResetButton";
+// --- Quests de skills (quests.dll) ---
+// camera3d.dll carga quests.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Quests]
+// Enabled=0), y llama a su funcion exportada StartQuests, despues de tabmap.dll. quests.dll encadena el reparto de
+// paquetes, el comienzo de la interfaz (como healthbars.dll), el dibujo despues de la interfaz y el mouse de las
+// ventanas a lo que haya.
+
+constexpr int QuestsHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a quests.dll.
+struct QuestsHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer las secciones [Quests] y [PeroniaUi]
+};
+
+// bool StartQuests(const QuestsHost* host): se llama una vez, despues de StartTabMap.
+using StartQuestsFunction = bool (*)(const QuestsHost* host);
+constexpr const char* StartQuestsName = "StartQuests";
+
+// --- Puntos libres de mas de 65535 en la ventana del personaje (points.dll) ---
+// camera3d.dll carga points.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Points]
+// Enabled=0), y llama a su funcion exportada StartPoints, despues de tabmap.dll. points.dll encadena la
+// llamada del reparto de paquetes igual que resets.dll.
+
+constexpr int PointsHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a points.dll.
+struct PointsHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [Points]
+};
+
+// bool StartPoints(const PointsHost* host): se llama una vez, despues de StartTabMap.
+using StartPointsFunction = bool (*)(const PointsHost* host);
+constexpr const char* StartPointsName = "StartPoints";

@@ -97,6 +97,24 @@ namespace MUnique.OpenMU.GameServer.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The implementation of the IAddExperiencePlugIn for the season 6 client, which sends more than 65535 experience points in one packet..
+        /// </summary>
+        public static string AddExperienceLargePlugIn_Description {
+            get {
+                return ResourceManager.GetString("AddExperienceLargePlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add Experience (season 6).
+        /// </summary>
+        public static string AddExperienceLargePlugIn_Name {
+            get {
+                return ResourceManager.GetString("AddExperienceLargePlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The default implementation of the IAddExperiencePlugIn which is forwarding everything to the game client with specific data packets..
         /// </summary>
         public static string AddExperiencePlugIn_Description {
@@ -7943,10 +7961,22 @@ namespace MUnique.OpenMU.GameServer.Properties {
         /// <summary>Gets the localized ShowLootRollViewPlugIn_Description text.</summary>
         public static string ShowLootRollViewPlugIn_Description => ResourceManager.GetString("ShowLootRollViewPlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized ShowResetAvailableViewPlugIn_Name text.</summary>
+        public static string ShowResetAvailableViewPlugIn_Name => ResourceManager.GetString("ShowResetAvailableViewPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowResetAvailableViewPlugIn_Description text.</summary>
+        public static string ShowResetAvailableViewPlugIn_Description => ResourceManager.GetString("ShowResetAvailableViewPlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized ShowSpectresViewPlugIn_Name text.</summary>
         public static string ShowSpectresViewPlugIn_Name => ResourceManager.GetString("ShowSpectresViewPlugIn_Name", resourceCulture)!;
 
         /// <summary>Gets the localized ShowSpectresViewPlugIn_Description text.</summary>
         public static string ShowSpectresViewPlugIn_Description => ResourceManager.GetString("ShowSpectresViewPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowFlightStatePlugIn_Name text.</summary>
+        public static string ShowFlightStatePlugIn_Name => ResourceManager.GetString("ShowFlightStatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized ShowFlightStatePlugIn_Description text.</summary>
+        public static string ShowFlightStatePlugIn_Description => ResourceManager.GetString("ShowFlightStatePlugIn_Description", resourceCulture)!;
     }
 }

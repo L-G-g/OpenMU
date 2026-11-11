@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
 using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlayerActions.MiniGames;
+using MUnique.OpenMU.GameLogic.Spectres;
 
 /// <summary>
 /// Action to enter the dungeon with the whole party.
@@ -47,13 +48,13 @@ public class DungeonEntryAction
             return;
         }
 
-        if (leader.Party is { } party && !ReferenceEquals(party.PartyMaster, leader))
+        if (leader.GetPlayerParty() is { } party && !ReferenceEquals(party.PartyMaster, leader))
         {
             await leader.ShowBlueMessageAsync(DungeonMessages.OnlyPartyLeader).ConfigureAwait(false);
             return;
         }
 
-        var members = leader.Party?.PartyList.OfType<Player>().ToList() ?? new List<Player> { leader };
+        var members = leader.GetPlayerParty()?.PartyList.OfType<Player>().ToList() ?? new List<Player> { leader };
         var now = DateTime.UtcNow;
         var problems = members
             .Select(member => (Member: member, Problem: GetEntryProblem(member, definition, configuration, now)))

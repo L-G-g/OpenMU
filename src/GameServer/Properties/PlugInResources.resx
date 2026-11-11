@@ -723,6 +723,12 @@
   <data name="AddExperienceExtendedPlugIn_Description" xml:space="preserve">
     <value>The extended implementation of the IAddExperiencePlugIn which is forwarding everything to the game client with specific data packets.</value>
   </data>
+  <data name="AddExperienceLargePlugIn_Name" xml:space="preserve">
+    <value>Add Experience (season 6)</value>
+  </data>
+  <data name="AddExperienceLargePlugIn_Description" xml:space="preserve">
+    <value>The implementation of the IAddExperiencePlugIn for the season 6 client, which sends more than 65535 experience points in one packet.</value>
+  </data>
   <data name="AddExperiencePlugIn_Name" xml:space="preserve">
     <value>Add Experience</value>
   </data>
@@ -2758,5 +2764,17 @@
   </data>
   <data name="ShowItemCraftingPreviewExtendedPlugIn_Description" xml:space="preserve">
     <value>The extended implementation of the IShowItemCraftingPreviewPlugIn which is forwarding everything to the game client with specific data packets.</value>
+  </data>
+  <data name="ShowFlightStatePlugIn_Name" xml:space="preserve">
+    <value>Show Flight State (flight.dll)</value>
+  </data>
+  <data name="ShowFlightStatePlugIn_Description" xml:space="preserve">
+    <value>Sends the custom packet C1 06 FE when a player starts or stops flying, or a flying player comes into view. Understood by the flight.dll client mod; the original client ignores it.</value>
+  </data>
+  <data name="ShowResetAvailableViewPlugIn_Name" xml:space="preserve">
+    <value>Show Reset Button (resetbutton.dll)</value>
+  </data>
+  <data name="ShowResetAvailableViewPlugIn_Description" xml:space="preserve">
+    <value>Tells the reset button of resetbutton.dll of the PeroniaMU client whether the character can reset (packet C1 FF 00). The original client ignores it.</value>
   </data>
 </root>

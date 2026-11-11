@@ -1190,6 +1190,34 @@ public static class ConnectionExtensions
     }
 
     /// <summary>
+    /// Sends a <see cref="CharacterLevelUpPoints" /> to this connection.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
+    /// <param name="levelUpPoints">Gets or sets the free level up points of the character.</param>
+    /// <remarks>
+    /// Is sent by the server when: The character has more level up points than the original season 6 client can know (65535), and the points were sent to the client or changed by adding stat points. This packet is not part of the original protocol; it's understood by the client mod points.dll of the PeroniaMU season 6 client. The original client ignores it.
+    /// Causes reaction on client side: The client keeps up to 65535 points itself and shows the real amount in the character information window.
+    /// </remarks>
+    public static async ValueTask SendCharacterLevelUpPointsAsync(this IConnection? connection, uint @levelUpPoints)
+    {
+        if (connection is null)
+        {
+            return;
+        }
+
+        int WritePacket()
+        {
+            var length = CharacterLevelUpPointsRef.Length;
+            var packet = new CharacterLevelUpPointsRef(connection.Output.GetSpan(length)[..length]);
+            packet.LevelUpPoints = @levelUpPoints;
+
+            return packet.Header.Length;
+        }
+
+        await connection.SendAsync(WritePacket).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Sends a <see cref="ObjectMoved" /> to this connection.
     /// </summary>
     /// <param name="connection">The connection.</param>
@@ -1402,6 +1430,40 @@ public static class ConnectionExtensions
             packet.DamageOfLastHit = @damageOfLastHit;
             packet.KilledObjectId = @killedObjectId;
             packet.KillerObjectId = @killerObjectId;
+
+            return packet.Header.Length;
+        }
+
+        await connection.SendAsync(WritePacket).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sends a <see cref="ExperienceGainedLarge" /> to this connection.
+    /// </summary>
+    /// <param name="connection">The connection.</param>
+    /// <param name="killedObjectId">The killed object id.</param>
+    /// <param name="addedExperienceHigh">The upper 16 bits of the added experience.</param>
+    /// <param name="addedExperienceLow">The lower 16 bits of the added experience.</param>
+    /// <param name="damageOfLastHit">The damage of last hit.</param>
+    /// <remarks>
+    /// Is sent by the server when: A player gained experience. In contrast to ExperienceGained, it can carry more than 65535 experience points at once.
+    /// Causes reaction on client side: The experience is added to the experience counter and bar, and the gained experience is shown in the chat.
+    /// </remarks>
+    public static async ValueTask SendExperienceGainedLargeAsync(this IConnection? connection, ushort @killedObjectId, ushort @addedExperienceHigh, ushort @addedExperienceLow, ushort @damageOfLastHit)
+    {
+        if (connection is null)
+        {
+            return;
+        }
+
+        int WritePacket()
+        {
+            var length = ExperienceGainedLargeRef.Length;
+            var packet = new ExperienceGainedLargeRef(connection.Output.GetSpan(length)[..length]);
+            packet.KilledObjectId = @killedObjectId;
+            packet.AddedExperienceHigh = @addedExperienceHigh;
+            packet.AddedExperienceLow = @addedExperienceLow;
+            packet.DamageOfLastHit = @damageOfLastHit;
 
             return packet.Header.Length;
         }

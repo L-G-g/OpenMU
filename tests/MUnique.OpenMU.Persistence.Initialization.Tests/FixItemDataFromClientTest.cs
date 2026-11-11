@@ -1,4 +1,4 @@
-// <copyright file="FixItemDataFromClientTest.cs" company="MUnique">
+﻿// <copyright file="FixItemDataFromClientTest.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -30,6 +30,7 @@ internal class FixItemDataFromClientTest
         using var _ = context;
 
         AssertCorrectedData(gameConfiguration);
+        Assert.That(GetItem(gameConfiguration, 6, 20).Skill, Is.Null, "shields don't give skills anymore, the skill quests teach them");
         Assert.That(
             gameConfiguration.Items.Where(i => i.Group == 12 && (i.Number is 73 or 74 || i.Number >= 118 && i.Number <= 129)),
             Is.Empty,
@@ -79,7 +80,6 @@ internal class FixItemDataFromClientTest
             Assert.That(darkBreaker.QualifiedCharacters.Select(c => (CharacterClassNumber)c.Number), Is.EquivalentTo(new[] { CharacterClassNumber.BladeKnight, CharacterClassNumber.BladeMaster }));
             Assert.That(GetRequirement(frostMace, Stats.Level), Is.EqualTo(380));
             Assert.That(GetRequirement(GetItem(gameConfiguration, 8, 45), Stats.Level), Is.EqualTo(380));
-            Assert.That(guardianShield.Skill?.Number, Is.EqualTo(18));
 
             Assert.That(helm44.DropLevel, Is.EqualTo(116));
             Assert.That(helm44.Durability, Is.EqualTo(86));

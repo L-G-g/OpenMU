@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
@@ -39,7 +40,10 @@ public class PermanentBuffBelowResetCountPlugIn : IObjectAddedToMapPlugIn, ISupp
     /// <inheritdoc />
     public async ValueTask ObjectAddedToMapAsync(GameMap map, ILocateable addedObject)
     {
+        // The rivals of the spectre hub get their strength from their evolution only: their resets
+        // grow with each evolution, and losing the buff on the way made a higher evolution weaker.
         if (addedObject is not Player { Attributes: { } attributes } player
+            || player is RivalPlayer
             || this.Configuration is not { } configuration
             || player.GameContext.Configuration.MagicEffects.FirstOrDefault(e => e.Number == configuration.EffectNumber) is not { } effectDefinition)
         {

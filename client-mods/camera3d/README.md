@@ -118,6 +118,34 @@ Otros lugares del cliente que también lo frenan y no cambian: la zona segura (e
 el cambio de mapa (`0x006408F0`), el menú de Esc (`0x007D3320`) y el botón del menú principal
 (`0x00868470`).
 
+## Skills de arma sin el arma
+
+En PeroniaMU las armas no dan skills: las skills de arma (Defense, Falling Slash, Lunge, Uppercut, Cyclone,
+Slash, Triple Shot, Power Slash, Force Wave, Killing Blow, Beast Uppercut, Phoenix Shot) se aprenden con las
+quests de skills. El cliente original solo las deja usar si el arma equipada las trae; con `camera3d.dll` se
+usan con cualquier arma o sin arma, siempre que estén en la lista de skills que manda el servidor.
+
+```
+[WeaponSkills]
+Enabled=1   ; 0: las skills de arma necesitan el arma, como el juego original
+```
+
+`src/weaponskills.cpp` cambia tres lugares del cliente (una skill de arma tiene `+0x54 == 1` en la tabla de
+skills `[0x08128ABC]`, `0x58` bytes por skill):
+
+- `0x004EAC90` (`bool __thiscall (skill)`): devuelve true para una skill de arma solo si el item de una mano
+  (`[0x08128AC4] +0x1240` o `+0x12AB`) la tiene. Lo usan el icono de la skill (gris), el lanzamiento y el
+  árbol de maestría. Se reemplaza: true si la skill de arma está en la lista de skills del personaje, si no lo
+  original.
+- `0x005AD1A2` (`JNZ 0x005AFF59`): en el lanzamiento de los guerreros (`0x005AD040`), sin arma en la mano
+  derecha o con un bastón solo siguen unas pocas skills. Las skills de arma aprendidas siguen.
+- `0x005B554A` y `0x005B557B`: las llamadas que lanzan la skill con el item de cada mano (`0x0059B580`,
+  `0x005A0A30`) solo la lanzan si está en la lista de skills del item (`+0x25` cantidad, `+0x26` números).
+  Reciben una copia del item con la skill elegida en su lista.
+
+Lo que no cambia: montado en Uniria, Dinorant o Fenrir, Defense a Slash y algunas skills del Rage Fighter
+siguen sin poder usarse, como en el juego original.
+
 ## Barras de vida de los monstruos (healthbars.dll)
 
 Sobre los monstruos dañados se dibuja una barra chica de tamaño fijo: fondo oscuro con borde y relleno
@@ -258,6 +286,87 @@ no se camina, `0x08` sin suelo) y se manda por tramos de 10 baldosas, uno cada v
 frena, en el paso de lógica (lo llama `camera3d.dll` después de actualizar las teclas). La caminata se corta
 al llegar, al cambiar de mapa, al morir o si el jugador mueve al personaje de otra forma.
 
+## Monturas voladoras (flight.dll)
+
+Con el Dinorant o alas de tercer nivel equipadas (y las capas de Emperor y Overrule), Shift+V (o `/volar` en el
+chat) despega: el personaje sube, vuela por encima de paredes, árboles y casas (no por encima del vacío) y va x1,5
+más rápido. Las alas de primer y segundo nivel no vuelan (configurable en el plugin: factor 0).
+Volando no se puede atacar ni usar skills, y los monstruos no lo atacan. Otra vez Shift+V aterriza, solo sobre
+suelo caminable. Quien decide es el servidor (plugin "Flight" de OpenMU: Dinorant o alas, mapas comunes, no en
+combate ni en la zona segura); `camera3d.dll` carga `flight.dll` si está en la misma carpeta (`src/loadflight.cpp`).
+
+Con alas (sin el Dinorant) las poses se arman ajustando los huesos en cada cuadro, sin tocar archivos del juego:
+al despegar se agacha y salta (sube rápido, estirado con los brazos en V), quieto en el aire queda parado,
+moviéndose va inclinado (60°) con los brazos hacia atrás a lo largo del cuerpo y las piernas juntas, con un vaivén
+lento, y al aterrizar baja planeando hasta la mitad de la altura, frena (cuerpo hacia atrás, piernas y brazos
+adelante) y termina de bajar. Desde el despegue hasta el aterrizaje no se dibujan las armas ni el escudo (`+0x1C0`
+y `+0x1E4` en -1 solo mientras se dibuja la escena). Con otra montura (Fenrir, Dark Horse,
+Uniria) la montura no se dibuja mientras vuela y vuelve al aterrizar. Con el Dinorant queda la pose de jinete de
+Icarus.
+
+Huesos: `0x005440B0` es `BMD::Animation` (thiscall: `BoneTransform` (`0x07BC08A0`), cuadro (`+0x8C`), cuadro
+anterior (`+0x90`), acción anterior (`+0x14`), `Angle` (`+0x108`), `HeadAngle` (`+0x114`), ...). Arma la matriz
+3x4 de cada hueso (padre × local). Después de llamarla, para el personaje que vuela con alas (`Angle - 0x108 - 0x308`),
+se gira cada miembro con todo lo que cuelga de él alrededor de su articulación para apuntarlo hacia una dirección
+y se inclina el cuerpo desde la pelvis. Adelante es `(sen giro, -cos giro, 0)` (el paso `0x00564DD0` avanza por
+`(0, -1, 0)` girado). El modelo del jugador es `0x48B` (`*(*(0x00E8C200) + 8) + 0x48B × 0x104`): 60 huesos
+(`+0x22`), cada uno de `0x8C` bytes en `+0x2C` (nombre, `+0x20` padre, `+0x22` vacío): pelvis 2, muslos 3/10,
+pantorrillas 4/11, pies 5/12, columna 17/18, cuello 19, cabeza 20, claviculas 25/34, brazos 26/35, antebrazos 27/36,
+manos 28/37. La acción quieto la elige `0x0054EA80` (con Fenrir `0x7A`-`0x7D`); `0x005518F0` es la de atacar.
+
+Las alas (el modelo de `+0x208`) se animan con la misma función justo después del cuerpo, con un `OBJECT` propio de su modelo: se atribuyen al último personaje animado y se elige su cuadro: un solo aletazo grande al despegar, aleteos lentos volando hacia adelante, dos aletazos al frenar y la animación normal quieto en el aire.
+
+```
+[Flight]
+Enabled=1           ; 0: no se carga flight.dll
+SpeedFactor=1.5     ; solo con servidores que no mandan el factor de cada uno
+Height=350          ; altura de vuelo (una baldosa son 100)
+ClimbPerSecond=250  ; velocidad al despegar y aterrizar
+Key=V               ; letra, número o código de tecla en hexadecimal (0x56); 0 sin tecla
+KeyShift=1          ; 1: Shift + la tecla
+```
+
+El servidor manda `C1 06 FE [número del objeto, 2 bytes big endian] [factor de velocidad en %, 0 no vuela]`
+cuando alguien despega, aterriza o cambia de alas, y cuando uno que vuela entra a la vista; el `main.exe` original
+lo ignora. Un 1 (servidores viejos) usa `SpeedFactor`.
+
+
+`src/flight/flight.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x00564B20` | `float Velocidad(personaje)`: 12 caminando, 15 alas/Uniria/Dinorant, 16-19 caballo/Fenrir, x0,5 con hielo | Salto al principio (6 bytes al trampolín): x `SpeedFactor` si vuela. La usa el paso de movimiento (`0x00564DD0`) de todos los personajes |
+| `0x00542D20` | Búsqueda de camino (x, y, destino, `PATH*` = personaje `+0x274`, distancia, pared) | Una baldosa se pisa si su atributo (`0x082C6AA0`) es menor que "pared" (2): volando se pasa 8, se cruza `0x04` y no `0x08`. También mueve a los otros jugadores |
+| `0x0065FD79` | CALL al reparto de paquetes (encadenado) | `0xFE` marca quién vuela; `0x14` (salen de la vista) los desmarca |
+
+La altura se suma solo para dibujar: el juego pone a los personajes sobre el terreno (+30 con Dinorant, +90 en
+Tarkan e Icarus) en muchos lugares, así que `camera3d.dll` avisa antes y después del dibujo de la escena (después
+del movimiento fluido, `src/frames.cpp`) y `flight.dll` sube la posición (`+0x404`) y después devuelve el valor
+exacto. La cámara sigue al personaje subido. Necesita FPS mayor a 25 (con 25 no se envuelve el dibujo).
+
+La montura y las mascotas son objetos aparte ("bugs": 10 `OBJECT` de `0x288` bytes en `0x08791550`, vivo en
+`+0x04`, posición en `+0xFC`, dueño en `+0x1D8` = `OBJECT` del personaje, `+0x308`). Copian la posición del
+dueño en el paso de lógica (`0x00501790`) y no al dibujar (`0x00503770`), así que se suben y se devuelven igual.
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x00501790` | Paso de un bug (`OBJECT*`, flag): el Dinorant (bug `0x143`) usa las acciones de vuelo (1, 3, 5, 7, alas abiertas) si el mundo (`0x00E61E18`) es 8 o 10 | Salto al principio (9 bytes al trampolín): si el dueño vuela, el mundo es 10 durante la llamada |
+| `0x00542D20` (final) | Escribe el camino: `PATH+2` cantidad de puntos (con el de inicio), `+3` las x, `+0x12` las y (15 como máximo), `+0`/`+1` en 0 | Volando se escribe una línea recta (Bresenham, pasos de 8 direcciones) en vez del A*, que zigzaguea; si la línea pisa una baldosa `0x08` se usa el A* con pared 8 |
+
+| `0x0054F710` | Acción del personaje al caminar: con el Dinorant, en los mundos 8 y 10 no pone la de correr montado (sube y baja); con alas (`+0x208`) fuera de la zona segura usa la de volar (`0x22`/`0x23`) cuando el contador de correr (`+0x25`) llega a 40 | Salto al principio: si vuela, el mundo es 10 durante la llamada y, con alas, el contador queda en 40. Al despegar y aterrizar con alas se la llama quieto (aletea) y al llegar arriba o al suelo se llama a `0x005518F0` (acción quieto) |
+| `0x08967FE8` (200), `0x097622F0` (100) | Efectos (`OBJECT`, mismo dueño en `+0x1D8`) | Se suben y se devuelven como la montura |
+| `0x09778748` (1000), `0x087C5708` (500, `0xA18` bytes: vivo `+0x00`, dueño `+0x54`) | Partículas con estela (`0x007711C0`) y uniones (`0x00735DC0` borra las de un dueño), por ejemplo el remolino del buff del Elf Soldier: se dibujan con las posiciones anteriores guardadas en el paso de lógica | Mientras el dueño vuela no se dibujan (vivo en 0 durante el dibujo) |
+
+`flight.dll` exporta `float FlightHeroLift()` (la altura dibujada del personaje propio); `camera3d.dll` la usa, si
+está, para agrandar el terreno visible y la distancia de dibujo (+1 vez por cada 500 de altura), así volando no
+aparecen baldosas negras en los bordes.
+| `0x005428B0` | Avance por el `PATH` (personaje, girar): curva por cada 4 puntos (`PATH+1` es el tramo, 0 a 3), gira (`+0x418`) hacia ese objetivo y llega a menos de 20 | Volando gira hacia el último punto (`0x00540C30`, suavizado con `0x005410A0`/`0x00540EA0` como el original), el punto actual pasa al más cercano y llega a menos de 20 del final: va derecho en vez de seguir la escalera |
+
+Volando, el suelo dibujado sigue al terreno de a poco (3 por segundo), así que el personaje no sube y baja con
+cada desnivel.
+
+Volando no se puede despegar en la zona segura y al entrar a una se aterriza solo (lo decide el servidor).
+
 ## Herramientas de prueba (muauto.dll)
 
 Las herramientas de prueba están en otra DLL, `muauto.dll`, que **no** forma parte del cliente de
@@ -380,6 +489,73 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 | `0x0077F9B7` | `JNZ` en los textos de la ventana (`0x0077F990`): si la clase es de tercera clase (`0x005878E0`) escribe "Master" (texto 1745) | Pasa a `JMP`: siempre "Level: %d" (texto 200) y la experiencia (texto 201) |
 | `0x0077FA10` | CALL a `sprintf` (`0x0050D100`) del texto del nivel, de 32 bytes en `[EBP-0x128]` | Escribe el nivel y le agrega `Format` con los resets |
 
+## Botón de reset (resetbutton.dll) y estilo de PeroniaMU (src/ui)
+
+Cuando el personaje puede resetear (nivel, zen, límite de resets e items: lo mismo que pide `/reset`), aparece
+un botón **Reset** abajo en el centro de la pantalla, arriba de la barra de habilidades. Tiene el estilo nuevo
+de PeroniaMU: marco de metal oscuro con bisel (como los botones de la entrada a Devil Square), letras doradas con
+borde oscuro y un resplandor dorado detrás que late, con rayos que giran despacio y un reflejo que cruza el botón.
+El click manda el chat `/reset`. `camera3d.dll` la carga si está en la misma carpeta, después de `tabmap.dll`
+(`src/loadresetbutton.cpp`):
+
+```
+[ResetButton]
+Enabled=1      ; 0: no se carga resetbutton.dll
+Bottom=420     ; borde de abajo del botón, en coordenadas de 640x480 (la barra empieza en 429)
+Width=120
+Height=24
+Text=RESET
+FontSize=13.5  ; alto de las letras en coordenadas de 480 (0: la fuente negrita del juego, más chica)
+
+[PeroniaUi]
+; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)
+StoneTexture=Data\Interface\newui_msgbox_back.OZJ
+; marco original de los botones (el de Devil Square, 3 estados uno debajo del otro); vacio: marco dibujado
+ButtonTexture=Data\Interface\newui_btn_empty_big.OZT
+ButtonStates=3
+```
+
+El servidor (plugins "Reset button", que revisa cada segundo, y "Show Reset Button (resetbutton.dll)") manda
+`C1 05 FF 00 [0 o 1]` cuando cambia y, mientras se puede resetear, cada 3 segundos. El código `0xFF` queda para
+las ventanas y botones de PeroniaMU (subcódigo `0x00`: el botón de reset). El `main.exe` original lo ignora. Con
+`C3 F3 03` (entrar al juego, otro personaje, después de un reset) el botón se esconde hasta el próximo aviso, y
+después de un click se esconde 4 segundos esperando la respuesta.
+
+El estilo está en `src/ui/peroniaui.h` / `peroniaui.cpp`, que se compila dentro de cada DLL que lo usa:
+`MetalButton` (el marco original de los botones de Devil Square, `newui_btn_empty_big.OZT`: un TGA con 4 bytes de cabecera, dibujado en tres partes para que las puntas no se deformen; sin ese archivo, un marco dibujado con la cara de piedra de la interfaz original: lee el `.OZJ` del cliente, que es un JPEG con una cabecera adelante, lo decodifica con WIC y lo repite a su tamaño real; sin el archivo queda metal liso), `Glow` (resplandor), `Shine` (reflejo) y `ButtonText` (texto dorado con la fuente del
+juego). La idea es pasar después a este estilo las ventanas y botones de las otras DLL (`loot.dll`,
+`espectros.dll`, etc.). Las llamadas que encadena son las mismas que `espectros.dll`: reparto de paquetes
+(`0x0065FD79`), dibujo después de la interfaz (`0x004D9CCC`), mouse de las ventanas (`0x00860998`) y el salto en
+"mouse sobre la interfaz" (`0x00860910`).
+
+## Puntos libres de más de 65535 (points.dll)
+
+El cliente original guarda los puntos libres en un número de 16 bits: no sabe de más de 65535, y al
+repartir los descuenta él mismo, así que con más puntos llegaba a 0 aunque al personaje le quedaban.
+`points.dll` muestra en la ventana del personaje (tecla C) los puntos reales (`Point: 72000`) y mantiene
+en el cliente hasta 65535, así se pueden seguir repartiendo con el `+` hasta el último. `camera3d.dll` la
+carga si está en la misma carpeta, después de `tabmap.dll` (`src/loadpoints.cpp`):
+
+```
+[Points]
+Enabled=1                 ; 0: no se carga points.dll
+```
+
+El servidor (OpenMU) manda `C1 08 FF 20 [puntos, 4 bytes big endian]` cuando el personaje tiene más de
+65535 puntos (o tenía, antes de repartir): después de la información del personaje (`C3 F3 03`), de subir
+de nivel (`C3 F3 05`) y de repartir puntos. El `main.exe` original lo ignora (códigos mayores a `0xF9`). `0xFE` es de `flight.dll`.
+Sin `points.dll` el cliente muestra hasta 65535 y, al llegar a 0, los puntos que quedan se reparten con
+`/add` o se ven al volver a entrar.
+
+`src/points/points.cpp`:
+
+| Dirección | Qué es | Uso |
+|---|---|---|
+| `0x0065FD79` | CALL al reparto de paquetes (ya redirigido por las otras DLL si están) | Se encadena. `0xFF 0x20` se queda en la DLL (los otros subcódigos de `0xFF` siguen): pone `min(puntos, 65535)` en los puntos del cliente (`+0x74` de `[0x08128AC8]`) y recuerda los reales; con `C3 F3 03` se olvidan hasta el paquete siguiente |
+| `0x0077FC06` | CALL a `sprintf` (`0x0050D100`) del texto "Point: %d" (texto 217), de 128 bytes en `[EBP-0x238]` | Escribe los puntos reales más lo que el cliente ya descontó desde el último paquete |
+
+La experiencia de más de 65535 no necesita DLL: el `main.exe` 1.04d entiende `C3 9C` (experiencia
+de 4 bytes) y el servidor la manda en lugar de varios `C3 16` de hasta 65535.
 ## Ventana de botín de las dungeons (loot.dll)
 
 En una dungeon de OpenMU (plugin "Dungeon") los drops se reparten con una tirada: cada jugador de la
@@ -470,6 +646,59 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 `camera3d.dll` le avisa al empezar cada cuadro, le pasa el teclado en cada paso de lógica y le pregunta antes de equipar un item con click derecho
 (`src/rightclick.cpp`): con la ventana abierta, el item va al espectro.
 
+## Escenas con los espectros del refugio (cinematicas.dll)
+
+En el refugio de los espectros no hay duelo por cercanía: un click sobre un espectro rival empieza una
+escena. La pantalla se va a negro, la cámara pasa a primera persona mirando al espectro (el personaje
+propio no se dibuja), aparecen bandas de cine arriba y abajo y el espectro cuenta su parte de la historia
+en una caja de diálogo, letra por letra (un click la muestra entera). Abajo, "Duelo" (solo si el servidor
+dice que se puede ahora; si no, el espectro dice por qué) y "Volver más tarde" (o Esc). Al elegir, la
+pantalla se va a negro y la cámara vuelve a la normal. `camera3d.dll` la carga si está en la misma
+carpeta, después de `espectros.dll` (`src/loadcinematicas.cpp`):
+
+```ini
+[Cinematicas]
+Enabled=1               ; 0: no se carga cinematicas.dll
+Frontal=1               ; escenas de la historia: la cámara se pone de frente al NPC, sin importar desde dónde se habló
+FrontAngle=0            ; grados que se suman al giro del NPC para esa cámara (por si un modelo mira torcido)
+```
+
+El servidor (la misma vista `ShowSpectresViewPlugIn`) marca a los rivales con `C1 06 FD 05 [objeto]` cada
+pocos segundos; un click sobre uno manda `/espectro hablar [objeto]`. El diálogo llega en
+`C2 [largo] FD 04 [objeto] [se puede pelear] [clase] [bit 0: con montura]` con tres textos Latin-1 terminados en 0 (nombre, lo
+que dice y por qué no se puede pelear); "Duelo" manda `/espectro duelo [objeto]`. Los demás paquetes `FD`
+siguen a `espectros.dll`.
+
+La cámara: `camera3d.dll` llama a `cinematicas.dll` después de calcular la suya en cada cuadro; durante la
+escena la DLL pone la posición (a 230 unidades del espectro, del lado del personaje, a la altura de los
+ojos) y los ángulos (inclinación -90 = horizonte, giro hacia el espectro), y `camera3d.dll` no aplica su
+zoom ni su inclinación y agranda el terreno visible. El click: en el paso de lógica (`camera3d.dll`), si
+se aprieta el botón izquierdo con un rival marcado bajo el mouse (`0x00E61730`), se borran los botones del
+juego (`0x08793384`) para que el personaje no camine ni ataque.
+## Quests de skills (quests.dll)
+
+Con `quests.dll` los NPC que enseñan skills (plugin "Skill quests" del servidor) muestran un signo flotando
+sobre la cabeza: `!` dorado si hay una quest para aceptar, `?` dorado si la quest está lista para entregar y
+`?` gris si está en curso. Un click en el signo (no en el NPC, que sigue abriendo su ventana de siempre) abre
+la ventana de la quest con los objetivos, el progreso y la recompensa, y el botón Aceptar o Entregar. Las
+quests activas se ven en un recuadro de seguimiento a la derecha. `camera3d.dll` la carga si está en la misma
+carpeta (`src/loadquests.cpp`):
+
+```
+[Quests]
+Enabled=1       ; 0: sin signos ni ventana
+TrackerTop=70    ; altura del seguimiento (640x480); va pegado al borde derecho de la pantalla
+TrackerCollapsed=1 ; 1: el seguimiento queda plegado (solo el borde dorado) y se despliega con el mouse encima
+MarkSize=1      ; tamaño de los signos (0.5 a 3)
+HeadMargin=70   ; altura del signo sobre la cabeza del NPC (unidades del mundo)
+```
+
+El servidor manda `C2 FF 10` (signos de los NPC cercanos, cada 3 segundos), `C2 FF 11` (seguimiento) y
+`C2 FF 12` (ventana de la quest); el código `0xFF` es el de la interfaz de PeroniaMU. La DLL contesta con el
+comando de chat `/quest`. `src/quests/quests.cpp` encadena el reparto de paquetes, el comienzo de la interfaz
+(`0x004D9C86`, como `healthbars.dll`: ahí proyecta los signos, sobre el mundo y debajo de las ventanas), el
+dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el estilo de `src/ui/peroniaui`.
+
 ## Archivos
 
 - `src/camera3d.cpp`: la DLL (cámara e inicio de los demás mods).
@@ -478,6 +707,7 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/fps.cpp`, `src/frames.cpp`, `src/interpolation.cpp`: FPS y movimiento fluido.
 - `src/minimap.cpp`: hotspots en violeta en el mapa del TAB.
 - `src/muhelper.cpp`: el MU Helper sigue con el inventario abierto.
+- `src/weaponskills.cpp`: las skills de arma aprendidas se usan sin el arma.
 - `src/testtools.cpp`: carga de `muauto.dll` si está junto a la DLL.
 - `src/loadhealthbars.cpp`: carga de `healthbars.dll` si está junto a la DLL.
 - `src/loadelites.cpp`: carga de `elites.dll` si está junto a la DLL.
@@ -485,16 +715,28 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 - `src/loadstacks.cpp`: carga de `stacks.dll` si está junto a la DLL.
 - `src/loadloot.cpp`: carga de `loot.dll` si está junto a la DLL.
 - `src/loadespectros.cpp`: carga de `espectros.dll` si está junto a la DLL.
+- `src/loadcinematicas.cpp`: carga de `cinematicas.dll` si está junto a la DLL, y su cámara.
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
+- `src/loadflight.cpp`: carga de `flight.dll` si está junto a la DLL.
+- `src/loadresetbutton.cpp`: carga de `resetbutton.dll` si está junto a la DLL.
+- `src/loadquests.cpp`: carga de `quests.dll` si está junto a la DLL.
+- `src/loadpoints.cpp`: carga de `points.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
-  `resets.dll`, `stacks.dll`, `loot.dll` y `espectros.dll`.
+  `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `cinematicas.dll`.
 - `src/healthbars/`: `healthbars.dll`, barras de vida de los monstruos.
 - `src/elites/`: `elites.dll`, nombre y brillo de los monstruos elite.
 - `src/resets/`: `resets.dll`, nivel y resets en la ventana del personaje.
 - `src/stacks/`: `stacks.dll`, pociones que se juntan arrastrando hasta 255.
 - `src/loot/`: `loot.dll`, ventana de need, greed y pass de las dungeons.
 - `src/espectros/`: `espectros.dll`, ventana de espectros (Shift+S) y espectros transparentes.
+- `src/cinematicas/`: `cinematicas.dll`, escenas de diálogo con los espectros del refugio.
 - `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
+- `src/flight/`: `flight.dll`, monturas voladoras.
+- `src/resetbutton/`: `resetbutton.dll`, botón Reset cuando el personaje puede resetear.
+- `src/ui/`: estilo de PeroniaMU para ventanas y botones nuevos (marco de metal, letras doradas, resplandor).
+- `src/quests/`: `quests.dll`, signos de quest sobre los NPC, ventana de la quest y seguimiento.
+- `src/ui/`: `peroniaui`, estilo de los botones nuevos (se compila dentro de cada DLL que lo usa).
+- `src/points/`: `points.dll`, puntos libres de más de 65535 en la ventana del personaje.
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -510,14 +752,19 @@ inventario>`, `/espectro quitar <clase> <casillero>`, `/espectro puntos ...` y `
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadtabmap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadquests.cpp src\loadpoints.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\quests\quests.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\points\points.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -529,7 +776,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `tabmap.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `quests.dll` y `points.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

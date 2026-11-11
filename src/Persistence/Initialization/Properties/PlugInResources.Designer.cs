@@ -347,6 +347,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
                 return ResourceManager.GetString("DataInitialization095d_Name", resourceCulture);
             }
         }
+        /// <summary>Gets the localized SpectreHubUpdatePlugIn_Description text.</summary>
+        public static string SpectreHubUpdatePlugIn_Description => ResourceManager.GetString("SpectreHubUpdatePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreHubUpdatePlugIn_Name text.</summary>
+        public static string SpectreHubUpdatePlugIn_Name => ResourceManager.GetString("SpectreHubUpdatePlugIn_Name", resourceCulture)!;
+
         /// <summary>Gets the localized AddCrescentMoonSlashForDarkKnight_Name text.</summary>
         public static string AddCrescentMoonSlashForDarkKnight_Name => ResourceManager.GetString("AddCrescentMoonSlashForDarkKnight_Name", resourceCulture)!;
 
@@ -364,6 +370,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
 
         /// <summary>Gets the localized AddManaRaysForMagicGladiator_Description text.</summary>
         public static string AddManaRaysForMagicGladiator_Description => ResourceManager.GetString("AddManaRaysForMagicGladiator_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized AddAbolishMagicForDarkLord_Name text.</summary>
+        public static string AddAbolishMagicForDarkLord_Name => ResourceManager.GetString("AddAbolishMagicForDarkLord_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized AddAbolishMagicForDarkLord_Description text.</summary>
+        public static string AddAbolishMagicForDarkLord_Description => ResourceManager.GetString("AddAbolishMagicForDarkLord_Description", resourceCulture)!;
 
         /// <summary>Gets the localized AddFireBlastForDarkLord_Name text.</summary>
         public static string AddFireBlastForDarkLord_Name => ResourceManager.GetString("AddFireBlastForDarkLord_Name", resourceCulture)!;
@@ -971,11 +983,23 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
         /// <summary>Gets the localized IceQueenDungeonUpdatePlugIn_Description text.</summary>
         public static string IceQueenDungeonUpdatePlugIn_Description => ResourceManager.GetString("IceQueenDungeonUpdatePlugIn_Description", resourceCulture)!;
 
+        /// <summary>Gets the localized MapDropsAndInvasionsUpdatePlugIn_Name text.</summary>
+        public static string MapDropsAndInvasionsUpdatePlugIn_Name => ResourceManager.GetString("MapDropsAndInvasionsUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MapDropsAndInvasionsUpdatePlugIn_Description text.</summary>
+        public static string MapDropsAndInvasionsUpdatePlugIn_Description => ResourceManager.GetString("MapDropsAndInvasionsUpdatePlugIn_Description", resourceCulture)!;
+
         /// <summary>Gets the localized StrongGoldenMobsUpdatePlugIn_Name text.</summary>
         public static string StrongGoldenMobsUpdatePlugIn_Name => ResourceManager.GetString("StrongGoldenMobsUpdatePlugIn_Name", resourceCulture)!;
 
         /// <summary>Gets the localized StrongGoldenMobsUpdatePlugIn_Description text.</summary>
         public static string StrongGoldenMobsUpdatePlugIn_Description => ResourceManager.GetString("StrongGoldenMobsUpdatePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MarketDepotNpcUpdatePlugIn_Name text.</summary>
+        public static string MarketDepotNpcUpdatePlugIn_Name => ResourceManager.GetString("MarketDepotNpcUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MarketDepotNpcUpdatePlugIn_Description text.</summary>
+        public static string MarketDepotNpcUpdatePlugIn_Description => ResourceManager.GetString("MarketDepotNpcUpdatePlugIn_Description", resourceCulture)!;
 
         /// <summary>Gets the localized ZenByMonsterLevelUpdatePlugIn_Name text.</summary>
         public static string ZenByMonsterLevelUpdatePlugIn_Name => ResourceManager.GetString("ZenByMonsterLevelUpdatePlugIn_Name", resourceCulture)!;

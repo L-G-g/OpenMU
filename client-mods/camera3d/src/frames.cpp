@@ -472,8 +472,11 @@ namespace
             TrailsBeforeRender(!g_extraFrame, static_cast<float>(t > 1.0 ? 1.0 : t));
         }
 
+        // Despues del movimiento fluido: flight.dll sube a los que vuelan y despues devuelve el valor exacto.
+        FlightBeforeRender();
         const auto render = reinterpret_cast<RenderFunctionType>(Scenes[2].render);
         const char result = g_diagnostics != nullptr ? g_diagnostics(render, g_extraFrame != 0) : render();
+        FlightAfterRender();
         InterpolationAfterRender();
         TrailsAfterRender();
         InterpolationSetFrame(false, false, 0.0f);
