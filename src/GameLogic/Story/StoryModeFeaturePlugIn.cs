@@ -304,6 +304,7 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         }
 
         var scene = this.CreateScene(player, character, actor, step);
+        player.InvulnerableUntilUtc = DateTime.UtcNow.AddSeconds(Math.Clamp(this.CurrentConfiguration.SceneProtectionSeconds, 0, 3600));
         await player.InvokeViewPlugInAsync<IStorySceneViewPlugIn>(p => p.ShowSceneAsync(npc, scene)).ConfigureAwait(false);
         return true;
     }
@@ -317,6 +318,8 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     /// <returns>The task.</returns>
     public async ValueTask HandleButtonAsync(Player player, NonPlayerCharacter npc, byte buttonId)
     {
+        // Every button closes the scene (the client also sends the ones which only close it).
+        player.InvulnerableUntilUtc = default;
         if (GetActor(npc.Definition) is not { } actor
             || !IsStoryPlayer(player)
             || npc.CurrentMap != player.CurrentMap
@@ -567,15 +570,15 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
             return;
         }
 
-        // In front of the stranger.
+        // In front of the stranger, who looks to the south west (towards smaller Y coordinates).
         var gate = new ExitGate
         {
             Map = lorencia,
-            X1 = (byte)Math.Clamp(strangerPosition.X + 1, 0, 255),
-            X2 = (byte)Math.Clamp(strangerPosition.X + 2, 0, 255),
-            Y1 = (byte)Math.Clamp(strangerPosition.Y + 2, 0, 255),
-            Y2 = (byte)Math.Clamp(strangerPosition.Y + 3, 0, 255),
-            Direction = Direction.NorthWest,
+            X1 = strangerPosition.X,
+            X2 = (byte)Math.Clamp(strangerPosition.X + 1, 0, 255),
+            Y1 = (byte)Math.Clamp(strangerPosition.Y - 3, 0, 255),
+            Y2 = (byte)Math.Clamp(strangerPosition.Y - 2, 0, 255),
+            Direction = Direction.NorthEast,
         };
         await player.WarpToAsync(gate).ConfigureAwait(false);
     }

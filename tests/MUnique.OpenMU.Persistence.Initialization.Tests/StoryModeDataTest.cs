@@ -51,13 +51,15 @@ internal class StoryModeDataTest
         var lorencia = gameConfiguration.Maps.Single(m => m.Number == 0);
         var spawn = lorencia.MonsterSpawns.Single(s => s.MonsterDefinition == stranger);
         var terrain = new GameMapTerrain(lorencia);
-        Assert.That(terrain.SafezoneMap[spawn.X1, spawn.Y1], Is.True, "the stranger stands in the town");
+        Assert.That((spawn.X1, spawn.Y1), Is.EqualTo(((byte)141, (byte)208)));
+        Assert.That(terrain.WalkMap[spawn.X1, spawn.Y1], Is.True, "the stranger stands on a free tile");
+        Assert.That(terrain.SafezoneMap[spawn.X1, spawn.Y1], Is.False, "outside of the town: the plugin protects the players during his scenes");
         Assert.That(lorencia.MonsterSpawns.Where(s => s != spawn).Any(s => s.X1 == spawn.X1 && s.Y1 == spawn.Y1 && s.X2 == s.X1 && s.Y2 == s.Y1), Is.False, "nobody else stands there");
 
         // Where the player comes back to after the duel.
-        for (var x = spawn.X1 + 1; x <= spawn.X1 + 2; x++)
+        for (var x = spawn.X1; x <= spawn.X1 + 1; x++)
         {
-            for (var y = spawn.Y1 + 2; y <= spawn.Y1 + 3; y++)
+            for (var y = spawn.Y1 - 3; y <= spawn.Y1 - 2; y++)
             {
                 Assert.That(terrain.WalkMap[x, y], Is.True, $"{x}, {y}");
             }

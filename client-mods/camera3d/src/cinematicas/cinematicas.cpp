@@ -17,8 +17,8 @@
 // El modo historia (OpenMU, plugin "Story mode") usa la misma escena con cualquier NPC:
 //   - C2 [largo] FF 30 [objeto, 2 bytes big endian] [paginas] [botones] y los textos (Latin-1, cada uno termina en 0):
 //     el nombre del NPC, una nota (puede estar vacia), las paginas y, por cada boton, [id] y su texto. Las paginas se
-//     pasan con "Continuar" (o un click en la caja); los botones salen en la ultima. Un boton con id mayor a 0 manda
-//     /historia [id] [objeto]; el id 0 solo cierra la escena. Los demas paquetes FF siguen a quests.dll y las otras.
+//     pasan con "Continuar" (o un click en la caja); los botones salen en la ultima. Cada boton manda
+//     /historia [id] [objeto]; el id 0 (y Escape) solo cierra la escena. La camara se pone de frente al NPC. Los demas paquetes FF siguen a quests.dll y las otras.
 //
 // Como funciona:
 //   - El reparto de paquetes (0x0065FD79), el dibujo despues de la interfaz (0x004D9CCC), los eventos del mouse de las
@@ -32,6 +32,7 @@
 //   - Durante la escena el personaje propio no se dibuja (byte Visible en 0) y el mouse es de la caja de dialogo.
 
 #include "../shared.h"
+#include "../ui/peroniaui.h"
 
 #include <GL/gl.h>
 #include <math.h>
@@ -153,6 +154,7 @@ namespace
     std::vector<std::string> g_pages;
     size_t g_page = 0;
     std::string g_chosenCommand;
+    std::string g_closeCommand;       // lo que se manda al cerrar con Escape
     std::string g_title;
     std::string g_reason;
     std::deque<std::string> g_lines; // el texto, cortado al ancho de la caja
@@ -163,6 +165,11 @@ namespace
     bool g_rivalMounted = false;
     bool g_turnedRival = false;
     float g_rivalAngle = 0.0f;        // el giro de un espectro con montura, cuando empezo la escena
+    bool g_frontal = false;           // escena de la historia: la camara se pone de frente al NPC, este donde este el jugador
+    bool g_frontCaptured = false;
+    float g_frontAngle = 0.0f;        // el giro del NPC cuando empezo la escena
+    bool g_frontalEnabled = true;     // [Cinematicas] Frontal
+    float g_frontOffset = 0.0f;       // [Cinematicas] FrontAngle: grados que se suman al giro del NPC
 
     BYTE* g_hiddenHero = nullptr;
     BYTE g_heroVisible = 1;
@@ -174,15 +181,10 @@ namespace
     constexpr float BoxLeft = 60.0f, BoxWidth = 520.0f, BoxTop = 316.0f, BoxHeight = 150.0f;
     constexpr float LineHeight = 13.0f;
     constexpr size_t LineChars = 92;
-    constexpr float ButtonWidth = 110.0f, ButtonHeight = 18.0f;
+    constexpr float ButtonWidth = 110.0f, ButtonHeight = 22.0f;
+    constexpr float BoxPadding = 14.0f, TitleHeight = 24.0f;
 
-    struct Rect
-    {
-        float left;
-        float top;
-        float width;
-        float height;
-    };
+    using Rect = PeroniaUi::Rect;
 
     constexpr int ButtonNone = -1;
     constexpr int ButtonClose = -2; // Escape: cierra sin elegir
@@ -388,7 +390,8 @@ namespace
             return;
         }
 
-        g_chosenCommand = button >= 0 && button < static_cast<int>(g_buttons.size()) ? g_buttons[button].command : "";
+        g_chosenCommand = button >= 0 && button < static_cast<int>(g_buttons.size()) ? g_buttons[button].command
+            : g_closeCommand;
         SetPhase(Phase::FadeOut);
     }
 
@@ -418,6 +421,8 @@ namespace
 
         const WORD id = static_cast<WORD>(((packet[5] << 8) | packet[6]) & IdMask);
         const bool canDuel = packet[7] != 0;
+        g_frontal = false;
+        g_closeCommand.clear();
         g_rivalMounted = (packet[9] & 1) != 0;
         g_turnedRival = false;
         const char* strings[3] = { "", "", "" };
@@ -515,21 +520,28 @@ namespace
 
             if (buttons.size() < MaxButtons)
             {
+                // Tambien el que solo cierra (id 0): el servidor protege al jugador mientras dura la escena.
                 char command[48] = "";
-                if (buttonId > 0)
-                {
-                    sprintf_s(command, "/historia %d %d", buttonId, id);
-                }
+                sprintf_s(command, "/historia %d %d", buttonId, id);
 
                 buttons.push_back({ text, command });
             }
         }
 
+        char closeCommand[48];
+        sprintf_s(closeCommand, "/historia 0 %d", id);
         if (buttons.empty())
         {
-            buttons.push_back({ "Cerrar", "" });
+            buttons.push_back({ "Cerrar", closeCommand });
         }
 
+        if (!g_frontal || !CameraOnRival() || id != g_rival)
+        {
+            g_frontCaptured = false; // otra escena del mismo NPC sin salir de la camara: no se mueve
+        }
+
+        g_frontal = true;
+        g_closeCommand = closeCommand;
         g_title = title;
         g_reason = note;
         g_pages = pages;
@@ -739,6 +751,21 @@ namespace
 
         dx /= distance;
         dy /= distance;
+        if (g_frontal && g_frontalEnabled)
+        {
+            // De frente al NPC, haya hablado el jugador desde donde haya hablado. El giro Z de un objeto del juego:
+            // con 0 mira hacia -Y, y avanza hacia (sin, -cos) (el juego mueve a los personajes con ese vector).
+            if (!g_frontCaptured)
+            {
+                g_frontCaptured = true;
+                g_frontAngle = reinterpret_cast<const float*>(rival + CharObject + ObjAngle)[2];
+                g_log("Cinematicas: NPC con giro %.1f; camara de frente.", g_frontAngle);
+            }
+
+            const float facing = (g_frontAngle + g_frontOffset) * 3.14159265f / 180.0f;
+            dx = sinf(facing);
+            dy = -cosf(facing);
+        }
 
         const float viewDistance = g_rivalMounted ? MountedViewDistance : ViewDistance;
         const float frameHeight = g_rivalMounted ? MountedFrameHeight : FrameHeight;
@@ -970,6 +997,8 @@ namespace
         glLineWidth(1.0f);
     }
 
+    // El estilo de la ventana de las quests (quests.dll): fondo negro, doble linea dorada, separador bajo el titulo y
+    // los botones de peroniaui.
     void DrawShapes(int hover)
     {
         BeginShapes();
@@ -979,27 +1008,44 @@ namespace
             Fill({ 0, 0, 640, BarHeight }, 0.0f, 0.0f, 0.0f, 1.0f);
             Fill({ 0, 480 - BarHeight, 640, BarHeight }, 0.0f, 0.0f, 0.0f, 1.0f);
             const Rect box = { BoxLeft, BoxTop, BoxWidth, BoxHeight };
-            Fill(box, 0.02f, 0.0f, 0.05f, 0.88f);
-            Outline(box, 0.55f, 0.35f, 0.8f, 0.9f);
-            if (ButtonsEnabled())
+            Fill(box, 0.0f, 0.0f, 0.0f, 0.88f);
+            Outline(box, 0.8f, 0.65f, 0.35f, 0.9f);
+            Outline({ box.left + 2, box.top + 2, box.width - 4, box.height - 4 }, 0.45f, 0.35f, 0.18f, 0.7f);
+            Fill({ box.left + BoxPadding, box.top + TitleHeight - 2, box.width - BoxPadding * 2, 1 }, 0.8f, 0.65f, 0.35f, 0.6f);
+        }
+
+        glPopAttrib();
+        if (SceneVisible() && ButtonsEnabled())
+        {
+            PeroniaUi::BeginShapes();
+            for (int button = 0; button < VisibleButtons(); button++)
             {
-                for (int button = 0; button < VisibleButtons(); button++)
+                // El primero es el que sigue la historia (o el duelo): con resplandor, salvo que solo cierre.
+                const Rect rect = ButtonRect(button);
+                const bool main = button == 0
+                    && (!LastPage() || (!g_buttons[0].command.empty() && g_buttons[0].command != g_closeCommand));
+                if (main)
                 {
-                    const Rect rect = ButtonRect(button);
-                    const bool hovered = button == hover;
-                    Fill(rect, hovered ? 0.4f : 0.12f, hovered ? 0.25f : 0.08f, hovered ? 0.55f : 0.18f, 0.95f);
-                    Outline(rect, 0.55f, 0.35f, 0.8f, 0.9f);
+                    PeroniaUi::Glow(rect, button == hover ? 1.0f : 0.6f);
+                }
+
+                PeroniaUi::MetalButton(rect, PeroniaUi::StateOf(rect, true));
+                if (main)
+                {
+                    PeroniaUi::Shine(rect);
                 }
             }
+
+            PeroniaUi::EndShapes();
         }
 
         const float darkness = Darkness();
         if (darkness > 0.0f)
         {
+            BeginShapes();
             Fill({ 0, 0, 640, 480 }, 0.0f, 0.0f, 0.0f, darkness);
+            glPopAttrib();
         }
-
-        glPopAttrib();
     }
 
     DWORD Color(BYTE red, BYTE green, BYTE blue)
@@ -1017,7 +1063,7 @@ namespace
             static_cast<int>(top), text, static_cast<int>(width), 0, sort, nullptr);
     }
 
-    void DrawTexts(int hover)
+    void DrawTexts()
     {
         BYTE* const renderer = *reinterpret_cast<BYTE**>(RenderText + 4);
         if (renderer == nullptr || g_phase != Phase::Showing)
@@ -1029,10 +1075,10 @@ namespace
         glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         const DWORD savedText = *reinterpret_cast<DWORD*>(renderer + 0x10);
         const DWORD savedBackground = *reinterpret_cast<DWORD*>(renderer + 0x14);
-        Text(g_title.c_str(), BoxLeft + 12, BoxTop + 8, BoxWidth - 24, SortLeft, Color(200, 160, 255), true);
+        Text(g_title.c_str(), BoxLeft + BoxPadding, BoxTop + 7, BoxWidth - BoxPadding * 2, SortLeft, PeroniaUi::GoldText, true);
 
         // El texto aparece de a poco.
-        float top = BoxTop + 28;
+        float top = BoxTop + TitleHeight + 6;
         size_t remaining = static_cast<size_t>(g_revealed);
         char line[LineChars + 1];
         for (const std::string& full : g_lines)
@@ -1046,7 +1092,7 @@ namespace
             memcpy(line, full.c_str(), count);
             line[count] = 0;
             remaining -= count;
-            Text(line, BoxLeft + 12, top, BoxWidth - 24, SortLeft, Color(225, 220, 235), false);
+            Text(line, BoxLeft + BoxPadding, top, BoxWidth - BoxPadding * 2, SortLeft, Color(230, 230, 230), false);
             top += LineHeight;
         }
 
@@ -1054,22 +1100,15 @@ namespace
         {
             char pageNumber[24];
             sprintf_s(pageNumber, "%u / %u", static_cast<unsigned>(g_page + 1), static_cast<unsigned>(g_pages.size()));
-            Text(pageNumber, BoxLeft + BoxWidth - 72, BoxTop + 8, 60, SortCenter, Color(150, 130, 180), false);
+            Text(pageNumber, BoxLeft + BoxWidth - 72, BoxTop + 7, 60, SortCenter, Color(150, 140, 130), false);
         }
 
         if (ButtonsEnabled())
         {
             if (LastPage() && !g_reason.empty() && g_revealed >= g_textLength)
             {
-                Text(g_reason.c_str(), BoxLeft + 12, BoxTop + BoxHeight - ButtonHeight - 26, BoxWidth - 24, SortLeft,
+                Text(g_reason.c_str(), BoxLeft + BoxPadding, BoxTop + BoxHeight - ButtonHeight - 26, BoxWidth - BoxPadding * 2, SortLeft,
                     Color(255, 150, 110), false);
-            }
-
-            for (int button = 0; button < VisibleButtons(); button++)
-            {
-                const Rect rect = ButtonRect(button);
-                Text(LastPage() ? g_buttons[button].label.c_str() : "Continuar", rect.left, rect.top + 3, rect.width,
-                    SortCenter, button == hover ? Color(255, 240, 255) : Color(220, 200, 240), false);
             }
         }
 
@@ -1077,6 +1116,19 @@ namespace
         *reinterpret_cast<DWORD*>(renderer + 0x14) = savedBackground;
         reinterpret_cast<SetFontType>(SetFontFunction)(RenderText, nullptr, *NormalFont);
         reinterpret_cast<void(__cdecl*)()>(DisableAlphaBlendFunction)();
+
+        // Los textos de los botones, con el estilo de peroniaui (despues de reponer el texto del juego).
+        if (ButtonsEnabled())
+        {
+            for (int button = 0; button < VisibleButtons(); button++)
+            {
+                const Rect rect = ButtonRect(button);
+                const auto state = PeroniaUi::StateOf(rect, true);
+                PeroniaUi::ButtonText(rect, LastPage() ? g_buttons[button].label.c_str() : "Continuar",
+                    state == PeroniaUi::ButtonState::Normal ? PeroniaUi::GoldText : PeroniaUi::GoldTextHover, button == 0,
+                    state == PeroniaUi::ButtonState::Pressed);
+            }
+        }
     }
 
     // Sin objetos con destructor: puede usar __try.
@@ -1097,7 +1149,7 @@ namespace
             g_lastDraw = now;
             const int hover = HitButton();
             DrawShapes(hover);
-            DrawTexts(hover);
+            DrawTexts();
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
@@ -1160,6 +1212,8 @@ extern "C" __declspec(dllexport) bool StartCinematicas(const CinematicasHost* ho
     }
 
     g_log = host->log;
+    g_frontalEnabled = GetPrivateProfileIntA("Cinematicas", "Frontal", 1, host->iniPath) != 0;
+    g_frontOffset = static_cast<float>(GetPrivateProfileIntA("Cinematicas", "FrontAngle", 0, host->iniPath));
     const DWORD dispatch = CallTarget(DispatchCallSite);
     const DWORD draw = CallTarget(DrawCallSite);
     const DWORD mouse = CallTarget(MouseCallSite);
@@ -1176,6 +1230,7 @@ extern "C" __declspec(dllexport) bool StartCinematicas(const CinematicasHost* ho
     g_nextDraw = reinterpret_cast<DrawType>(draw);
     g_nextMouse = reinterpret_cast<MouseType>(mouse);
     g_nextMouseOnUi = reinterpret_cast<MouseOnUiType>(mouseOnUi);
+    PeroniaUi::Initialize(host->iniPath, host->log);
     BYTE jump[5] = { 0xE9 };
     *reinterpret_cast<DWORD*>(jump + 1) = reinterpret_cast<DWORD>(&MouseOnUiHook) - (MouseOnUiFunction + 5);
     if (!WriteCode(MouseOnUiFunction, jump, sizeof(jump)) || !RedirectCall(MouseCallSite, &MouseHook)

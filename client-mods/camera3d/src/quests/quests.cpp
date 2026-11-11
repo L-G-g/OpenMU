@@ -153,6 +153,9 @@ namespace
     bool g_mouseOver = false;     // el mouse es de esta DLL (ventana o signo)
     float g_trackerLeft = 470.0f; // [Quests] TrackerLeft, TrackerTop
     float g_trackerTop = 70.0f;
+    bool g_trackerCollapsed = true; // [Quests] TrackerCollapsed: solo el borde; se despliega con el mouse encima
+    float g_trackerOpen = 0.0f;     // 0 plegado, 1 desplegado
+    DWORD g_trackerTime = 0;
     float g_markSize = 1.0f;      // [Quests] MarkSize
     float g_headMargin = 70.0f;   // [Quests] HeadMargin (unidades del mundo sobre la caja del NPC)
 
@@ -172,6 +175,9 @@ namespace
     constexpr float ButtonWidth = 90.0f;
     constexpr float ButtonHeight = 22.0f;
     constexpr float TrackerWidth = 165.0f;
+    constexpr float TrackerEdgeWidth = 3.0f;    // el borde de color que queda a la vista con el seguimiento plegado
+    constexpr float TrackerHoverMargin = 6.0f;  // aire alrededor del borde para apuntarle con el mouse
+    constexpr float TrackerOpenMilliseconds = 120.0f;
     constexpr float MarkWidth = 14.0f;  // alto del signo: MarkHeight; por MarkSize
     constexpr float MarkHeight = 26.0f;
 
@@ -418,24 +424,75 @@ namespace
     }
 
     // --- Seguimiento ---
+    Rect TrackerRect()
+    {
+        return { g_trackerLeft, g_trackerTop, TrackerWidth, 8 + g_tracker.size() * LineHeight };
+    }
+
+    // Plegado solo se ve el borde de color de la izquierda; con el mouse sobre el borde (con un poco de aire) o, ya
+    // desplegado, sobre el cuadro, se despliega y muestra el texto.
+    bool MouseOverTracker()
+    {
+        const Rect box = TrackerRect();
+        if (g_trackerOpen > 0.0f)
+        {
+            const Rect open = { box.left - TrackerHoverMargin, box.top - 2, box.width + TrackerHoverMargin, box.height + 4 };
+            return PeroniaUi::MouseInside(open);
+        }
+
+        const Rect edge = { box.left - TrackerHoverMargin, box.top - 2, TrackerEdgeWidth + TrackerHoverMargin * 2, box.height + 4 };
+        return PeroniaUi::MouseInside(edge);
+    }
+
+    void UpdateTracker()
+    {
+        const DWORD now = GetTickCount();
+        const float step = g_trackerTime != 0 ? (now - g_trackerTime) / TrackerOpenMilliseconds : 0.0f;
+        g_trackerTime = now;
+        if (!g_trackerCollapsed)
+        {
+            g_trackerOpen = 1.0f;
+            return;
+        }
+
+        g_trackerOpen += MouseOverTracker() ? step : -step;
+        g_trackerOpen = g_trackerOpen < 0.0f ? 0.0f : (g_trackerOpen > 1.0f ? 1.0f : g_trackerOpen);
+    }
+
     void DrawTracker()
     {
         if (g_tracker.empty())
         {
+            g_trackerOpen = 0.0f;
+            g_trackerTime = 0;
             return;
         }
 
-        const Rect box = { g_trackerLeft, g_trackerTop, TrackerWidth, 8 + g_tracker.size() * LineHeight };
+        UpdateTracker();
+        const Rect box = TrackerRect();
+        const float open = g_trackerOpen;
+        const Rect edge = { box.left, box.top, TrackerEdgeWidth, box.height };
         PeroniaUi::BeginShapes();
-        FillRect(box, 0.0f, 0.0f, 0.0f, 0.45f);
-        const Rect edge = { box.left, box.top, 2, box.height };
-        FillRect(edge, 0.85f, 0.65f, 0.2f, 0.8f);
+        if (open > 0.0f)
+        {
+            // El mismo marco de la ventana de la quest: fondo negro y doble linea dorada.
+            const Rect shown = { box.left, box.top, box.width * open, box.height };
+            FillRect(shown, 0.0f, 0.0f, 0.0f, 0.88f * open);
+            OutlineRect(shown, 0.8f, 0.65f, 0.35f, 0.9f * open);
+            if (shown.width > 8)
+            {
+                const Rect inner = { shown.left + 2, shown.top + 2, shown.width - 4, shown.height - 4 };
+                OutlineRect(inner, 0.45f, 0.35f, 0.18f, 0.7f * open);
+            }
+        }
+
+        FillRect(edge, 0.85f, 0.65f, 0.2f, 0.9f);
         PeroniaUi::EndShapes();
 
         BYTE* const renderer = *reinterpret_cast<BYTE**>(RenderText + 4);
-        if (renderer == nullptr)
+        if (renderer == nullptr || open < 1.0f)
         {
-            return;
+            return; // el texto, cuando termino de desplegarse
         }
 
         reinterpret_cast<void(__cdecl*)(bool)>(EnableAlphaBlendFunction)(true);
@@ -452,7 +509,7 @@ namespace
             }
 
             const bool title = line.color == 1 && line.text.find_first_not_of(' ') == 0;
-            Text(line.text.c_str(), box.left + 7, top, box.width - 10, SortLeft, TextColor(line.color), title);
+            Text(line.text.c_str(), box.left + 9, top, box.width - 12, SortLeft, TextColor(line.color), title);
             top += LineHeight;
         }
 
@@ -462,7 +519,6 @@ namespace
         reinterpret_cast<void(__cdecl*)()>(DisableAlphaBlendFunction)();
     }
 
-    // --- Signos ---
     bool Project(const float* point, float& x, float& y)
     {
         float eye[4];
@@ -807,7 +863,7 @@ namespace
                 g_tracker.clear();
                 for (const Line& line : lines)
                 {
-                    Wrap(line, TrackerWidth - 10, g_tracker);
+                    Wrap(line, TrackerWidth - 14, g_tracker);
                 }
             }
 
@@ -972,6 +1028,7 @@ extern "C" __declspec(dllexport) bool StartQuests(const QuestsHost* host)
     g_log = host->log;
     g_trackerLeft = ReadFloat(host->iniPath, "TrackerLeft", g_trackerLeft);
     g_trackerTop = ReadFloat(host->iniPath, "TrackerTop", g_trackerTop);
+    g_trackerCollapsed = GetPrivateProfileIntA("Quests", "TrackerCollapsed", 1, host->iniPath) != 0;
     g_markSize = ReadFloat(host->iniPath, "MarkSize", g_markSize);
     g_headMargin = ReadFloat(host->iniPath, "HeadMargin", g_headMargin);
     if (g_markSize < 0.5f || g_markSize > 3.0f)

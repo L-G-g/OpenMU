@@ -131,7 +131,7 @@ public class BasicMonsterIntelligence : INpcIntelligence, IDisposable
         }
 
         var possibleTargets = tempObservers.OfType<IAttackable>()
-            .Where(a => a.IsActive() && !a.IsAtSafezone() && a is not Player { IsInvisible: true } and not Player { IsFlying: true } and not Spectres.SpectrePlayer)
+            .Where(a => a.IsActive() && !a.IsAtSafezone() && a is not Player { IsInvisible: true } and not Player { IsFlying: true } and not Player { IsInvulnerable: true } and not Spectres.SpectrePlayer)
             .ToList();
 
         // Also consider summoned monsters belonging to players in range.

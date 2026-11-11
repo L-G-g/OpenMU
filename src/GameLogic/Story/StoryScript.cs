@@ -131,28 +131,22 @@ public static class StoryScript
             "Continuar",
             c =>
             [
-                $"Has vuelto. Y todavía traes el frío de la Reina de Hielo en la armadura. Eres digno, {c.PlayerName}. Ya no tiene sentido que te hable a medias.",
-                "Bajo estas tierras hay un calabozo. Allí encerraban a los aventureros que hacían demasiadas preguntas, a los que quisieron saber qué había más allá de Lorencia. Eso les ocurre a los que buscan la verdad. La entrada está al sur de Lorencia; desde hoy nadie te cerrará el paso.",
-                "Mi nombre es Artorias. Soy hijo de Gaion, general del Imperio de Mu. No busques esos nombres en tus libros: se los arrancaron a tu pueblo junto con la memoria.",
-                "Los soldados imperiales que verás allí abajo, y los que rondan estas tierras, ya no sirven a nadie. El tiempo y la sombra los corrompieron. Llevan el estandarte del Imperio, pero no tienen ninguna autoridad. No dudes ante ellos.",
-                "Busco aliados. Quiero volver a mi tierra y evitar la devastación que se acerca. Hazte más fuerte, y cuando llegue el momento te contaré el resto.",
+                $"Has vuelto. Y todavía traes el frío de la Reina de Hielo en la armadura. Eres digno, {c.PlayerName}. Mi nombre es Artorias.",
+                "El Imperio, aquí, está corrupto. Los soldados que llevan su estandarte ya no sirven a nadie. No dudes ante ellos. Desde hoy, el camino a su calabozo está abierto para ti: la entrada está al sur de Lorencia.",
+                "Busco aliados para volver a mi tierra y evitar la devastación de un ser llamado Kundun. Hazte más fuerte. Cuando llegue el momento, volveremos a hablar.",
             ],
             "Aún no. Sobrevive al bosque de hielo y a su reina, renace unas veces más, y vuelve a verme.",
             "Se abrio el camino a Dungeon."),
         new(
             OldPacts,
-            "Mil años",
+            "La sacerdotisa de Devias",
             StoryActor.Stranger,
             StoryStepKind.Talk,
             "Continuar",
             c =>
             [
-                $"Has crecido, {c.PlayerName}. Ya es hora de que sepas por qué peleo. Hace mil años, un mago poderoso del Imperio, Mephis Kundun, se ofreció en sacrificio para sellar dentro de sí a un titán oscuro: Secneum.",
-                "El Imperio vivió en paz durante un tiempo. Hasta que Lemuria, su aprendiz y su amante, liberó el sello. Lo que despertó ya no era Mephis: era Kundun, una versión de su amado corrompida por la maldad del titán.",
-                "El emperador Muren Rexmillon ordenó a mi padre, el general Gaion, darle batalla a Kundun y a su ejército corrupto. Mi padre murió en ella. Con mucho sacrificio, y gracias a Etramu Renos, un gran mago de la Luz, lograron sellarlo otra vez. Pero Etramu lo advirtió: el sello duraría mil años.",
-                "Para proteger a su pueblo, el emperador mandó construir una ciudad en las profundidades del continente, lejos de Kundun y de su influencia. Y para que nadie saliera de ella, les borró la memoria durante generaciones. Esa ciudad es Lorencia. Sus hijos fundaron Noria en el bosque y Elbeland en las montañas.",
-                "Los mil años se cumplen ahora. Y Lemuria nunca fue hallada. Por eso el emperador dio su vida y el mago dimensional Runedil su arte: para enviarme a este tiempo. Y por eso mido cada palabra: ella puede estar en cualquier parte.",
-                "Tú necesitas recuperar lo que tu sangre olvidó. En Devias vive Sebina, sacerdotisa de la escuela de la Luz y descendiente de Etramu Renos. Ve a verla y dile que te envía el hijo de Gaion.",
+                $"Has crecido, {c.PlayerName}. Ya eres el aliado que buscaba. Pero para enfrentar a Kundun no alcanza con la fuerza: necesitas recuperar lo que tu sangre olvidó.",
+                "En Devias vive Sebina, sacerdotisa de la escuela de la Luz. Su familia guarda la memoria de los pactos antiguos. Ve a verla y dile que te envía Artorias.",
             ],
             "Todavía no estás listo para el resto de la historia. Hazte más fuerte y vuelve.",
             null),
@@ -164,7 +158,7 @@ public static class StoryScript
             "Continuar",
             c =>
             [
-                "Así que el hijo de Gaion camina entre nosotros... Mi familia guardó esa profecía durante mil años sin poder pronunciarla. Soy Sebina, de la escuela de la Luz. Por mis venas corre la sangre de Etramu Renos.",
+                "Así que Artorias te envía... Mi familia guardó esa profecía durante mil años sin poder pronunciarla. Soy Sebina, de la escuela de la Luz. Por mis venas corre la sangre de Etramu Renos.",
                 "El olvido de Lorencia no nos alcanzó del todo: los discípulos de Etramu juramos recordar. Y recordamos que tu oficio no nació en ese pueblo. Nació de un pacto con el Imperio de Mu.",
                 GetPact(c.Family),
                 c.HasClassChange

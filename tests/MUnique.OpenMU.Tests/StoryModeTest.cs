@@ -227,6 +227,45 @@ public class StoryModeTest
         Assert.That(story.GetQuestBlock(player, classChange.Object), Is.Null);
     }
 
+    /// <summary>
+    /// Tests that the stranger never tells that Kundun was Mephis, so that the players think of two different persons.
+    /// </summary>
+    [Test]
+    public void StrangerKeepsTheSecret()
+    {
+        var context = new StoryTextContext("Tester", StoryClassFamily.Knight, true, "Hanzo", "Lorencia");
+        var texts = StoryScript.Steps
+            .Where(step => step.Actor == StoryActor.Stranger)
+            .SelectMany(step => step.Text(context).Append(step.LockedText))
+            .ToList();
+        Assert.That(texts, Has.None.Contains("Mephis"));
+        Assert.That(texts, Has.None.Contains("Lemuria"));
+        Assert.That(texts, Has.Some.Contains("Kundun"));
+        Assert.That(StoryScript.Steps.Single(step => step.Number == StoryScript.Dungeon).Text(context), Has.Some.Contains("Artorias"));
+    }
+
+    /// <summary>
+    /// Tests that nothing hurts a player who listens to a scene.
+    /// </summary>
+    [Test]
+    public async ValueTask ProtectedDuringTheSceneAsync()
+    {
+        var (_, player) = await CreateAsync().ConfigureAwait(false);
+        var attacker = new Mock<IAttacker>();
+        player.Attributes![Stats.CurrentHealth] = Math.Max(player.Attributes[Stats.MaximumHealth], 1);
+        var health = player.Attributes[Stats.CurrentHealth];
+        Assert.That(health, Is.GreaterThanOrEqualTo(1));
+
+        player.InvulnerableUntilUtc = DateTime.UtcNow.AddMinutes(1);
+        Assert.That(player.IsInvulnerable, Is.True);
+        await player.ApplyPoisonDamageAsync(attacker.Object, 1).ConfigureAwait(false);
+        Assert.That(player.Attributes[Stats.CurrentHealth], Is.EqualTo(health));
+
+        player.InvulnerableUntilUtc = default;
+        await player.ApplyPoisonDamageAsync(attacker.Object, 1).ConfigureAwait(false);
+        Assert.That(player.Attributes[Stats.CurrentHealth], Is.EqualTo(health - 1));
+    }
+
     private static MonsterDefinition CreateNpc(short number, string designation)
     {
         var npc = new Mock<MonsterDefinition>();

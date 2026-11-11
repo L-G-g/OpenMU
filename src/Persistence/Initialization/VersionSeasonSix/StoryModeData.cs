@@ -34,9 +34,9 @@ internal static class StoryModeData
     private const short LorenciaNumber = 0;
 
     /// <summary>
-    /// The place of the stranger: the square of Lorencia, in front of the bar of Lumen.
+    /// The place of the stranger: the gate of the walled yard in the north of Lorencia, outside of the safezone.
     /// </summary>
-    private static readonly (byte X, byte Y) StrangerPosition = (137, 131);
+    private static readonly (byte X, byte Y) StrangerPosition = (141, 208);
 
     /// <summary>
     /// Applies the data of the story mode to the game configuration.

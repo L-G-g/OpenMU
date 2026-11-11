@@ -205,6 +205,17 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
     public bool IsFlying { get; internal set; }
 
     /// <summary>
+    /// Gets or sets the time (UTC) until which nothing can hurt the player, e.g. while it listens to a scene of the
+    /// story (see <see cref="Story.StoryModeFeaturePlugIn"/>), where the player can't see or control its character.
+    /// </summary>
+    public DateTime InvulnerableUntilUtc { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether nothing can hurt the player at the moment, see <see cref="InvulnerableUntilUtc"/>.
+    /// </summary>
+    public bool IsInvulnerable => DateTime.UtcNow < this.InvulnerableUntilUtc;
+
+    /// <summary>
     /// Gets the factor of the movement speed while flying (Dinorant or wings), see <see cref="Flight.FlightPlugIn"/>.
     /// </summary>
     public float FlightSpeedFactor { get; internal set; }
@@ -806,6 +817,11 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
         if (this is Spectres.SpectrePlayer)
         {
             // Spectres can't be hurt by anyone.
+            return null;
+        }
+
+        if (this.IsInvulnerable)
+        {
             return null;
         }
 
@@ -1744,6 +1760,12 @@ public class Player : AsyncDisposable, IBucketMapObserver, IAttackable, IAttacke
 
     private async ValueTask HitAsync(HitInfo hitInfo, IAttacker attacker, Skill? skill, bool? isFinalStreakHit = null)
     {
+        if (this.IsInvulnerable)
+        {
+            // Also the damage which doesn't come from an attack: poison, bleeding and reflected damage.
+            return;
+        }
+
         this._summon.RegisterHit(attacker);
         var healthDamage = hitInfo.HealthDamage;
         int oversd = (int)(this.Attributes![Stats.CurrentShield] - hitInfo.ShieldDamage);

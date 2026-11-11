@@ -94,6 +94,12 @@ public class StoryConfiguration
     public int InteractionRange { get; set; } = 8;
 
     /// <summary>
+    /// Gets or sets the seconds in which nothing can hurt a player who listens to a scene.
+    /// </summary>
+    [Display(Name = "Scene protection (seconds)", Description = "While a player listens to a scene, the client shows the NPC instead of the character. During these seconds (at most; it ends when the scene is closed) nothing can hurt the player. 0 turns it off.")]
+    public int SceneProtectionSeconds { get; set; } = 180;
+
+    /// <summary>
     /// Gets or sets the level of the stranger in the duel.
     /// </summary>
     [Display(Name = "Stranger: level", Description = "The level of the stranger in the duel. A change takes effect at the next duel of each player.")]

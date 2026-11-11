@@ -659,6 +659,8 @@ carpeta, después de `espectros.dll` (`src/loadcinematicas.cpp`):
 ```ini
 [Cinematicas]
 Enabled=1               ; 0: no se carga cinematicas.dll
+Frontal=1               ; escenas de la historia: la cámara se pone de frente al NPC, sin importar desde dónde se habló
+FrontAngle=0            ; grados que se suman al giro del NPC para esa cámara (por si un modelo mira torcido)
 ```
 
 El servidor (la misma vista `ShowSpectresViewPlugIn`) marca a los rivales con `C1 06 FD 05 [objeto]` cada
@@ -687,6 +689,7 @@ carpeta (`src/loadquests.cpp`):
 Enabled=1       ; 0: sin signos ni ventana
 TrackerLeft=470 ; lugar del seguimiento (640x480)
 TrackerTop=70
+TrackerCollapsed=1 ; 1: el seguimiento queda plegado (solo el borde dorado) y se despliega con el mouse encima
 MarkSize=1      ; tamaño de los signos (0.5 a 3)
 HeadMargin=70   ; altura del signo sobre la cabeza del NPC (unidades del mundo)
 ```
@@ -757,7 +760,7 @@ cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
-cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
