@@ -687,8 +687,7 @@ carpeta (`src/loadquests.cpp`):
 ```
 [Quests]
 Enabled=1       ; 0: sin signos ni ventana
-TrackerLeft=470 ; lugar del seguimiento (640x480)
-TrackerTop=70
+TrackerTop=70    ; altura del seguimiento (640x480); va pegado al borde derecho de la pantalla
 TrackerCollapsed=1 ; 1: el seguimiento queda plegado (solo el borde dorado) y se despliega con el mouse encima
 MarkSize=1      ; tamaño de los signos (0.5 a 3)
 HeadMargin=70   ; altura del signo sobre la cabeza del NPC (unidades del mundo)

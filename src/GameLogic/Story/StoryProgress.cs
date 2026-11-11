@@ -19,8 +19,9 @@ public static class StoryProgress
     /// <param name="configuration">The game configuration.</param>
     /// <returns><c>true</c>, if the story mode can keep the progress of the characters.</returns>
     public static bool IsAvailable(GameConfiguration configuration)
-        => configuration.Attributes.Any(a => a.Id == Stats.StoryProgress.Id)
-           && configuration.Attributes.Any(a => a.Id == Stats.StoryFlags.Id);
+        => configuration.Attributes is { } attributes
+           && attributes.Any(a => a.Id == Stats.StoryProgress.Id)
+           && attributes.Any(a => a.Id == Stats.StoryFlags.Id);
 
     /// <summary>
     /// Gets the number of the last step which the character finished.
