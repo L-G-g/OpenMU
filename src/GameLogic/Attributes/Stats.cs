@@ -11,6 +11,8 @@ using MUnique.OpenMU.AttributeSystem;
 /// </summary>
 public class Stats
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<byte, AttributeDefinition> DungeonLastEntries = new();
+
     /// <summary>
     /// Gets the base strength attribute definition.
     /// </summary>
@@ -157,6 +159,22 @@ public class Stats
     /// in minutes since <see cref="MiniGames.Dungeon.DungeonEntryAction.EntryTimeEpoch"/>.
     /// </summary>
     public static AttributeDefinition DungeonLastEntry { get; } = new(new Guid("6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1E01"), "Dungeon last entry", "The time of the last entry into a dungeon, in minutes since 2026-01-01 (UTC).");
+
+    /// <summary>
+    /// Gets the attribute definition for the time of the last entry of a character into the dungeon with the specified number,
+    /// like <see cref="DungeonLastEntry"/>, which is the one of the first dungeon. Each dungeon has its own, so that
+    /// a character can enter each of them once per day.
+    /// </summary>
+    /// <param name="dungeonNumber">The number of the dungeon, see <see cref="MiniGames.Dungeon.DungeonSettings.Number"/>.</param>
+    /// <returns>The attribute definition.</returns>
+    public static AttributeDefinition GetDungeonLastEntry(byte dungeonNumber)
+    {
+        return dungeonNumber <= 1
+            ? DungeonLastEntry
+            : DungeonLastEntries.GetOrAdd(
+                dungeonNumber,
+                number => new(new Guid($"6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1E{number:X2}"), $"Dungeon {number} last entry", $"The time of the last entry into the dungeon {number}, in minutes since 2026-01-01 (UTC)."));
+    }
 
     /// <summary>
     /// Gets the attribute definition for the progress of a character in the story mode: the number of its last

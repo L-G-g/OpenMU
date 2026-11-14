@@ -5479,5 +5479,92 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized FlightChatCommandPlugIn_Description text.</summary>
         public static string FlightChatCommandPlugIn_Description => ResourceManager.GetString("FlightChatCommandPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Number_Name text.</summary>
+        public static string DungeonSettings_Number_Name => ResourceManager.GetString("DungeonSettings_Number_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Number_Description text.</summary>
+        public static string DungeonSettings_Number_Description => ResourceManager.GetString("DungeonSettings_Number_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Name_Name text.</summary>
+        public static string DungeonSettings_Name_Name => ResourceManager.GetString("DungeonSettings_Name_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_NpcDesignation_Name text.</summary>
+        public static string DungeonSettings_NpcDesignation_Name => ResourceManager.GetString("DungeonSettings_NpcDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_NpcDesignation_Description text.</summary>
+        public static string DungeonSettings_NpcDesignation_Description => ResourceManager.GetString("DungeonSettings_NpcDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_ExtremeNpcDesignation_Name text.</summary>
+        public static string DungeonSettings_ExtremeNpcDesignation_Name => ResourceManager.GetString("DungeonSettings_ExtremeNpcDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_GameLevel_Name text.</summary>
+        public static string DungeonSettings_GameLevel_Name => ResourceManager.GetString("DungeonSettings_GameLevel_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_GameLevel_Description text.</summary>
+        public static string DungeonSettings_GameLevel_Description => ResourceManager.GetString("DungeonSettings_GameLevel_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_ExtremeGameLevel_Name text.</summary>
+        public static string DungeonSettings_ExtremeGameLevel_Name => ResourceManager.GetString("DungeonSettings_ExtremeGameLevel_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_DropMaps_Name text.</summary>
+        public static string DungeonSettings_DropMaps_Name => ResourceManager.GetString("DungeonSettings_DropMaps_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_DropMaps_Description text.</summary>
+        public static string DungeonSettings_DropMaps_Description => ResourceManager.GetString("DungeonSettings_DropMaps_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_Dungeon_Name text.</summary>
+        public static string DungeonStage_Dungeon_Name => ResourceManager.GetString("DungeonStage_Dungeon_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_Dungeon_Description text.</summary>
+        public static string DungeonStage_Dungeon_Description => ResourceManager.GetString("DungeonStage_Dungeon_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_SecondMonsterNumber_Name text.</summary>
+        public static string DungeonStage_SecondMonsterNumber_Name => ResourceManager.GetString("DungeonStage_SecondMonsterNumber_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_SecondMonsterNumber_Description text.</summary>
+        public static string DungeonStage_SecondMonsterNumber_Description => ResourceManager.GetString("DungeonStage_SecondMonsterNumber_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_SecondKillCount_Name text.</summary>
+        public static string DungeonStage_SecondKillCount_Name => ResourceManager.GetString("DungeonStage_SecondKillCount_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortDesignation_Name text.</summary>
+        public static string DungeonStage_EscortDesignation_Name => ResourceManager.GetString("DungeonStage_EscortDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortDesignation_Description text.</summary>
+        public static string DungeonStage_EscortDesignation_Description => ResourceManager.GetString("DungeonStage_EscortDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortCount_Name text.</summary>
+        public static string DungeonStage_EscortCount_Name => ResourceManager.GetString("DungeonStage_EscortCount_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortExcellentDropChance_Name text.</summary>
+        public static string DungeonStage_EscortExcellentDropChance_Name => ResourceManager.GetString("DungeonStage_EscortExcellentDropChance_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_Dungeons_Name text.</summary>
+        public static string DungeonConfiguration_Dungeons_Name => ResourceManager.GetString("DungeonConfiguration_Dungeons_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_Dungeons_Description text.</summary>
+        public static string DungeonConfiguration_Dungeons_Description => ResourceManager.GetString("DungeonConfiguration_Dungeons_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeHealthMultiplier_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeHealthMultiplier_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeHealthMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeDamageMultiplier_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeDamageMultiplier_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeDamageMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeDefenseMultiplier_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeDefenseMultiplier_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeDefenseMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeMultiplier_Description text.</summary>
+        public static string DungeonConfiguration_ExtremeMultiplier_Description => ResourceManager.GetString("DungeonConfiguration_ExtremeMultiplier_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_HighItemWeight_Name text.</summary>
+        public static string DungeonConfiguration_HighItemWeight_Name => ResourceManager.GetString("DungeonConfiguration_HighItemWeight_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeHighItemWeight_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeHighItemWeight_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeHighItemWeight_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_HighItemWeight_Description text.</summary>
+        public static string DungeonConfiguration_HighItemWeight_Description => ResourceManager.GetString("DungeonConfiguration_HighItemWeight_Description", resourceCulture)!;
     }
 }

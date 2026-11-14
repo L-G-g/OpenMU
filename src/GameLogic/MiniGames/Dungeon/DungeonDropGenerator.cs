@@ -10,8 +10,10 @@ using MUnique.OpenMU.GameLogic.Attributes;
 /// The drop generator of a dungeon. It generates the drops with the drop generator of the game and changes them:
 /// <list type="bullet">
 ///   <item>The monsters drop excellent items more often (<see cref="DungeonConfiguration.ExcellentDropChanceMultiplier"/>).</item>
-///   <item>The excellent items are of the zone of the monster or of a zone before it, with at least
-///         <see cref="DungeonConfiguration.MinimumExcellentOptions"/> excellent options.</item>
+///   <item>The excellent items are of the zones of the <see cref="DungeonSettings.DropMaps"/> of the dungeon (without them: of the zone
+///         of the monster or of a zone before it), with at least <see cref="DungeonConfiguration.MinimumExcellentOptions"/> excellent options.
+///         The weapons, shields and armor sets of these zones are split into a low and a high half, and the high items drop
+///         more often in the extreme version of the dungeon (<see cref="DungeonConfiguration.ExtremeHighItemWeight"/>).</item>
 ///   <item>The bosses (the boss of each stage) drop one such excellent item, with the chance <see cref="DungeonStage.ExcellentDropChance"/>.</item>
 ///   <item>The items which are rolled with need, greed or pass (see <see cref="DungeonLoot"/>) don't fall to the ground.</item>
 /// </list>
@@ -22,6 +24,8 @@ public sealed class DungeonDropGenerator : IDropGenerator
     private readonly DungeonConfiguration _configuration;
     private readonly DungeonLoot _loot;
     private readonly IReadOnlyDictionary<MonsterDefinition, double> _bosses;
+    private readonly IReadOnlyList<short> _dropMapNumbers;
+    private readonly double _highItemWeight;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DungeonDropGenerator"/> class.
@@ -30,8 +34,12 @@ public sealed class DungeonDropGenerator : IDropGenerator
     /// <param name="configuration">The configuration.</param>
     /// <param name="loot">The loot of the dungeon.</param>
     /// <param name="bosses">The definitions of the bosses, with their chance to drop an excellent item.</param>
-    internal DungeonDropGenerator(IDropGenerator gameDropGenerator, DungeonConfiguration configuration, DungeonLoot loot, IReadOnlyDictionary<MonsterDefinition, double> bosses)
+    /// <param name="dropMapNumbers">The numbers of the maps whose zones give the excellent items.</param>
+    /// <param name="highItemWeight">How much more often than a low item a high item drops.</param>
+    internal DungeonDropGenerator(IDropGenerator gameDropGenerator, DungeonConfiguration configuration, DungeonLoot loot, IReadOnlyDictionary<MonsterDefinition, double> bosses, IReadOnlyList<short> dropMapNumbers, double highItemWeight)
     {
+        this._dropMapNumbers = dropMapNumbers;
+        this._highItemWeight = highItemWeight;
         this._gameDropGenerator = gameDropGenerator;
         this._configuration = configuration;
         this._loot = loot;
@@ -114,6 +122,12 @@ public sealed class DungeonDropGenerator : IDropGenerator
         if (this._gameDropGenerator is not DefaultDropGenerator defaultDropGenerator)
         {
             return null;
+        }
+
+        if (this._dropMapNumbers.Count > 0
+            && await defaultDropGenerator.GenerateExcellentItemOfZonesAsync(this._dropMapNumbers, monsterLevel, this._configuration.MinimumExcellentOptions, this._highItemWeight).ConfigureAwait(false) is { } item)
+        {
+            return item;
         }
 
         return await defaultDropGenerator.GenerateExcellentItemUpToZoneAsync(monsterLevel, this._configuration.MinimumExcellentOptions).ConfigureAwait(false);

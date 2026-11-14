@@ -15,7 +15,9 @@ using MUnique.OpenMU.Pathfinding;
 
 /// <summary>
 /// The context of a dungeon: an instance of a hunting map (the entrance map of the definition, e.g. Devias) for one party,
-/// isolated from the other players.
+/// isolated from the other players. The game level of the definition selects the dungeon of the
+/// <see cref="DungeonConfiguration.Dungeons"/> and its normal or extreme version, in which the monsters are stronger
+/// (<see cref="DungeonConfiguration.ExtremeHealthMultiplier"/> etc.) and drop the high items more often.
 /// </summary>
 /// <remarks>
 /// The map has the usual monsters of the map, which are stronger (<see cref="DungeonConfiguration.MonsterHealthMultiplier"/> etc.)
@@ -23,7 +25,7 @@ using MUnique.OpenMU.Pathfinding;
 /// e.g. along the ways between the bosses. The dungeon has <see cref="DungeonConfiguration.Stages"/>, each with a boss: it appears once
 /// at a fixed place when the boss of the stage before is dead, the players killed enough monsters of the stage and enough time passed.
 /// Golden messages tell the players what to do. A boss has a magic effect which the client shows (<see cref="DungeonConfiguration.BossEffectNumber"/>).
-/// The players appear at <see cref="DungeonConfiguration.EntryX"/>, <see cref="DungeonConfiguration.EntryY"/>, and
+/// The players appear at <see cref="DungeonSettings.EntryX"/>, <see cref="DungeonSettings.EntryY"/>, and
 /// the safezone of the map is blocked (<see cref="DungeonConfiguration.BlockSafezone"/>). The game ends after the game duration of the definition; dying or leaving the map
 /// leaves the dungeon for good, because the entry is used up.
 /// </remarks>
@@ -44,14 +46,22 @@ public sealed class DungeonContext : MiniGameContext
     /// <summary>
     /// Every how many kills of the monsters of the stage the players see the progress.
     /// </summary>
-    private const int KillProgressStep = 50;
+    private const int KillProgressStep = 25;
+
+    /// <summary>
+    /// The range around a boss in which its escorts appear.
+    /// </summary>
+    private const int EscortRange = 3;
 
     private static readonly TimeSpan[] RemainingTimeMessages = [TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1)];
 
     private readonly DungeonConfiguration _configuration;
-    private readonly List<(DungeonStage Stage, MonsterDefinition? Boss)> _stages;
+    private readonly DungeonSettings _dungeon;
+    private readonly bool _isExtreme;
+    private readonly List<(DungeonStage Stage, MonsterDefinition? Boss, MonsterDefinition? Escort)> _stages;
     private readonly ConcurrentDictionary<Monster, byte> _preparedMonsters = new();
     private readonly ConcurrentDictionary<Monster, int> _bosses = new();
+    private readonly ConcurrentDictionary<Monster, byte> _escorts = new();
     private readonly ConcurrentDictionary<short, int> _kills = new();
     private readonly object _stageLock = new();
     private int _stageIndex;
@@ -72,26 +82,56 @@ public sealed class DungeonContext : MiniGameContext
         : base(key, definition, gameContext, mapInitializer)
     {
         this._configuration = DungeonFeaturePlugIn.GetConfiguration(gameContext) ?? new DungeonConfiguration();
-        this._stages = this._configuration.Stages
-            .Select(stage => (stage, gameContext.Configuration.Monsters.FirstOrDefault(m => m.Designation.ValueInNeutralLanguage == stage.BossDesignation)))
+        (this._dungeon, this._isExtreme) = this._configuration.FindByGameLevel(definition.GameLevel)
+                                           ?? (this._configuration.Dungeons.FirstOrDefault() ?? new DungeonSettings { Number = DungeonDefaults.DeviasDungeonNumber }, false);
+        this._stages = this._configuration.GetStages(this._dungeon)
+            .Select(stage => (stage, FindMonster(stage.BossDesignation), stage.EscortCount > 0 ? FindMonster(stage.EscortDesignation) : null))
             .ToList();
         this.Loot = new DungeonLoot(this, this._configuration, this.Logger);
         var bossDefinitions = new Dictionary<MonsterDefinition, double>();
-        foreach (var (stage, boss) in this._stages)
+        foreach (var (stage, boss, escort) in this._stages)
         {
+            if (escort is not null)
+            {
+                bossDefinitions[escort] = stage.EscortExcellentDropChance;
+            }
+
             if (boss is not null)
             {
                 bossDefinitions[boss] = stage.ExcellentDropChance;
             }
         }
 
-        this.DropGenerator = new DungeonDropGenerator(gameContext.DropGenerator, this._configuration, this.Loot, bossDefinitions);
+        this.DropGenerator = new DungeonDropGenerator(
+            gameContext.DropGenerator,
+            this._configuration,
+            this.Loot,
+            bossDefinitions,
+            this._dungeon.GetDropMapNumbers(),
+            this._isExtreme ? this._configuration.ExtremeHighItemWeight : this._configuration.HighItemWeight);
+
+        MonsterDefinition? FindMonster(string designation)
+        {
+            return string.IsNullOrEmpty(designation)
+                ? null
+                : gameContext.Configuration.Monsters.FirstOrDefault(m => m.Designation.ValueInNeutralLanguage == designation);
+        }
     }
 
     /// <summary>
     /// Gets the loot of the dungeon, which shares the drops with need, greed or pass.
     /// </summary>
     public DungeonLoot Loot { get; }
+
+    /// <summary>
+    /// Gets the settings of this dungeon.
+    /// </summary>
+    public DungeonSettings Dungeon => this._dungeon;
+
+    /// <summary>
+    /// Gets a value indicating whether this is the extreme version of the dungeon.
+    /// </summary>
+    public bool IsExtreme => this._isExtreme;
 
     /// <inheritdoc />
     internal override bool IsInstanceOfNormalMap => true;
@@ -128,7 +168,7 @@ public sealed class DungeonContext : MiniGameContext
     internal override Point? GetEntrySpawnPosition(Player player)
     {
         return ReferenceEquals(player.CurrentMap, this.Map)
-            ? new Point(this._configuration.EntryX, this._configuration.EntryY)
+            ? new Point(this._dungeon.EntryX, this._dungeon.EntryY)
             : null;
     }
 
@@ -137,7 +177,11 @@ public sealed class DungeonContext : MiniGameContext
     {
         this._startTime = DateTime.UtcNow;
         await base.OnGameStartAsync(players).ConfigureAwait(false);
-        await this.ShowGoldenTextAsync(string.Format(DungeonMessages.StartedFormat, (int)Math.Round(this.Definition.GameDuration.TotalMinutes))).ConfigureAwait(false);
+        var name = string.IsNullOrEmpty(this._dungeon.Name) ? DungeonMessages.DefaultName : this._dungeon.Name;
+        await this.ShowGoldenTextAsync(string.Format(
+            this._isExtreme ? DungeonMessages.StartedExtremeFormat : DungeonMessages.StartedFormat,
+            (int)Math.Round(this.Definition.GameDuration.TotalMinutes),
+            name)).ConfigureAwait(false);
         if (this._stages.Count > 0)
         {
             await this.ShowGoldenTextAsync(this._stages[0].Stage.Hint).ConfigureAwait(false);
@@ -162,10 +206,11 @@ public sealed class DungeonContext : MiniGameContext
 
         if (args.Object is Monster { Definition.ObjectKind: NpcObjectKind.Monster } monster
             && !this._bosses.ContainsKey(monster)
+            && !this._escorts.ContainsKey(monster)
             && this._preparedMonsters.TryAdd(monster, 0))
         {
             // The spawns of the map are created with the drop generator of the game, and a respawned monster is added again.
-            ApplyMultipliers(monster, this._configuration.MonsterHealthMultiplier, this._configuration.MonsterDamageMultiplier, this._configuration.MonsterDefenseMultiplier);
+            this.ApplyMultipliers(monster, this._configuration.MonsterHealthMultiplier, this._configuration.MonsterDamageMultiplier, this._configuration.MonsterDefenseMultiplier);
             monster.Health = (int)monster.Attributes[Stats.MaximumHealth];
             monster.DropGenerator = this.DropGenerator;
             this.Logger.LogDebug("{context}: Prepared {monster} with {health} health.", this, monster, monster.Health);
@@ -198,6 +243,12 @@ public sealed class DungeonContext : MiniGameContext
             return;
         }
 
+        if (this._escorts.ContainsKey(monster))
+        {
+            // The escorts of a boss don't count for a stage.
+            return;
+        }
+
         var kills = this._kills.AddOrUpdate(monster.Definition.Number, 1, (_, count) => count + 1);
         string? message = null;
         lock (this._stageLock)
@@ -205,11 +256,11 @@ public sealed class DungeonContext : MiniGameContext
             if (this._stageIndex < this._stages.Count
                 && !this._isStageBossSpawned
                 && this._stages[this._stageIndex].Stage is { } stage
-                && stage.MonsterNumber == monster.Definition.Number
-                && kills < stage.KillCount
+                && GetKillCount(stage, monster.Definition.Number) is { } killCount
+                && kills < killCount
                 && kills % KillProgressStep == 0)
             {
-                message = string.Format(DungeonMessages.KillProgressFormat, kills, stage.KillCount, monster.Definition.Designation.ValueInNeutralLanguage);
+                message = string.Format(DungeonMessages.KillProgressFormat, kills, killCount, monster.Definition.Designation.ValueInNeutralLanguage);
             }
         }
 
@@ -291,8 +342,35 @@ public sealed class DungeonContext : MiniGameContext
         }
     }
 
-    private static void ApplyMultipliers(Monster monster, float health, float damage, float defense)
+    /// <summary>
+    /// Gets how many monsters with the number the players have to kill in the stage.
+    /// </summary>
+    /// <returns>The number of kills, or <c>null</c> if the monster doesn't count for the stage.</returns>
+    private static int? GetKillCount(DungeonStage stage, short monsterNumber)
     {
+        if (stage.MonsterNumber == monsterNumber)
+        {
+            return stage.KillCount;
+        }
+
+        return stage.SecondMonsterNumber > 0 && stage.SecondMonsterNumber == monsterNumber ? stage.SecondKillCount : null;
+    }
+
+    private bool AreKillsReached(DungeonStage stage)
+    {
+        return this._kills.GetValueOrDefault(stage.MonsterNumber) >= stage.KillCount
+               && (stage.SecondMonsterNumber <= 0 || this._kills.GetValueOrDefault(stage.SecondMonsterNumber) >= stage.SecondKillCount);
+    }
+
+    private void ApplyMultipliers(Monster monster, float health, float damage, float defense)
+    {
+        if (this._isExtreme)
+        {
+            health *= this._configuration.ExtremeHealthMultiplier;
+            damage *= this._configuration.ExtremeDamageMultiplier;
+            defense *= this._configuration.ExtremeDefenseMultiplier;
+        }
+
         Multiply(monster, Stats.MaximumHealth, health);
         Multiply(monster, Stats.MinimumPhysBaseDmg, damage);
         Multiply(monster, Stats.MaximumPhysBaseDmg, damage);
@@ -351,7 +429,7 @@ public sealed class DungeonContext : MiniGameContext
                 }
 
                 var stage = this._stages[stageIndex].Stage;
-                var killsReached = this._kills.GetValueOrDefault(stage.MonsterNumber) >= stage.KillCount;
+                var killsReached = this.AreKillsReached(stage);
                 var remainingTime = stage.MinimumTime - (DateTime.UtcNow - this._startTime);
                 if (skipped || (killsReached && remainingTime <= TimeSpan.Zero))
                 {
@@ -361,7 +439,7 @@ public sealed class DungeonContext : MiniGameContext
                 else if (killsReached && !this._isStageReadyAnnounced)
                 {
                     this._isStageReadyAnnounced = true;
-                    message = string.Format(DungeonMessages.StageReadyFormat, stage.KillCount, stage.BossDesignation, (int)Math.Ceiling(remainingTime.TotalSeconds));
+                    message = string.Format(DungeonMessages.StageReadyFormat, stage.KillCount + (stage.SecondMonsterNumber > 0 ? stage.SecondKillCount : 0), stage.BossDesignation, (int)Math.Ceiling(remainingTime.TotalSeconds));
                 }
             }
 
@@ -405,7 +483,9 @@ public sealed class DungeonContext : MiniGameContext
 
             await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossKilledFormat, boss.Definition.Designation.ValueInNeutralLanguage)).ConfigureAwait(false);
             await this.ShowGoldenTextAsync(nextHint ?? DungeonMessages.Completed).ConfigureAwait(false);
-            if (isFinished && Story.StoryModeFeaturePlugIn.Get(this.GameContext) is { } story)
+            if (isFinished
+                && this._dungeon.Number == DungeonDefaults.DeviasDungeonNumber
+                && Story.StoryModeFeaturePlugIn.Get(this.GameContext) is { } story)
             {
                 await this.ForEachPlayerAsync(player => story.OnDungeonFinishedAsync(player).AsTask()).ConfigureAwait(false);
             }
@@ -434,38 +514,62 @@ public sealed class DungeonContext : MiniGameContext
 
     private async ValueTask SpawnBossAsync(int stageIndex)
     {
-        var (stage, definition) = this._stages[stageIndex];
+        var (stage, definition, escortDefinition) = this._stages[stageIndex];
         if (definition is null)
         {
             this.Logger.LogWarning("{context}: The boss '{boss}' isn't defined.", this, stage.BossDesignation);
             return;
         }
 
+        if (await this.SpawnBossMonsterAsync(definition, stage.BossX, stage.BossY, 0, boss => this._bosses[boss] = stageIndex).ConfigureAwait(false) is not { } boss)
+        {
+            return;
+        }
+
+        for (var i = 0; escortDefinition is not null && i < stage.EscortCount; i++)
+        {
+            await this.SpawnBossMonsterAsync(escortDefinition, stage.BossX, stage.BossY, EscortRange, escort => this._escorts[escort] = 0).ConfigureAwait(false);
+        }
+
+        await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossAppearedFormat, definition.Designation.ValueInNeutralLanguage, boss.Position.X, boss.Position.Y)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Spawns a boss or an escort of a boss, with the multipliers and the magic effect of the bosses.
+    /// </summary>
+    /// <param name="definition">The definition of the monster.</param>
+    /// <param name="x">The x coordinate.</param>
+    /// <param name="y">The y coordinate.</param>
+    /// <param name="range">The range around the coordinates in which the monster appears.</param>
+    /// <param name="register">Registers the monster, before it's added to the map.</param>
+    /// <returns>The monster, or <c>null</c> if it couldn't be spawned.</returns>
+    private async ValueTask<Monster?> SpawnBossMonsterAsync(MonsterDefinition definition, byte x, byte y, int range, Action<Monster> register)
+    {
         var spawnArea = new MonsterSpawnArea
         {
             GameMap = this.Map.Definition,
             MonsterDefinition = definition,
             SpawnTrigger = SpawnTrigger.OnceAtEventStart,
             Quantity = 1,
-            X1 = stage.BossX,
-            X2 = stage.BossX,
-            Y1 = stage.BossY,
-            Y2 = stage.BossY,
+            X1 = (byte)Math.Max(x - range, 0),
+            X2 = (byte)Math.Min(x + range, byte.MaxValue),
+            Y1 = (byte)Math.Max(y - range, 0),
+            Y2 = (byte)Math.Min(y + range, byte.MaxValue),
         };
         var boss = new Monster(spawnArea, definition, this.Map, this.DropGenerator, new BasicMonsterIntelligence(), this.GameContext.PlugInManager, this.GameContext.PathFinderPool, this);
-        ApplyMultipliers(boss, this._configuration.BossHealthMultiplier, this._configuration.BossDamageMultiplier, this._configuration.BossDefenseMultiplier);
+        this.ApplyMultipliers(boss, this._configuration.BossHealthMultiplier, this._configuration.BossDamageMultiplier, this._configuration.BossDefenseMultiplier);
         try
         {
             boss.Initialize();
         }
         catch (InvalidOperationException ex)
         {
-            this.Logger.LogWarning(ex, "{context}: Couldn't spawn the boss at {x}, {y}.", this, spawnArea.X1, spawnArea.Y1);
+            this.Logger.LogWarning(ex, "{context}: Couldn't spawn {boss} at {x}, {y}.", this, definition.Designation, x, y);
             boss.Dispose();
-            return;
+            return null;
         }
 
-        this._bosses[boss] = stageIndex;
+        register(boss);
         await this.Map.AddAsync(boss).ConfigureAwait(false);
         boss.OnSpawn();
         if (this._configuration.BossEffectNumber > 0)
@@ -480,7 +584,7 @@ public sealed class DungeonContext : MiniGameContext
             await boss.MagicEffectList.AddEffectAsync(new MagicEffect(Timeout.InfiniteTimeSpan, effect)).ConfigureAwait(false);
         }
 
-        await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossAppearedFormat, definition.Designation.ValueInNeutralLanguage, boss.Position.X, boss.Position.Y)).ConfigureAwait(false);
+        return boss;
     }
 
     private async ValueTask ShowGoldenTextAsync(string text)
