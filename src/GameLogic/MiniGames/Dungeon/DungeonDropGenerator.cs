@@ -10,7 +10,7 @@ using MUnique.OpenMU.GameLogic.Attributes;
 /// The drop generator of a dungeon. It generates the drops with the drop generator of the game and changes them:
 /// <list type="bullet">
 ///   <item>The monsters drop an excellent item with their own chance (<see cref="DungeonConfiguration.MonsterExcellentDropChance"/>),
-///         which is higher than on the map outside of the dungeon, and no other items (<see cref="DungeonConfiguration.OnlyExcellentItems"/>).</item>
+///         which is higher than on the map outside of the dungeon, and no other items and no money (<see cref="DungeonConfiguration.OnlyExcellentItems"/>).</item>
 ///   <item>The excellent items are of the zones of the <see cref="DungeonSettings.DropMaps"/> of the dungeon (without them: of the zone
 ///         of the monster or of a zone before it), with at least <see cref="DungeonConfiguration.MinimumExcellentOptions"/> excellent options.
 ///         The weapons, shields and armor sets of these zones are split into a low and a high half, and the high items drop
@@ -88,7 +88,8 @@ public sealed class DungeonDropGenerator : IDropGenerator
             }
         }
 
-        return (groundItems, money);
+        // The money is a drop of the map as well.
+        return (groundItems, this._configuration.OnlyExcellentItems ? null : money);
     }
 
     /// <inheritdoc />

@@ -2322,6 +2322,6 @@
     <value>Only excellent items</value>
   </data>
   <data name="DungeonConfiguration_OnlyExcellentItems_Description" xml:space="preserve">
-    <value>The monsters of the dungeons drop only excellent items and money. Otherwise, they also drop what they drop on the map outside of the dungeon, e.g. normal items and jewels.</value>
+    <value>The monsters of the dungeons drop only excellent items. Otherwise, they also drop what they drop on the map outside of the dungeon, e.g. normal items, jewels and money.</value>
   </data>
 </root>
