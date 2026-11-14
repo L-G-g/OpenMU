@@ -2213,4 +2213,115 @@
   <data name="ResetButtonPlugIn_Description" xml:space="preserve">
     <value>Tells the clients every second whether their character meets the requirements of the next reset (level, zen, reset limit, items), so that the reset button of the PeroniaMU client (resetbutton.dll) is shown only then. Needs the reset feature.</value>
   </data>
+  <data name="DungeonSettings_Number_Name" xml:space="preserve">
+    <value>Number</value>
+  </data>
+  <data name="DungeonSettings_Number_Description" xml:space="preserve">
+    <value>The number of the dungeon, to which its stages refer. A character can enter each number once per entry cooldown, in the normal or in the extreme version.</value>
+  </data>
+  <data name="DungeonSettings_Name_Name" xml:space="preserve">
+    <value>Name (shown to the players)</value>
+  </data>
+  <data name="DungeonSettings_NpcDesignation_Name" xml:space="preserve">
+    <value>NPC (designation)</value>
+  </data>
+  <data name="DungeonSettings_NpcDesignation_Description" xml:space="preserve">
+    <value>The designation of the NPC at which the party leader enters the normal version of the dungeon.</value>
+  </data>
+  <data name="DungeonSettings_ExtremeNpcDesignation_Name" xml:space="preserve">
+    <value>NPC of the extreme version (designation)</value>
+  </data>
+  <data name="DungeonSettings_GameLevel_Name" xml:space="preserve">
+    <value>Game level</value>
+  </data>
+  <data name="DungeonSettings_GameLevel_Description" xml:space="preserve">
+    <value>The game level of the mini game definition of the type Dungeon which belongs to the normal version of the dungeon.</value>
+  </data>
+  <data name="DungeonSettings_ExtremeGameLevel_Name" xml:space="preserve">
+    <value>Game level of the extreme version</value>
+  </data>
+  <data name="DungeonSettings_DropMaps_Name" xml:space="preserve">
+    <value>Maps of the drops</value>
+  </data>
+  <data name="DungeonSettings_DropMaps_Description" xml:space="preserve">
+    <value>The numbers of the maps whose zones give the excellent weapons, shields and armor sets of the dungeon, separated by commas, e.g. 0,3,51,2 for Lorencia, Noria, Elbeland and Devias.</value>
+  </data>
+  <data name="DungeonStage_Dungeon_Name" xml:space="preserve">
+    <value>Dungeon (number)</value>
+  </data>
+  <data name="DungeonStage_Dungeon_Description" xml:space="preserve">
+    <value>The number of the dungeon of this stage. The stages of a dungeon follow each other in the order of this list.</value>
+  </data>
+  <data name="DungeonStage_SecondMonsterNumber_Name" xml:space="preserve">
+    <value>Second monster number</value>
+  </data>
+  <data name="DungeonStage_SecondMonsterNumber_Description" xml:space="preserve">
+    <value>The number of a second kind of monsters which the players have to kill, too. 0 if the stage has only one kind.</value>
+  </data>
+  <data name="DungeonStage_SecondKillCount_Name" xml:space="preserve">
+    <value>Kills of the second monster</value>
+  </data>
+  <data name="DungeonStage_EscortDesignation_Name" xml:space="preserve">
+    <value>Escort (designation)</value>
+  </data>
+  <data name="DungeonStage_EscortDesignation_Description" xml:space="preserve">
+    <value>The designation of the monsters which appear around the boss, e.g. Zaikan Boss. Empty if the boss comes alone.</value>
+  </data>
+  <data name="DungeonStage_EscortCount_Name" xml:space="preserve">
+    <value>Number of escorts</value>
+  </data>
+  <data name="DungeonStage_EscortExcellentDropChance_Name" xml:space="preserve">
+    <value>Excellent drop chance of each escort (0 to 1)</value>
+  </data>
+  <data name="DungeonConfiguration_Dungeons_Name" xml:space="preserve">
+    <value>Dungeons</value>
+  </data>
+  <data name="DungeonConfiguration_Dungeons_Description" xml:space="preserve">
+    <value>The dungeons. Each one is an instance of the entrance map of its mini game definitions, with a normal and an extreme version.</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeHealthMultiplier_Name" xml:space="preserve">
+    <value>Extreme version: health multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeDamageMultiplier_Name" xml:space="preserve">
+    <value>Extreme version: damage multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeDefenseMultiplier_Name" xml:space="preserve">
+    <value>Extreme version: defense multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeMultiplier_Description" xml:space="preserve">
+    <value>In the extreme version of a dungeon, the monsters and the bosses get this multiplier on top of their usual multiplier.</value>
+  </data>
+  <data name="DungeonConfiguration_HighItemWeight_Name" xml:space="preserve">
+    <value>Normal version: weight of the high items</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeHighItemWeight_Name" xml:space="preserve">
+    <value>Extreme version: weight of the high items</value>
+  </data>
+  <data name="DungeonConfiguration_HighItemWeight_Description" xml:space="preserve">
+    <value>The excellent weapons, shields and armor sets of a dungeon are split per character class into a low and a high half (with an odd number, the low half gets one more). A high item drops this many times as often as a low item; 1 gives all items the same chance.</value>
+  </data>
+  <data name="DungeonSettings_EntriesPerDay_Name" xml:space="preserve">
+    <value>Entries per day</value>
+  </data>
+  <data name="DungeonSettings_Override_Description" xml:space="preserve">
+    <value>The value of this dungeon. 0 uses the general value of the plugin.</value>
+  </data>
+  <data name="DungeonConfiguration_EntriesPerCooldown_Name" xml:space="preserve">
+    <value>Entries per day (per entry cooldown)</value>
+  </data>
+  <data name="DungeonConfiguration_EntriesPerCooldown_Description" xml:space="preserve">
+    <value>How many times a character can enter each dungeon per entry cooldown, which starts with the first of these entries. A dungeon can have its own value in the table of the dungeons.</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterExcellentDropChance_Name" xml:space="preserve">
+    <value>Excellent drop chance of a monster (0 to 1)</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterExcellentDropChance_Description" xml:space="preserve">
+    <value>The chance of a monster of a dungeon which is not a boss to drop an excellent item when it is killed, e.g. 0.005 for 1 of 200 kills. It does not depend on the chance of the map. A dungeon can have its own value in the table of the dungeons.</value>
+  </data>
+  <data name="DungeonConfiguration_OnlyExcellentItems_Name" xml:space="preserve">
+    <value>Only excellent items</value>
+  </data>
+  <data name="DungeonConfiguration_OnlyExcellentItems_Description" xml:space="preserve">
+    <value>The monsters of the dungeons drop only excellent items. Otherwise, they also drop what they drop on the map outside of the dungeon, e.g. normal items, jewels and money.</value>
+  </data>
 </root>

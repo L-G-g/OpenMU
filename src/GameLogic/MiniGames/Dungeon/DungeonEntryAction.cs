@@ -15,8 +15,8 @@ using MUnique.OpenMU.GameLogic.Spectres;
 /// <remarks>
 /// The party leader starts it at the NPC of the dungeon. All members of the party enter, wherever they are,
 /// but only if all of them can enter: otherwise nobody enters and all of them see why.
-/// A character can enter once per <see cref="DungeonConfiguration.EntryCooldown"/>; the time of the last entry
-/// is kept in the attribute <see cref="Stats.DungeonLastEntry"/> of the character.
+/// A character can enter each dungeon once per <see cref="DungeonConfiguration.EntryCooldown"/>, in its normal or in its
+/// extreme version; the time of the last entry is kept in an attribute of the character, see <see cref="Stats.GetDungeonLastEntry"/>.
 /// </remarks>
 public class DungeonEntryAction
 {
@@ -34,14 +34,20 @@ public class DungeonEntryAction
     /// Tries to enter the dungeon with the party of the player.
     /// </summary>
     /// <param name="leader">The player who talked to the NPC, the party leader or a player without party.</param>
-    public async ValueTask TryEnterAsync(Player leader)
+    /// <param name="dungeon">The dungeon to enter.</param>
+    /// <param name="isExtreme">If set to <c>true</c>, the party enters the extreme version of the dungeon.</param>
+    public async ValueTask TryEnterAsync(Player leader, DungeonSettings dungeon, bool isExtreme)
     {
         var gameContext = leader.GameContext;
         var configuration = DungeonFeaturePlugIn.GetConfiguration(gameContext);
+        var gameLevel = isExtreme ? dungeon.ExtremeGameLevel : dungeon.GameLevel;
         var definition = configuration is null
             ? null
-            : gameContext.Configuration.MiniGameDefinitions.FirstOrDefault(d => d.Type == MiniGameType.Dungeon && d.GameLevel == configuration.GameLevel);
-        var lastEntryAttribute = gameContext.Configuration.Attributes.FirstOrDefault(a => a.Id == Stats.DungeonLastEntry.Id);
+            : gameContext.Configuration.MiniGameDefinitions.FirstOrDefault(d => d.Type == MiniGameType.Dungeon && d.GameLevel == gameLevel);
+        var lastEntryId = Stats.GetDungeonLastEntry(dungeon.Number).Id;
+        var lastEntryAttribute = gameContext.Configuration.Attributes.FirstOrDefault(a => a.Id == lastEntryId);
+        var entryCountId = Stats.GetDungeonEntryCount(dungeon.Number).Id;
+        var entryCountAttribute = gameContext.Configuration.Attributes.FirstOrDefault(a => a.Id == entryCountId);
         if (configuration is null || definition is null || lastEntryAttribute is null)
         {
             await leader.ShowBlueMessageAsync(DungeonMessages.NotAvailable).ConfigureAwait(false);
@@ -57,7 +63,7 @@ public class DungeonEntryAction
         var members = leader.GetPlayerParty()?.PartyList.OfType<Player>().ToList() ?? new List<Player> { leader };
         var now = DateTime.UtcNow;
         var problems = members
-            .Select(member => (Member: member, Problem: GetEntryProblem(member, definition, configuration, now)))
+            .Select(member => (Member: member, Problem: GetEntryProblem(member, definition, configuration, dungeon, entryCountAttribute is not null, now)))
             .Where(entry => entry.Problem is not null)
             .Select(entry => $"{entry.Member.Name}: {entry.Problem}")
             .ToList();
@@ -81,7 +87,7 @@ public class DungeonEntryAction
             await this._enterAction.TryEnterMiniGameAsync(member, MiniGameType.Dungeon, definition.GameLevel, NoTicketSlot).ConfigureAwait(false);
             if (member.CurrentMiniGame is DungeonContext)
             {
-                SetLastEntry(member, lastEntryAttribute, now);
+                SetLastEntry(member, lastEntryAttribute, entryCountAttribute, configuration.EntryCooldown, now);
             }
             else
             {
@@ -91,17 +97,19 @@ public class DungeonEntryAction
     }
 
     /// <summary>
-    /// Gets the time of the last entry of the character into the dungeon.
+    /// Gets the time of the last entry of the character into a dungeon.
     /// </summary>
     /// <param name="character">The character.</param>
+    /// <param name="dungeonNumber">The number of the dungeon; the first one, of Devias, by default.</param>
     /// <returns>The time of the last entry, or <c>null</c> if it never entered.</returns>
-    internal static DateTime? GetLastEntry(Character character)
+    internal static DateTime? GetLastEntry(Character character, byte dungeonNumber = DungeonDefaults.DeviasDungeonNumber)
     {
-        var minutes = character.Attributes.FirstOrDefault(a => a.Definition?.Id == Stats.DungeonLastEntry.Id)?.Value ?? 0;
+        var attributeId = Stats.GetDungeonLastEntry(dungeonNumber).Id;
+        var minutes = character.Attributes.FirstOrDefault(a => a.Definition?.Id == attributeId)?.Value ?? 0;
         return minutes > 0 ? EntryTimeEpoch.AddMinutes(minutes) : null;
     }
 
-    private static string? GetEntryProblem(Player member, MiniGameDefinition definition, DungeonConfiguration configuration, DateTime now)
+    private static string? GetEntryProblem(Player member, MiniGameDefinition definition, DungeonConfiguration configuration, DungeonSettings dungeon, bool countsEntries, DateTime now)
     {
         if (member.SelectedCharacter is not { } character || member.Attributes is not { } attributes || member.CurrentMap is null)
         {
@@ -133,7 +141,11 @@ public class DungeonEntryAction
         }
 
         var ignoresCooldown = configuration.GameMastersIgnoreCooldown && character.CharacterStatus == CharacterStatus.GameMaster;
-        if (!ignoresCooldown && GetLastEntry(character) is { } lastEntry && now - lastEntry < configuration.EntryCooldown)
+        var maximumEntries = countsEntries ? configuration.GetEntriesPerCooldown(dungeon) : 1;
+        if (!ignoresCooldown
+            && GetLastEntry(character, dungeon.Number) is { } lastEntry
+            && now - lastEntry < configuration.EntryCooldown
+            && GetEntryCount(character, dungeon.Number) >= maximumEntries)
         {
             var remaining = configuration.EntryCooldown - (now - lastEntry);
             return string.Format(DungeonMessages.ProblemCooldownFormat, (int)remaining.TotalHours, remaining.Minutes);
@@ -142,20 +154,52 @@ public class DungeonEntryAction
         return null;
     }
 
-    private static void SetLastEntry(Player member, AttributeDefinition lastEntryAttribute, DateTime now)
+    /// <summary>
+    /// Gets how many times the character entered a dungeon since its last entry time, which is the first entry of its current day.
+    /// </summary>
+    private static int GetEntryCount(Character character, byte dungeonNumber)
+    {
+        var attributeId = Stats.GetDungeonEntryCount(dungeonNumber).Id;
+
+        // A character which entered before the entries were counted has an entry time, but no count.
+        return (int)(character.Attributes.FirstOrDefault(a => a.Definition?.Id == attributeId)?.Value ?? 1);
+    }
+
+    /// <summary>
+    /// Remembers an entry: the first entry after the cooldown starts a new day of the character, with the time of the entry;
+    /// further entries of that day only count up.
+    /// </summary>
+    private static void SetLastEntry(Player member, AttributeDefinition lastEntryAttribute, AttributeDefinition? entryCountAttribute, TimeSpan cooldown, DateTime now)
     {
         if (member.SelectedCharacter is not { } character)
         {
             return;
         }
 
-        var stat = character.Attributes.FirstOrDefault(a => a.Definition?.Id == Stats.DungeonLastEntry.Id);
-        if (stat is null)
+        var lastEntry = GetOrCreate(lastEntryAttribute);
+        var isNewDay = entryCountAttribute is null || lastEntry.Value <= 0 || now - EntryTimeEpoch.AddMinutes(lastEntry.Value) >= cooldown;
+        if (isNewDay)
         {
-            stat = member.PersistenceContext.CreateNew<StatAttribute>(lastEntryAttribute, 0);
-            character.Attributes.Add(stat);
+            lastEntry.Value = (float)Math.Floor((now - EntryTimeEpoch).TotalMinutes);
         }
 
-        stat.Value = (float)Math.Floor((now - EntryTimeEpoch).TotalMinutes);
+        if (entryCountAttribute is not null)
+        {
+            var hadCount = character.Attributes.Any(a => a.Definition?.Id == entryCountAttribute.Id);
+            var entryCount = GetOrCreate(entryCountAttribute);
+            entryCount.Value = isNewDay ? 1 : (hadCount ? entryCount.Value : 1) + 1;
+        }
+
+        StatAttribute GetOrCreate(AttributeDefinition definition)
+        {
+            var stat = character.Attributes.FirstOrDefault(a => a.Definition?.Id == definition.Id);
+            if (stat is null)
+            {
+                stat = member.PersistenceContext.CreateNew<StatAttribute>(definition, 0);
+                character.Attributes.Add(stat);
+            }
+
+            return stat;
+        }
     }
 }

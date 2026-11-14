@@ -108,6 +108,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         StoryModeData.Apply(this.Context, this.GameConfiguration);
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
         MapDropsAndInvasions.Apply(this.Context, this.GameConfiguration);
+        MoreDungeons.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 
         // After all items exist.

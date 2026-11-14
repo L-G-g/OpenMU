@@ -442,4 +442,10 @@
   <data name="SpectreHubUpdatePlugIn_Description" xml:space="preserve">
     <value>Adds the spectre hub: the Guardian of the spectres in Lorencia lets a player enter its own hub, where a rival of each class waits. Beating a rival in a duel unlocks its spectre, and beating it again makes the spectre evolve.</value>
   </data>
+  <data name="MoreDungeonsUpdatePlugIn_Name" xml:space="preserve">
+    <value>Tarkan And Kanturu Dungeons</value>
+  </data>
+  <data name="MoreDungeonsUpdatePlugIn_Description" xml:space="preserve">
+    <value>Adds the dungeons of Tarkan (Mutant, Beam Knight and Death Beam Knight with three Zaikans) and of Kanturu Ruins (Satyros, Kentauros Warrior and Genocider Warrior), and an extreme version of each dungeon, including the one of Devias: stronger monsters, and the high half of the items drops more often. Each dungeon has two guards in the town of its map, one for the normal and one for the extreme version, and its own daily entry. The dungeon of Devias drops the items of Lorencia, Noria, Elbeland and Devias; Tarkan the ones of Dungeon, Lost Tower, Atlans and Tarkan; Kanturu the ones of Aida, Icarus, Kanturu Ruins and Kanturu Relics. The rules can be changed in the plugin Dungeon.</value>
+  </data>
 </root>
