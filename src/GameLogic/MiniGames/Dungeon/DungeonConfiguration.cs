@@ -18,6 +18,13 @@ public class DungeonConfiguration
     public TimeSpan EntryCooldown { get; set; } = TimeSpan.FromHours(24);
 
     /// <summary>
+    /// Gets or sets how many times a character can enter each dungeon per <see cref="EntryCooldown"/>, which starts with the
+    /// first of these entries. A dungeon can have its own value (<see cref="DungeonSettings.EntriesPerDay"/>).
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_EntriesPerCooldown_Name), Description = nameof(PlugInResources.DungeonConfiguration_EntriesPerCooldown_Description))]
+    public int EntriesPerCooldown { get; set; } = 1;
+
+    /// <summary>
     /// Gets or sets a value indicating whether game masters can enter again before the <see cref="EntryCooldown"/> passed, e.g. for tests.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_GameMastersIgnoreCooldown_Name), Description = nameof(PlugInResources.DungeonConfiguration_GameMastersIgnoreCooldown_Description))]
@@ -224,6 +231,57 @@ public class DungeonConfiguration
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Gets how many times a character can enter a dungeon per <see cref="EntryCooldown"/>.
+    /// </summary>
+    /// <param name="dungeon">The dungeon.</param>
+    /// <returns>The number of entries, at least 1.</returns>
+    public int GetEntriesPerCooldown(DungeonSettings dungeon)
+    {
+        return Math.Max(dungeon.EntriesPerDay > 0 ? dungeon.EntriesPerDay : this.EntriesPerCooldown, 1);
+    }
+
+    /// <summary>
+    /// Gets the multipliers for the health, damage and defense of the monsters or of the bosses of a dungeon:
+    /// the values of the dungeon, or the general ones where it has none, with the ones of the extreme version on top.
+    /// </summary>
+    /// <param name="dungeon">The dungeon.</param>
+    /// <param name="isExtreme">Whether it's the extreme version of the dungeon.</param>
+    /// <param name="isBoss">Whether the multipliers are for a boss.</param>
+    /// <returns>The multipliers.</returns>
+    public (float Health, float Damage, float Defense) GetMultipliers(DungeonSettings dungeon, bool isExtreme, bool isBoss)
+    {
+        var health = isBoss ? Pick(dungeon.BossHealthMultiplier, this.BossHealthMultiplier) : Pick(dungeon.MonsterHealthMultiplier, this.MonsterHealthMultiplier);
+        var damage = isBoss ? Pick(dungeon.BossDamageMultiplier, this.BossDamageMultiplier) : Pick(dungeon.MonsterDamageMultiplier, this.MonsterDamageMultiplier);
+        var defense = isBoss ? Pick(dungeon.BossDefenseMultiplier, this.BossDefenseMultiplier) : Pick(dungeon.MonsterDefenseMultiplier, this.MonsterDefenseMultiplier);
+        if (isExtreme)
+        {
+            health *= Pick(dungeon.ExtremeHealthMultiplier, this.ExtremeHealthMultiplier);
+            damage *= Pick(dungeon.ExtremeDamageMultiplier, this.ExtremeDamageMultiplier);
+            defense *= Pick(dungeon.ExtremeDefenseMultiplier, this.ExtremeDefenseMultiplier);
+        }
+
+        return (health, damage, defense);
+
+        static float Pick(float ofDungeon, float general) => ofDungeon > 0 ? ofDungeon : general;
+    }
+
+    /// <summary>
+    /// Gets how much more often than a low item a high item drops in a dungeon.
+    /// </summary>
+    /// <param name="dungeon">The dungeon.</param>
+    /// <param name="isExtreme">Whether it's the extreme version of the dungeon.</param>
+    /// <returns>The weight of the high items.</returns>
+    public double GetHighItemWeight(DungeonSettings dungeon, bool isExtreme)
+    {
+        if (!isExtreme)
+        {
+            return this.HighItemWeight;
+        }
+
+        return dungeon.ExtremeHighItemWeight > 0 ? dungeon.ExtremeHighItemWeight : this.ExtremeHighItemWeight;
     }
 
     /// <summary>

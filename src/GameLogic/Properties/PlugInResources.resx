@@ -2300,4 +2300,16 @@
   <data name="DungeonConfiguration_HighItemWeight_Description" xml:space="preserve">
     <value>The excellent weapons, shields and armor sets of a dungeon are split per character class into a low and a high half (with an odd number, the low half gets one more). A high item drops this many times as often as a low item; 1 gives all items the same chance.</value>
   </data>
+  <data name="DungeonSettings_EntriesPerDay_Name" xml:space="preserve">
+    <value>Entries per day</value>
+  </data>
+  <data name="DungeonSettings_Override_Description" xml:space="preserve">
+    <value>The value of this dungeon. 0 uses the general value of the plugin.</value>
+  </data>
+  <data name="DungeonConfiguration_EntriesPerCooldown_Name" xml:space="preserve">
+    <value>Entries per day (per entry cooldown)</value>
+  </data>
+  <data name="DungeonConfiguration_EntriesPerCooldown_Description" xml:space="preserve">
+    <value>How many times a character can enter each dungeon per entry cooldown, which starts with the first of these entries. A dungeon can have its own value in the table of the dungeons.</value>
+  </data>
 </root>

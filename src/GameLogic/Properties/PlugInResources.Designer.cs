@@ -5566,5 +5566,17 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized DungeonConfiguration_HighItemWeight_Description text.</summary>
         public static string DungeonConfiguration_HighItemWeight_Description => ResourceManager.GetString("DungeonConfiguration_HighItemWeight_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_EntriesPerDay_Name text.</summary>
+        public static string DungeonSettings_EntriesPerDay_Name => ResourceManager.GetString("DungeonSettings_EntriesPerDay_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Override_Description text.</summary>
+        public static string DungeonSettings_Override_Description => ResourceManager.GetString("DungeonSettings_Override_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_EntriesPerCooldown_Name text.</summary>
+        public static string DungeonConfiguration_EntriesPerCooldown_Name => ResourceManager.GetString("DungeonConfiguration_EntriesPerCooldown_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_EntriesPerCooldown_Description text.</summary>
+        public static string DungeonConfiguration_EntriesPerCooldown_Description => ResourceManager.GetString("DungeonConfiguration_EntriesPerCooldown_Description", resourceCulture)!;
     }
 }

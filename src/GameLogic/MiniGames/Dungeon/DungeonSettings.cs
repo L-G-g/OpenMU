@@ -69,6 +69,72 @@ public class DungeonSettings
     public string DropMaps { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets how many times a character can enter this dungeon per entry cooldown of the plugin. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonSettings_EntriesPerDay_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public int EntriesPerDay { get; set; }
+
+    /// <summary>
+    /// Gets or sets the multiplier for the health of the monsters of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_MonsterHealthMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float MonsterHealthMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the multiplier for the damage of the monsters of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_MonsterDamageMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float MonsterDamageMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the multiplier for the defense of the monsters of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_MonsterDefenseMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float MonsterDefenseMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the multiplier for the health of the bosses of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossHealthMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float BossHealthMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the multiplier for the damage of the bosses of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossDamageMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float BossDamageMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the multiplier for the defense of the bosses of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_BossDefenseMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float BossDefenseMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the additional multiplier for the health in the extreme version of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_ExtremeHealthMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float ExtremeHealthMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the additional multiplier for the damage in the extreme version of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_ExtremeDamageMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float ExtremeDamageMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the additional multiplier for the defense in the extreme version of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_ExtremeDefenseMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public float ExtremeDefenseMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets how much more often than a low item a high item drops in the extreme version of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_ExtremeHighItemWeight_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public double ExtremeHighItemWeight { get; set; }
+
+    /// <summary>
     /// Gets the numbers of the <see cref="DropMaps"/>.
     /// </summary>
     /// <returns>The numbers of the maps.</returns>

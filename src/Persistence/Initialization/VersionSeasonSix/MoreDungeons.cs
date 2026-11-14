@@ -24,7 +24,8 @@ using MUnique.OpenMU.PlugIns;
 ///   <item>Spawn areas with the trigger <see cref="SpawnTrigger.AutomaticDuringEvent"/>, so only in the dungeons, along the ways
 ///         between the bosses.</item>
 ///   <item>A mini game definition of the type <see cref="MiniGameType.Dungeon"/> for each version of each dungeon, like the one of Devias.</item>
-///   <item>An attribute for each dungeon which keeps the time of the last entry of a character, see <see cref="Stats.GetDungeonLastEntry"/>.</item>
+///   <item>Two attributes for each dungeon, which keep the time of the first entry of the day of a character and the number of its
+///         entries since then, see <see cref="Stats.GetDungeonLastEntry"/> and <see cref="Stats.GetDungeonEntryCount"/>.</item>
 /// </list>
 /// </remarks>
 internal static class MoreDungeons
@@ -190,6 +191,12 @@ internal static class MoreDungeons
             if (gameConfiguration.Attributes.All(a => a.Id != lastEntry.Id))
             {
                 gameConfiguration.Attributes.Add(context.CreateNew<AttributeDefinition>(lastEntry.Id, lastEntry.Designation, lastEntry.Description));
+            }
+
+            var entryCount = Stats.GetDungeonEntryCount(dungeon.Number);
+            if (gameConfiguration.Attributes.All(a => a.Id != entryCount.Id))
+            {
+                gameConfiguration.Attributes.Add(context.CreateNew<AttributeDefinition>(entryCount.Id, entryCount.Designation, entryCount.Description));
             }
 
             if (dungeon.NpcPosition is { } npcPosition)

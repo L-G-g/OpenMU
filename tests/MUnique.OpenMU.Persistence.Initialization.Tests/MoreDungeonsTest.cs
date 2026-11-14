@@ -133,6 +133,31 @@ internal class MoreDungeonsTest
         Assert.That(devias.Single(e => e.Key.Group == ArmorGroup && e.Key.Number == 6).Value, Is.EqualTo(3.0), "Scale Armor");
     }
 
+    /// <summary>
+    /// Tests that a dungeon uses its own multipliers and entries per day where it has them, and the general ones otherwise.
+    /// </summary>
+    [Test]
+    public void DungeonValuesOverrideGeneralValues()
+    {
+        var configuration = new DungeonConfiguration { EntriesPerCooldown = 2 };
+        var tarkan = configuration.Dungeons.Single(d => d.Number == DungeonDefaults.TarkanDungeonNumber);
+        Assert.That(configuration.GetEntriesPerCooldown(tarkan), Is.EqualTo(2));
+        Assert.That(configuration.GetMultipliers(tarkan, false, false), Is.EqualTo((3f, 3f, 3f)));
+        Assert.That(configuration.GetMultipliers(tarkan, true, true), Is.EqualTo((20f, 7.5f, 7.5f)));
+        Assert.That(configuration.GetHighItemWeight(tarkan, false), Is.EqualTo(1));
+
+        tarkan.EntriesPerDay = 5;
+        tarkan.MonsterDamageMultiplier = 4;
+        tarkan.BossHealthMultiplier = 30;
+        tarkan.ExtremeDamageMultiplier = 2;
+        tarkan.ExtremeHighItemWeight = 6;
+        Assert.That(configuration.GetEntriesPerCooldown(tarkan), Is.EqualTo(5));
+        Assert.That(configuration.GetMultipliers(tarkan, false, false), Is.EqualTo((3f, 4f, 3f)));
+        Assert.That(configuration.GetMultipliers(tarkan, true, false), Is.EqualTo((6f, 8f, 4.5f)));
+        Assert.That(configuration.GetMultipliers(tarkan, true, true), Is.EqualTo((60f, 10f, 7.5f)));
+        Assert.That(configuration.GetHighItemWeight(tarkan, true), Is.EqualTo(6));
+    }
+
     private void AssertData()
     {
         var configuration = new DungeonConfiguration();
@@ -144,6 +169,7 @@ internal class MoreDungeonsTest
             var map = this._gameConfiguration.Maps.Single(m => m.Number == data.MapNumber && m.Discriminator == 0);
             var terrain = new GameMapTerrain(map);
             Assert.That(this._gameConfiguration.Attributes.Any(a => a.Id == Stats.GetDungeonLastEntry(dungeon.Number).Id), Is.True, dungeon.Name);
+            Assert.That(this._gameConfiguration.Attributes.Any(a => a.Id == Stats.GetDungeonEntryCount(dungeon.Number).Id), Is.True, dungeon.Name);
             Assert.That(dungeon.GameLevel, Is.Not.EqualTo(dungeon.ExtremeGameLevel));
             foreach (var gameLevel in new[] { dungeon.GameLevel, dungeon.ExtremeGameLevel })
             {

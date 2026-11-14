@@ -108,7 +108,7 @@ public sealed class DungeonContext : MiniGameContext
             this.Loot,
             bossDefinitions,
             this._dungeon.GetDropMapNumbers(),
-            this._isExtreme ? this._configuration.ExtremeHighItemWeight : this._configuration.HighItemWeight);
+            this._configuration.GetHighItemWeight(this._dungeon, this._isExtreme));
 
         MonsterDefinition? FindMonster(string designation)
         {
@@ -210,7 +210,7 @@ public sealed class DungeonContext : MiniGameContext
             && this._preparedMonsters.TryAdd(monster, 0))
         {
             // The spawns of the map are created with the drop generator of the game, and a respawned monster is added again.
-            this.ApplyMultipliers(monster, this._configuration.MonsterHealthMultiplier, this._configuration.MonsterDamageMultiplier, this._configuration.MonsterDefenseMultiplier);
+            this.ApplyMultipliers(monster, false);
             monster.Health = (int)monster.Attributes[Stats.MaximumHealth];
             monster.DropGenerator = this.DropGenerator;
             this.Logger.LogDebug("{context}: Prepared {monster} with {health} health.", this, monster, monster.Health);
@@ -362,14 +362,9 @@ public sealed class DungeonContext : MiniGameContext
                && (stage.SecondMonsterNumber <= 0 || this._kills.GetValueOrDefault(stage.SecondMonsterNumber) >= stage.SecondKillCount);
     }
 
-    private void ApplyMultipliers(Monster monster, float health, float damage, float defense)
+    private void ApplyMultipliers(Monster monster, bool isBoss)
     {
-        if (this._isExtreme)
-        {
-            health *= this._configuration.ExtremeHealthMultiplier;
-            damage *= this._configuration.ExtremeDamageMultiplier;
-            defense *= this._configuration.ExtremeDefenseMultiplier;
-        }
+        var (health, damage, defense) = this._configuration.GetMultipliers(this._dungeon, this._isExtreme, isBoss);
 
         Multiply(monster, Stats.MaximumHealth, health);
         Multiply(monster, Stats.MinimumPhysBaseDmg, damage);
@@ -557,7 +552,7 @@ public sealed class DungeonContext : MiniGameContext
             Y2 = (byte)Math.Min(y + range, byte.MaxValue),
         };
         var boss = new Monster(spawnArea, definition, this.Map, this.DropGenerator, new BasicMonsterIntelligence(), this.GameContext.PlugInManager, this.GameContext.PathFinderPool, this);
-        this.ApplyMultipliers(boss, this._configuration.BossHealthMultiplier, this._configuration.BossDamageMultiplier, this._configuration.BossDefenseMultiplier);
+        this.ApplyMultipliers(boss, true);
         try
         {
             boss.Initialize();
