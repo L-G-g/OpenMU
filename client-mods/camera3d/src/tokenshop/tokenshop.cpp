@@ -51,10 +51,12 @@ namespace
     constexpr DWORD WindowVisible = 0x08;   // byte
     constexpr DWORD ShopGrid = 0x10;        // CNewUINPCShop: su grilla de items
     constexpr DWORD GridX = 0x28, GridY = 0x2C, GridColumns = 0x38, GridRows = 0x3C;
+    constexpr DWORD GridRemoveAllItems = 0x007DA450; // void __thiscall CNewUIInventoryCtrl::RemoveAllItems()
     constexpr float CellSize = 20.0f;
 
     // --- Paquetes ---
-    constexpr int CodeInterface = 0xFF, CodeCharacterInfo = 0xF3;
+    constexpr int CodeInterface = 0xFF, CodeCharacterInfo = 0xF3, CodeShopItems = 0x31;
+    constexpr BYTE ShopKindNormal = 0x00;
     constexpr BYTE SubCodeTokenShop = 0x40, SubCodeCharacterInfo = 0x03;
     constexpr int NameLength = 20;
     constexpr int PacketHeader = 11 + NameLength; // C2, largo, FF, 40, solapa, tokens (4), nombre, cantidad
@@ -68,6 +70,7 @@ namespace
     using MouseOnUiType = char(__fastcall*)(BYTE** system, void* unused);
     using SendChatType = void(__cdecl*)(const char* text);
     using IsReleaseType = bool(__cdecl*)(int key);
+    using RemoveAllItemsType = void(__thiscall*)(DWORD grid);
 
     const char* const ClassNames[TabCount] = {
         "Dark Knight", "Dark Wizard", "Elf", "Summoner", "Magic Gladiator", "Dark Lord", "Rage Fighter",
@@ -189,6 +192,29 @@ namespace
         }
     }
 
+    // Vacia la grilla de la tienda. El juego solo la vacia al cerrar la ventana (0x00847B20) y la lista que llega con la
+    // tienda abierta (otra solapa) se agregaria a la anterior: sus casilleros ya estan ocupados y quedarian los items viejos.
+    void ClearShopGrid()
+    {
+        const DWORD window = FindShopWindow();
+        if (window == 0)
+        {
+            return;
+        }
+
+        __try
+        {
+            const DWORD grid = Read<DWORD>(window + ShopGrid);
+            if (grid >= 0x10000)
+            {
+                reinterpret_cast<RemoveAllItemsType>(GridRemoveAllItems)(grid);
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+        }
+    }
+
     // Tienda de tokens abierta ahora, con la posicion de su grilla.
     bool Visible(float& x, float& y, float& width, float& height)
     {
@@ -284,6 +310,13 @@ namespace
             g_active = true;
             g_activeTick = GetTickCount();
             return 1;
+        }
+
+        // La lista de otra solapa reemplaza a la anterior.
+        if (packet != nullptr && code == CodeShopItems && g_active && packet[0] == 0xC2 && size > 5
+            && packet[4] == ShopKindNormal)
+        {
+            ClearShopGrid();
         }
 
         if (packet != nullptr && code == CodeCharacterInfo)
