@@ -87,6 +87,8 @@ void SetFlightKeyTick(KeyTickCallback callback);
 float FlightViewLift(); // altura de vuelo del personaje propio, 0 sin flight.dll
 // Boton de reset: carga resetbutton.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadResetButton(LogFunction log);
+// Solapas de los mercaderes de tokens: carga tokenshop.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
+void LoadTokenShop(LogFunction log);
 // Quests de skills: carga quests.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadQuests(LogFunction log);
 // Puntos libres de mas de 65535 en la ventana del personaje: carga points.dll si esta junto a camera3d.dll y

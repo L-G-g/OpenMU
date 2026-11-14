@@ -696,6 +696,64 @@ namespace PeroniaUi
         Fill(cl, ct, cr, ct + line, 1.0f, 0.95f, 0.85f, pressed ? 0.03f : 0.08f);
     }
 
+    void Panel(const Rect& rect, float opacity)
+    {
+        const float line = Line();
+        const float l = rect.left, t = rect.top, r = rect.Right(), b = rect.Bottom();
+        Fill(l - line, t - line, r + line, b + line, 0.32f, 0.31f, 0.29f, 0.6f * opacity);
+        const float upper[4] = { 0.07f, 0.065f, 0.06f, opacity };
+        const float lower[4] = { 0.02f, 0.02f, 0.02f, opacity };
+        FillVertical(l, t, r, b, upper, lower);
+    }
+
+    float SquareWidth(float height)
+    {
+        return height * (*WindowHeight / 480.0f) / (*WindowWidth / 640.0f);
+    }
+
+    unsigned int CreateMaskTexture(const unsigned char* opacity, int width, int height)
+    {
+        // Blanco con la opacidad de la mascara: el color lo pone MaskIcon.
+        std::vector<BYTE> pixels(static_cast<size_t>(width) * height * 4, 255);
+        for (int i = 0; i < width * height; ++i)
+        {
+            pixels[i * 4 + 3] = opacity[i];
+        }
+
+        GLint previous = 0;
+        GLuint texture = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous));
+        return texture;
+    }
+
+    void MaskIcon(unsigned int texture, const Rect& rect, float u0, float u1, float red, float green, float blue, float alpha)
+    {
+        if (texture == 0)
+        {
+            return;
+        }
+
+        GLint previous = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+        glColor4f(red, green, blue, alpha);
+        glBegin(GL_QUADS);
+        TexturedQuad(rect.left, rect.top, rect.Right(), rect.Bottom(), u0, 0.0f, u1, 1.0f);
+        glEnd();
+        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous));
+        glDisable(GL_TEXTURE_2D);
+    }
+
     void Shine(const Rect& rect)
     {
         // Una banda de luz cruza la cara en 0,7 s cada 2,8 s.

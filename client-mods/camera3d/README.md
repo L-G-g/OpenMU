@@ -489,6 +489,41 @@ original lo ignora (códigos mayores a `0xF9`). Sin el paquete (servidor sin res
 | `0x0077F9B7` | `JNZ` en los textos de la ventana (`0x0077F990`): si la clase es de tercera clase (`0x005878E0`) escribe "Master" (texto 1745) | Pasa a `JMP`: siempre "Level: %d" (texto 200) y la experiencia (texto 201) |
 | `0x0077FA10` | CALL a `sprintf` (`0x0050D100`) del texto del nivel, de 32 bytes en `[EBP-0x128]` | Escribe el nivel y le agrega `Format` con los resets |
 
+## Solapas de los mercaderes de tokens (tokenshop.dll)
+
+Completar una dungeon da tokens (Gelid Token en Devias, Arid Token en Tarkan, Ancient Token en Kanturu; uno en la
+versión normal y dos en la Extrema), y el mercader de cada dungeon (Zienna en Devias y los mercaderes junto a los
+guardias de las dungeons de Tarkan y Kanturu) vende por esos tokens el mejor set, escudo y armas de su dungeon
+para cada clase. La tienda del juego solo conoce una lista de items con precio en zen, así que el servidor muestra
+la lista de una clase por vez (al abrir, la del personaje) y `tokenshop.dll` agrega, con el estilo de PeroniaMU:
+
+- Siete solapas a la izquierda de la ventana del mercader, una por clase, con su icono: Espada (DK), Báculo (DW),
+  Arco (ELF), Libro (SUM), Espada y báculo cruzados (MG), Cetro (DL) y Puño (RF). La solapa abierta queda
+  resaltada con el resplandor dorado; con el mouse encima aparece el nombre de la clase. El click manda el chat
+  `/tab N` (1 a 7), que también se puede escribir a mano en un cliente sin la DLL.
+- Debajo de los items, los tokens que tiene el personaje; con el mouse sobre un item, su precio en tokens (en rojo
+  si no alcanza). El precio en zen que muestra el juego en la descripción del item no se cobra.
+
+`camera3d.dll` la carga si está en la misma carpeta, después de `resetbutton.dll` (`src/loadtokenshop.cpp`):
+
+```
+[TokenShop]
+Enabled=1      ; 0: no se carga tokenshop.dll
+TabWidth=28    ; ancho de cada solapa en coordenadas de 640x480 (0: cuadrada en pantalla)
+TabHeight=38
+TabGap=5       ; espacio entre solapas
+TabRight=16    ; distancia entre las solapas y los casilleros de la tienda (el marco de la ventana)
+TabTop=0       ; desde el borde de arriba de los casilleros
+InfoTop=5      ; del recuadro de tokens, desde el borde de abajo de los casilleros
+```
+
+El servidor (plugins "Dungeon token merchants" y "Show Token Shop (tokenshop.dll)") manda, después de la lista de
+items y después de cada compra, `C2 [largo] FF 40 [solapa] [tokens, 4 bytes] [nombre del token, 20 bytes] [cantidad]`
+y por item `[casillero] [ancho] [alto] [precio, 2 bytes]`. Las solapas se muestran mientras la tienda siga abierta
+(la ventana `CNewUINPCShop` se busca por su vtable, como hace el click derecho). Los iconos son máscaras de 48x48
+dentro de la DLL (`src/tokenshop/icons.h`, generado con `icons.py`) que se dibujan en dorado con `MaskIcon` del
+estilo; no hace falta ningún archivo aparte.
+
 ## Botón de reset (resetbutton.dll) y estilo de PeroniaMU (src/ui)
 
 Cuando el personaje puede resetear (nivel, zen, límite de resets e items: lo mismo que pide `/reset`), aparece
@@ -719,6 +754,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/loadtabmap.cpp`: carga de `tabmap.dll` si está junto a la DLL.
 - `src/loadflight.cpp`: carga de `flight.dll` si está junto a la DLL.
 - `src/loadresetbutton.cpp`: carga de `resetbutton.dll` si está junto a la DLL.
+- `src/loadtokenshop.cpp`: carga de `tokenshop.dll` si está junto a la DLL.
 - `src/loadquests.cpp`: carga de `quests.dll` si está junto a la DLL.
 - `src/loadpoints.cpp`: carga de `points.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
@@ -733,6 +769,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/tabmap/`: `tabmap.dll`, mapa del TAB completo con click para caminar.
 - `src/flight/`: `flight.dll`, monturas voladoras.
 - `src/resetbutton/`: `resetbutton.dll`, botón Reset cuando el personaje puede resetear.
+- `src/tokenshop/`: `tokenshop.dll`, solapas por clase en los mercaderes de tokens de las dungeons.
 - `src/ui/`: estilo de PeroniaMU para ventanas y botones nuevos (marco de metal, letras doradas, resplandor).
 - `src/quests/`: `quests.dll`, signos de quest sobre los NPC, ventana de la quest y seguimiento.
 - `src/ui/`: `peroniaui`, estilo de los botones nuevos (se compila dentro de cada DLL que lo usa).
@@ -752,7 +789,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadquests.cpp src\loadpoints.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadtokenshop.cpp src\loadquests.cpp src\loadpoints.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -763,6 +800,7 @@ cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp src\ui\peroniaui.cp
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\tokenshop\tokenshop.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\quests\quests.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\points\points.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
@@ -776,7 +814,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `quests.dll` y `points.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `tokenshop.dll`, `quests.dll` y `points.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

@@ -284,6 +284,87 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
+    /// Generates an excellent item of the specified definition, e.g. for a merchant which sells excellent items:
+    /// with skill and with the random excellent options of a dropped excellent item, but without level and normal option.
+    /// </summary>
+    /// <param name="definition">The definition of the item.</param>
+    /// <param name="withLuck">If set to <c>true</c>, the item has luck.</param>
+    /// <returns>The excellent item.</returns>
+    public async ValueTask<Item> GenerateExcellentItemAsync(ItemDefinition definition, bool withLuck)
+    {
+        using var l = await this._lock.LockAsync().ConfigureAwait(false);
+        var item = new TemporaryItem { Definition = definition };
+        item.HasSkill = item.CanHaveSkill(); // every excellent item got skill
+        if (withLuck
+            && definition.PossibleItemOptions.SelectMany(o => o.PossibleOptions).FirstOrDefault(o => object.Equals(o.OptionType, ItemOptionTypes.Luck)) is { } luck)
+        {
+            item.ItemOptions.Add(new ItemOptionLink { ItemOption = luck });
+        }
+
+        this.AddRandomExcOptions(item);
+        item.Durability = item.GetMaximumDurabilityOfOnePiece();
+        return item;
+    }
+
+    /// <summary>
+    /// Gets the best excellent equipment of the zones of some maps for each family of character classes, e.g. for the
+    /// merchant of a dungeon which drops the items of these maps: the pieces of the strongest armor set, the strongest shield
+    /// and the strongest own weapon of each weapon group (e.g. sword and spear) which the family can use.
+    /// </summary>
+    /// <param name="mapNumbers">The numbers of the maps.</param>
+    /// <returns>The items of each family, by the number of its character class of the first generation divided by 4
+    /// (0 = Dark Wizard, 1 = Dark Knight, 2 = Elf, 3 = Magic Gladiator, 4 = Dark Lord, 5 = Summoner, 6 = Rage Fighter).
+    /// First the armor pieces, then the shield, then the weapons.</returns>
+    public async ValueTask<IReadOnlyDictionary<int, IReadOnlyList<ItemDefinition>>> GetBestZoneEquipmentAsync(IReadOnlyCollection<short> mapNumbers)
+    {
+        using var l = await this._lock.LockAsync().ConfigureAwait(false);
+        var ownWeapons = this._ownWeapons ??= this.GetOwnWeapons();
+        var result = new Dictionary<int, IReadOnlyList<ItemDefinition>>();
+        var itemsOfFamilies = this.GetExcellentEquipmentOfZones(mapNumbers)
+            .SelectMany(item => item.QualifiedCharacters.Select(GetFamily).Distinct().Select(family => (Family: family, Item: item)))
+            .GroupBy(entry => entry.Family, entry => entry.Item);
+        foreach (var family in itemsOfFamilies)
+        {
+            var items = new List<ItemDefinition>();
+            if (GetRanks(family.Where(item => GetEquipmentKind(item) == EquipmentKind.ArmorSet)).LastOrDefault() is { } bestSet)
+            {
+                // The zones can drop just some pieces of the set for this family, when they are the set of another family
+                // which doesn't wear all pieces (e.g. the Rage Fighter has no gloves). The family gets all pieces it can wear.
+                items.AddRange(this._droppableItems
+                    .Where(item => IsArmorPiece(item) && item.Number == bestSet.Key && item.MaximumSockets == 0 && HasExcellentOptions(item)
+                                   && item.QualifiedCharacters.Any(c => GetFamily(c) == family.Key))
+                    .OrderBy(item => item.Group));
+            }
+
+            if (GetRanks(family.Where(item => GetEquipmentKind(item) == EquipmentKind.Shield)).LastOrDefault() is { } bestShield)
+            {
+                items.AddRange(bestShield);
+            }
+
+            var weapons = family.Where(item => GetEquipmentKind(item) == EquipmentKind.Weapon).ToList();
+            var weaponGroups = weapons
+                .Where(item => ownWeapons.Contains((family.Key, item)))
+                .GroupBy(item => item.Group)
+                .OrderBy(group => group.Key)
+                .ToList();
+            foreach (var weaponGroup in weaponGroups)
+            {
+                items.AddRange(GetRanks(weaponGroup).Last());
+            }
+
+            // A family whose own weapons start in later zones (e.g. the gloves of the Rage Fighter) gets the strongest weapon it can use.
+            if (weaponGroups.Count == 0 && GetRanks(weapons).LastOrDefault() is { } bestWeapon)
+            {
+                items.AddRange(bestWeapon);
+            }
+
+            result[family.Key.Number / 4] = items;
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Adds random excellent options to an excellent item until it has the minimum number of them.
     /// </summary>
     /// <param name="item">The item.</param>
@@ -1054,16 +1135,7 @@ public class DefaultDropGenerator : IDropGenerator
             return cached;
         }
 
-        var equipment = this._maps
-            .Where(map => mapNumbers.Contains(map.Number))
-            .SelectMany(map => map.DropItemGroups)
-            .Where(group => group.ItemType is SpecialItemType.ZoneItem or SpecialItemType.ZoneExcellentItem && group.PossibleItems.Count == 0)
-            .Select(group => group.MaximumMonsterLevel ?? byte.MaxValue)
-            .Distinct()
-            .Order()
-            .SelectMany(level => this.GetZoneEquipment(level, true))
-            .Distinct()
-            .ToList();
+        var equipment = this.GetExcellentEquipmentOfZones(mapNumbers);
         var weights = new Dictionary<ItemDefinition, (double Sum, int Count)>();
         var ranksOfFamilies = equipment
             .SelectMany(item => item.QualifiedCharacters.Select(GetFamily).Distinct().Select(family => (Family: family, Kind: GetEquipmentKind(item), Item: item)))
@@ -1087,6 +1159,23 @@ public class DefaultDropGenerator : IDropGenerator
             .Select(item => (item, weights.TryGetValue(item, out var weight) ? weight.Sum / weight.Count : 1))
             .OrderBy(entry => entry.item.Group)
             .ThenBy(entry => entry.item.Number)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Gets the excellent weapons, shields and armor pieces which the zones of some maps drop.
+    /// </summary>
+    private List<ItemDefinition> GetExcellentEquipmentOfZones(IReadOnlyCollection<short> mapNumbers)
+    {
+        return this._maps
+            .Where(map => mapNumbers.Contains(map.Number))
+            .SelectMany(map => map.DropItemGroups)
+            .Where(group => group.ItemType is SpecialItemType.ZoneItem or SpecialItemType.ZoneExcellentItem && group.PossibleItems.Count == 0)
+            .Select(group => group.MaximumMonsterLevel ?? byte.MaxValue)
+            .Distinct()
+            .Order()
+            .SelectMany(level => this.GetZoneEquipment(level, true))
+            .Distinct()
             .ToList();
     }
 

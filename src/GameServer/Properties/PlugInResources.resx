@@ -2777,4 +2777,10 @@
   <data name="ShowResetAvailableViewPlugIn_Description" xml:space="preserve">
     <value>Tells the reset button of resetbutton.dll of the PeroniaMU client whether the character can reset (packet C1 FF 00). The original client ignores it.</value>
   </data>
+  <data name="ShowTokenShopViewPlugIn_Name" xml:space="preserve">
+    <value>Show Token Shop (tokenshop.dll)</value>
+  </data>
+  <data name="ShowTokenShopViewPlugIn_Description" xml:space="preserve">
+    <value>Sends the tokens, prices and the opened tab of a token merchant to the tabs of tokenshop.dll in the PeroniaMU client.</value>
+  </data>
 </root>

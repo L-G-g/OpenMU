@@ -13,6 +13,7 @@ public class Stats
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<byte, AttributeDefinition> DungeonLastEntries = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<byte, AttributeDefinition> DungeonEntryCounts = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<byte, AttributeDefinition> DungeonTokens = new();
 
     /// <summary>
     /// Gets the base strength attribute definition.
@@ -188,6 +189,19 @@ public class Stats
         return DungeonEntryCounts.GetOrAdd(
             dungeonNumber,
             number => new(new Guid($"6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1F{number:X2}"), $"Dungeon {number} entries", $"The number of entries into the dungeon {number} since its last entry time."));
+    }
+
+    /// <summary>
+    /// Gets the attribute definition for the tokens which a character got for completing the dungeon with the specified number,
+    /// and which it spends at the token merchant of the dungeon (see <see cref="TokenMerchants.TokenMerchantFeaturePlugIn"/>).
+    /// </summary>
+    /// <param name="dungeonNumber">The number of the dungeon, see <see cref="MiniGames.Dungeon.DungeonSettings.Number"/>.</param>
+    /// <returns>The attribute definition.</returns>
+    public static AttributeDefinition GetDungeonTokens(byte dungeonNumber)
+    {
+        return DungeonTokens.GetOrAdd(
+            dungeonNumber,
+            number => new(new Guid($"6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F2A{number:X2}"), $"Dungeon {number} tokens", $"The tokens of the dungeon {number} which the character has."));
     }
 
     /// <summary>

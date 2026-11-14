@@ -275,6 +275,25 @@ struct ResetButtonHost
 // bool StartResetButton(const ResetButtonHost* host): se llama una vez, despues de StartTabMap.
 using StartResetButtonFunction = bool (*)(const ResetButtonHost* host);
 constexpr const char* StartResetButtonName = "StartResetButton";
+// --- Solapas de los mercaderes de tokens (tokenshop.dll) ---
+// camera3d.dll carga tokenshop.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([TokenShop]
+// Enabled=0), y llama a su funcion exportada StartTokenShop, despues de resetbutton.dll. tokenshop.dll encadena el
+// reparto de paquetes, el dibujo despues de la interfaz y el mouse de las ventanas que ya redirigieron otras DLL.
+
+constexpr int TokenShopHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a tokenshop.dll.
+struct TokenShopHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer la seccion [TokenShop]
+};
+
+// bool StartTokenShop(const TokenShopHost* host): se llama una vez, despues de StartResetButton.
+using StartTokenShopFunction = bool (*)(const TokenShopHost* host);
+constexpr const char* StartTokenShopName = "StartTokenShop";
+
 // --- Quests de skills (quests.dll) ---
 // camera3d.dll carga quests.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Quests]
 // Enabled=0), y llama a su funcion exportada StartQuests, despues de tabmap.dll. quests.dll encadena el reparto de

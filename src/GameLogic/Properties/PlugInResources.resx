@@ -2324,4 +2324,58 @@
   <data name="DungeonConfiguration_OnlyExcellentItems_Description" xml:space="preserve">
     <value>The monsters of the dungeons drop only excellent items. Otherwise, they also drop what they drop on the map outside of the dungeon, e.g. normal items, jewels and money.</value>
   </data>
+  <data name="TokenMerchantFeaturePlugIn_Name" xml:space="preserve">
+    <value>Dungeon token merchants</value>
+  </data>
+  <data name="TokenMerchantFeaturePlugIn_Description" xml:space="preserve">
+    <value>Completing a dungeon gives tokens, and the merchant of the dungeon sells its best armor set, shield and weapons for each character class for them. The sold items are usual excellent items with luck. Needs the configuration update Dungeon Token Merchants.</value>
+  </data>
+  <data name="TokenMerchantConfiguration_NormalTokens_Name" xml:space="preserve">
+    <value>Tokens for the normal version</value>
+  </data>
+  <data name="TokenMerchantConfiguration_ExtremeTokens_Name" xml:space="preserve">
+    <value>Tokens for the extreme version</value>
+  </data>
+  <data name="TokenMerchantConfiguration_ItemsHaveLuck_Name" xml:space="preserve">
+    <value>Items have luck</value>
+  </data>
+  <data name="TokenMerchantConfiguration_Merchants_Name" xml:space="preserve">
+    <value>Merchants</value>
+  </data>
+  <data name="TokenMerchantConfiguration_Merchants_Description" xml:space="preserve">
+    <value>One merchant for each dungeon which gives tokens. It sells the best items of the drop maps of the dungeon.</value>
+  </data>
+  <data name="TokenMerchantSettings_Dungeon_Name" xml:space="preserve">
+    <value>Dungeon number</value>
+  </data>
+  <data name="TokenMerchantSettings_Dungeon_Description" xml:space="preserve">
+    <value>The number of the dungeon in the plugin Dungeon, whose tokens the merchant takes and whose items it sells.</value>
+  </data>
+  <data name="TokenMerchantSettings_NpcDesignation_Name" xml:space="preserve">
+    <value>NPC designation</value>
+  </data>
+  <data name="TokenMerchantSettings_NpcDesignation_Description" xml:space="preserve">
+    <value>The designation of the NPC in the game configuration (Monsters).</value>
+  </data>
+  <data name="TokenMerchantSettings_TokenName_Name" xml:space="preserve">
+    <value>Token name</value>
+  </data>
+  <data name="TokenMerchantSettings_SetPiecePrice_Name" xml:space="preserve">
+    <value>Price of a set piece (tokens)</value>
+  </data>
+  <data name="TokenMerchantSettings_WeaponPrice_Name" xml:space="preserve">
+    <value>Price of a weapon or shield (tokens)</value>
+  </data>
+  <data name="TabChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Tab chat command (/tab)</value>
+  </data>
+  <data name="TabChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Shows another tab (character class) of the opened token merchant: /tab 1 to 7.</value>
+  </data>
+  <data name="TokensChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Tokens chat command (/tokens)</value>
+  </data>
+  <data name="TokensChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Shows the dungeon tokens of the character. A game master can add tokens to its character: /tokens [dungeon number] [amount].</value>
+  </data>
 </root>

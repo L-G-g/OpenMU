@@ -5590,5 +5590,59 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized DungeonConfiguration_OnlyExcellentItems_Description text.</summary>
         public static string DungeonConfiguration_OnlyExcellentItems_Description => ResourceManager.GetString("DungeonConfiguration_OnlyExcellentItems_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantFeaturePlugIn_Name text.</summary>
+        public static string TokenMerchantFeaturePlugIn_Name => ResourceManager.GetString("TokenMerchantFeaturePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantFeaturePlugIn_Description text.</summary>
+        public static string TokenMerchantFeaturePlugIn_Description => ResourceManager.GetString("TokenMerchantFeaturePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_NormalTokens_Name text.</summary>
+        public static string TokenMerchantConfiguration_NormalTokens_Name => ResourceManager.GetString("TokenMerchantConfiguration_NormalTokens_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_ExtremeTokens_Name text.</summary>
+        public static string TokenMerchantConfiguration_ExtremeTokens_Name => ResourceManager.GetString("TokenMerchantConfiguration_ExtremeTokens_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_ItemsHaveLuck_Name text.</summary>
+        public static string TokenMerchantConfiguration_ItemsHaveLuck_Name => ResourceManager.GetString("TokenMerchantConfiguration_ItemsHaveLuck_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_Merchants_Name text.</summary>
+        public static string TokenMerchantConfiguration_Merchants_Name => ResourceManager.GetString("TokenMerchantConfiguration_Merchants_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_Merchants_Description text.</summary>
+        public static string TokenMerchantConfiguration_Merchants_Description => ResourceManager.GetString("TokenMerchantConfiguration_Merchants_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_Dungeon_Name text.</summary>
+        public static string TokenMerchantSettings_Dungeon_Name => ResourceManager.GetString("TokenMerchantSettings_Dungeon_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_Dungeon_Description text.</summary>
+        public static string TokenMerchantSettings_Dungeon_Description => ResourceManager.GetString("TokenMerchantSettings_Dungeon_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_NpcDesignation_Name text.</summary>
+        public static string TokenMerchantSettings_NpcDesignation_Name => ResourceManager.GetString("TokenMerchantSettings_NpcDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_NpcDesignation_Description text.</summary>
+        public static string TokenMerchantSettings_NpcDesignation_Description => ResourceManager.GetString("TokenMerchantSettings_NpcDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_TokenName_Name text.</summary>
+        public static string TokenMerchantSettings_TokenName_Name => ResourceManager.GetString("TokenMerchantSettings_TokenName_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_SetPiecePrice_Name text.</summary>
+        public static string TokenMerchantSettings_SetPiecePrice_Name => ResourceManager.GetString("TokenMerchantSettings_SetPiecePrice_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_WeaponPrice_Name text.</summary>
+        public static string TokenMerchantSettings_WeaponPrice_Name => ResourceManager.GetString("TokenMerchantSettings_WeaponPrice_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TabChatCommandPlugIn_Name text.</summary>
+        public static string TabChatCommandPlugIn_Name => ResourceManager.GetString("TabChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TabChatCommandPlugIn_Description text.</summary>
+        public static string TabChatCommandPlugIn_Description => ResourceManager.GetString("TabChatCommandPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokensChatCommandPlugIn_Name text.</summary>
+        public static string TokensChatCommandPlugIn_Name => ResourceManager.GetString("TokensChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokensChatCommandPlugIn_Description text.</summary>
+        public static string TokensChatCommandPlugIn_Description => ResourceManager.GetString("TokensChatCommandPlugIn_Description", resourceCulture)!;
     }
 }

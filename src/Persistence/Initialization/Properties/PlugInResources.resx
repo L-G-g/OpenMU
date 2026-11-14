@@ -448,4 +448,10 @@
   <data name="MoreDungeonsUpdatePlugIn_Description" xml:space="preserve">
     <value>Adds the dungeons of Tarkan (Mutant, Beam Knight and Death Beam Knight with three Zaikans) and of Kanturu Ruins (Satyros, Kentauros Warrior and Genocider Warrior), and an extreme version of each dungeon, including the one of Devias: stronger monsters, and the high half of the items drops more often. Each dungeon has two guards in the town of its map, one for the normal and one for the extreme version, and its own daily entry. The dungeon of Devias drops the items of Lorencia, Noria, Elbeland and Devias; Tarkan the ones of Dungeon, Lost Tower, Atlans and Tarkan; Kanturu the ones of Aida, Icarus, Kanturu Ruins and Kanturu Relics. The rules can be changed in the plugin Dungeon.</value>
   </data>
+  <data name="DungeonTokenMerchantsUpdatePlugIn_Name" xml:space="preserve">
+    <value>Dungeon Token Merchants</value>
+  </data>
+  <data name="DungeonTokenMerchantsUpdatePlugIn_Description" xml:space="preserve">
+    <value>Completing a dungeon gives each player a token of the dungeon (two in the extreme version): Gelid Token in Devias, Arid Token in Tarkan and Ancient Token in Kanturu. Zienna in Devias and two new merchants next to the dungeon guards of Tarkan and Kanturu Ruins sell the best armor set, shield and weapons of their dungeon for each character class for these tokens. The sold items are usual excellent items with luck and the excellent options of a dropped one. Adds the attributes of the tokens and the two merchants. The prices and rules can be changed in the plugin 'Dungeon token merchants'.</value>
+  </data>
 </root>

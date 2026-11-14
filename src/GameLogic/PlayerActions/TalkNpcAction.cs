@@ -50,7 +50,13 @@ public class TalkNpcAction
         }
 
         player.OpenedNpc = npc;
-        if (npcStats.MerchantStore != null && npcStats.MerchantStore.Items.Count > 0)
+        if (TokenMerchants.TokenMerchantFeaturePlugIn.Find(player.GameContext, npcStats) is { PlugIn.Configuration: { } tokenConfiguration } tokenMerchant)
+        {
+            // A token merchant shows its own items instead of the ones of its merchant store.
+            await Task.Delay(500).ConfigureAwait(false);
+            await tokenMerchant.PlugIn.Shop.OpenAsync(player, tokenConfiguration, tokenMerchant.Merchant).ConfigureAwait(false);
+        }
+        else if (npcStats.MerchantStore != null && npcStats.MerchantStore.Items.Count > 0)
         {
             await Task.Delay(500).ConfigureAwait(false);
             await player.InvokeViewPlugInAsync<IOpenNpcWindowPlugIn>(p => p.OpenNpcWindowAsync(npcStats.NpcWindow != NpcWindow.Undefined ? npcStats.NpcWindow : NpcWindow.Merchant)).ConfigureAwait(false);

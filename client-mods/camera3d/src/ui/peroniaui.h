@@ -77,6 +77,19 @@ namespace PeroniaUi
     // Reflejo de luz que cruza la cara del boton cada tanto (encima del marco, debajo del texto).
     void Shine(const Rect& rect);
 
+    // Recuadro oscuro con un filo gris, para un texto corto sobre el juego (por ejemplo, un saldo o un precio).
+    void Panel(const Rect& rect, float opacity);
+
+    // Ancho, en coordenadas de 640, que en pantalla mide lo mismo que "height" de alto en coordenadas de 480
+    // (las dos escalas difieren en las ventanas que no son 4:3).
+    float SquareWidth(float height);
+
+    // Iconos de un solo color: una mascara de opacidad (un byte por pixel, por filas) se sube una vez como textura
+    // (0 si no se pudo; llamar desde el dibujo) y MaskIcon dibuja la parte entre u0 y u1 de su ancho en el rect,
+    // con el color dado.
+    unsigned int CreateMaskTexture(const unsigned char* opacity, int width, int height);
+    void MaskIcon(unsigned int texture, const Rect& rect, float u0, float u1, float red, float green, float blue, float alpha);
+
     // Texto centrado en el rect, con borde oscuro (despues de EndShapes). size 0: fuente del juego (normal o negrita);
     // si no, Arial negrita de ese alto en coordenadas de 480.
     void ButtonText(const Rect& rect, const char* text, DWORD color, bool bold, bool pressed, float size = 0);

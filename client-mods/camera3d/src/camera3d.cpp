@@ -423,6 +423,7 @@ namespace
         LoadTabMap(&Log);
         LoadFlight(&Log);
         LoadResetButton(&Log);
+        LoadTokenShop(&Log);
         LoadQuests(&Log);
         LoadPoints(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))

@@ -479,6 +479,11 @@ public sealed class DungeonContext : MiniGameContext
 
             await this.ShowGoldenTextAsync(string.Format(DungeonMessages.BossKilledFormat, boss.Definition.Designation.ValueInNeutralLanguage)).ConfigureAwait(false);
             await this.ShowGoldenTextAsync(nextHint ?? DungeonMessages.Completed).ConfigureAwait(false);
+            if (isFinished)
+            {
+                await this.ForEachPlayerAsync(player => TokenMerchants.TokenMerchantFeaturePlugIn.GiveDungeonTokensAsync(player, this._dungeon, this._isExtreme).AsTask()).ConfigureAwait(false);
+            }
+
             if (isFinished
                 && this._dungeon.Number == DungeonDefaults.DeviasDungeonNumber
                 && Story.StoryModeFeaturePlugIn.Get(this.GameContext) is { } story)
