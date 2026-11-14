@@ -75,6 +75,12 @@ public class DungeonSettings
     public int EntriesPerDay { get; set; }
 
     /// <summary>
+    /// Gets or sets the chance of a monster of this dungeon which isn't a boss to drop an excellent item, from 0 to 1. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_MonsterExcellentDropChance_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]
+    public double MonsterExcellentDropChance { get; set; }
+
+    /// <summary>
     /// Gets or sets the multiplier for the health of the monsters of this dungeon. 0 uses the general value of the <see cref="DungeonConfiguration"/>.
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_MonsterHealthMultiplier_Name), Description = nameof(PlugInResources.DungeonSettings_Override_Description))]

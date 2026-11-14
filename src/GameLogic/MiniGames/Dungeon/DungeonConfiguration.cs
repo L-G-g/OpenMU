@@ -55,10 +55,19 @@ public class DungeonConfiguration
     public float MonsterDefenseMultiplier { get; set; } = 3;
 
     /// <summary>
-    /// Gets or sets the multiplier for the chance of the monsters of the dungeon to drop an excellent item.
+    /// Gets or sets the chance of a monster of a dungeon which isn't a boss to drop an excellent item when it's killed, from 0 to 1.
+    /// It doesn't depend on the chance of the map, which is much lower. A dungeon can have its own value
+    /// (<see cref="DungeonSettings.MonsterExcellentDropChance"/>).
     /// </summary>
-    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_ExcellentDropChanceMultiplier_Name), Description = nameof(PlugInResources.DungeonConfiguration_ExcellentDropChanceMultiplier_Description))]
-    public float ExcellentDropChanceMultiplier { get; set; } = 5;
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_MonsterExcellentDropChance_Name), Description = nameof(PlugInResources.DungeonConfiguration_MonsterExcellentDropChance_Description))]
+    public double MonsterExcellentDropChance { get; set; } = 0.005;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the monsters of the dungeons drop only excellent items and money.
+    /// Otherwise, they also drop what they drop on the map outside of the dungeon, e.g. normal items and jewels.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.DungeonConfiguration_OnlyExcellentItems_Name), Description = nameof(PlugInResources.DungeonConfiguration_OnlyExcellentItems_Description))]
+    public bool OnlyExcellentItems { get; set; } = true;
 
     /// <summary>
     /// Gets or sets the minimum number of excellent options of the excellent items which drop in the dungeon.
@@ -266,6 +275,16 @@ public class DungeonConfiguration
         return (health, damage, defense);
 
         static float Pick(float ofDungeon, float general) => ofDungeon > 0 ? ofDungeon : general;
+    }
+
+    /// <summary>
+    /// Gets the chance of a monster of a dungeon which isn't a boss to drop an excellent item.
+    /// </summary>
+    /// <param name="dungeon">The dungeon.</param>
+    /// <returns>The chance, from 0 to 1.</returns>
+    public double GetMonsterExcellentDropChance(DungeonSettings dungeon)
+    {
+        return Math.Clamp(dungeon.MonsterExcellentDropChance > 0 ? dungeon.MonsterExcellentDropChance : this.MonsterExcellentDropChance, 0, 1);
     }
 
     /// <summary>

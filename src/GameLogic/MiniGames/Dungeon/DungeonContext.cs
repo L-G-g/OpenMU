@@ -108,7 +108,8 @@ public sealed class DungeonContext : MiniGameContext
             this.Loot,
             bossDefinitions,
             this._dungeon.GetDropMapNumbers(),
-            this._configuration.GetHighItemWeight(this._dungeon, this._isExtreme));
+            this._configuration.GetHighItemWeight(this._dungeon, this._isExtreme),
+            this._configuration.GetMonsterExcellentDropChance(this._dungeon));
 
         MonsterDefinition? FindMonster(string designation)
         {

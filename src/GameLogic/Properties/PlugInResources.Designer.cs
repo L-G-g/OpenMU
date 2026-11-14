@@ -5578,5 +5578,17 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized DungeonConfiguration_EntriesPerCooldown_Description text.</summary>
         public static string DungeonConfiguration_EntriesPerCooldown_Description => ResourceManager.GetString("DungeonConfiguration_EntriesPerCooldown_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_MonsterExcellentDropChance_Name text.</summary>
+        public static string DungeonConfiguration_MonsterExcellentDropChance_Name => ResourceManager.GetString("DungeonConfiguration_MonsterExcellentDropChance_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_MonsterExcellentDropChance_Description text.</summary>
+        public static string DungeonConfiguration_MonsterExcellentDropChance_Description => ResourceManager.GetString("DungeonConfiguration_MonsterExcellentDropChance_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_OnlyExcellentItems_Name text.</summary>
+        public static string DungeonConfiguration_OnlyExcellentItems_Name => ResourceManager.GetString("DungeonConfiguration_OnlyExcellentItems_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_OnlyExcellentItems_Description text.</summary>
+        public static string DungeonConfiguration_OnlyExcellentItems_Description => ResourceManager.GetString("DungeonConfiguration_OnlyExcellentItems_Description", resourceCulture)!;
     }
 }

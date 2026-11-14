@@ -2312,4 +2312,16 @@
   <data name="DungeonConfiguration_EntriesPerCooldown_Description" xml:space="preserve">
     <value>How many times a character can enter each dungeon per entry cooldown, which starts with the first of these entries. A dungeon can have its own value in the table of the dungeons.</value>
   </data>
+  <data name="DungeonConfiguration_MonsterExcellentDropChance_Name" xml:space="preserve">
+    <value>Excellent drop chance of a monster (0 to 1)</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterExcellentDropChance_Description" xml:space="preserve">
+    <value>The chance of a monster of a dungeon which is not a boss to drop an excellent item when it is killed, e.g. 0.005 for 1 of 200 kills. It does not depend on the chance of the map. A dungeon can have its own value in the table of the dungeons.</value>
+  </data>
+  <data name="DungeonConfiguration_OnlyExcellentItems_Name" xml:space="preserve">
+    <value>Only excellent items</value>
+  </data>
+  <data name="DungeonConfiguration_OnlyExcellentItems_Description" xml:space="preserve">
+    <value>The monsters of the dungeons drop only excellent items and money. Otherwise, they also drop what they drop on the map outside of the dungeon, e.g. normal items and jewels.</value>
+  </data>
 </root>
