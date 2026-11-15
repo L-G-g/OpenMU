@@ -427,28 +427,33 @@ namespace
             return;
         }
 
-        if (!g_musicOption || *MusicEnabled == 0 || GetFileAttributesA(g_stageSound.c_str()) == INVALID_FILE_ATTRIBUTES)
+        // Suena aunque la musica del juego este apagada: el recuerdo la necesita y es un .wav, no la musica del mapa.
+        if (!g_musicOption || GetFileAttributesA(g_stageSound.c_str()) == INVALID_FILE_ATTRIBUTES)
         {
-            g_stageSound.clear(); // sin musica en el juego, o el cliente no tiene el archivo
+            g_stageSound.clear(); // apagado en camera3d.ini, o el cliente no tiene el archivo
             return;
         }
 
         g_musicReplaced = true;
-        for (int i = 0; i < Mp3Count; i++)
+        if (*MusicEnabled != 0)
         {
-            g_savedMp3[i] = Mp3Table[i];
-            if (Mp3Table[i] != nullptr)
+            // Con la musica del juego apagada no hay que callarla, y wzAudioStop falla porque el audio no se inicio.
+            for (int i = 0; i < Mp3Count; i++)
             {
-                Mp3Table[i] = g_silentMp3;
+                g_savedMp3[i] = Mp3Table[i];
+                if (Mp3Table[i] != nullptr)
+                {
+                    Mp3Table[i] = g_silentMp3;
+                }
             }
-        }
 
-        strcpy_s(CurrentMp3, sizeof(g_silentMp3), g_silentMp3);
-        const HMODULE audio = GetModuleHandleA("wzAudio.dll");
-        const FARPROC stop = audio != nullptr ? GetProcAddress(audio, "wzAudioStop") : nullptr;
-        if (stop != nullptr)
-        {
-            reinterpret_cast<void(__cdecl*)()>(stop)();
+            strcpy_s(CurrentMp3, sizeof(g_silentMp3), g_silentMp3);
+            const HMODULE audio = GetModuleHandleA("wzAudio.dll");
+            const FARPROC stop = audio != nullptr ? GetProcAddress(audio, "wzAudioStop") : nullptr;
+            if (stop != nullptr)
+            {
+                reinterpret_cast<void(__cdecl*)()>(stop)();
+            }
         }
 
         PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT);

@@ -725,7 +725,7 @@ de la entrada de Atlans y pasa en la sala del trono del castillo de Devias.
   Blood Castle) y suena con `PlaySound` en vez de la música del mapa: mientras dura, la tabla de mp3 del juego
   (`0x00E609F0`) apunta a un nombre que no existe y ese nombre queda como el que suena (`0x00E8C2A8`), así el juego no
   vuelve a poner la música del mapa; al terminar se repone la tabla y el juego la pone solo. `Music=0` en
-  `[Cinematicas]` lo apaga, y tampoco suena si la música del juego está apagada.
+  `[Cinematicas]` lo apaga. Suena aunque la música del juego esté apagada.
 
 La cámara: `camera3d.dll` llama a `cinematicas.dll` después de calcular la suya en cada cuadro; durante la
 escena la DLL pone la posición (a 230 unidades del espectro, del lado del personaje, a la altura de los
