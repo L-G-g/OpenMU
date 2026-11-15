@@ -64,6 +64,10 @@ public sealed class StorySceneContext : MiniGameContext
     internal override bool SpawnsMonstersOfMap => false;
 
     /// <inheritdoc />
+    /// <remarks>The event spawns of Devias are the monsters of its dungeon.</remarks>
+    internal override bool SpawnsMonstersOfEvent => false;
+
+    /// <inheritdoc />
     protected override bool AllowEnterWhilePlaying => true;
 
     /// <inheritdoc />
