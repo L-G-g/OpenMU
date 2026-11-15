@@ -106,7 +106,7 @@ public sealed record StoryMemory(
     public static StoryMemory Sacrifice { get; } = new(
         "Hace mil anos, en el castillo de Devias...",
         new Point(225, 231),
-        new StoryMemoryCamera(new Point(223, 230), 165, 60, 48.5f, 1500),
+        new StoryMemoryCamera(new Point(226, 232), 165, 60, 48.5f, 1150),
         [
             // Glorious set; a king needs no weapon on his throne.
             new StoryMemoryActor("Muren", "Rey Muren Rexmillon", SpectreKind.Lord, 13, [(7, 38), (8, 38), (9, 38), (10, 38), (11, 38)], new Point(225, 237), new Point(225, 230), IsSitting: true),
