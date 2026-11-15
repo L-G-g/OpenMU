@@ -97,7 +97,7 @@ internal class IntroducedGameVersionsDataTest
         Assert.That(gameConfiguration.Maps.Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
         Assert.That(gameConfiguration.CharacterClasses.Select(c => c.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
         // The dungeons of PeroniaMU are no content of the original game, so they keep the unknown version and are never deactivated by version.
-        Assert.That(gameConfiguration.MiniGameDefinitions.Where(m => m.Type is not (MiniGameType.Dungeon or MiniGameType.SpectreHub)).Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
+        Assert.That(gameConfiguration.MiniGameDefinitions.Where(m => m.Type is not (MiniGameType.Dungeon or MiniGameType.SpectreHub or MiniGameType.StoryScene)).Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
     }
 
     /// <summary>
