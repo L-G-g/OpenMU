@@ -1,16 +1,20 @@
 // espectros.dll - Ventana de espectros y espectros transparentes para el cliente MU 1.04d con camera3d.dll.
 //
-// En OpenMU (plugin "Spectres") cada personaje puede invocar espectros de guerrero, mago y elfa: bots que lo
-// siguen, lo buffean y cazan con el. El servidor (ShowSpectresViewPlugIn) manda paquetes que el main.exe original
+// En OpenMU (plugin "Spectres") cada personaje puede invocar espectros de guerrero, mago, elfa, gladiador, lord,
+// invocadora y peleador: bots que lo siguen, lo buffean y cazan con el. Primero hay que desbloquearlos venciendolos
+// en duelo en el refugio de los espectros (el Guardian en Lorencia), y cada nueva victoria los hace evolucionar. El servidor (ShowSpectresViewPlugIn) manda paquetes que el main.exe original
 // ignora (su reparto de paquetes devuelve 1 para los codigos mayores a 0xF9):
 //   - C1 05 FD 01 [objeto, 2 bytes big endian]: ese objeto es un espectro. Se repite cada 2 segundos mientras
 //     esta a la vista.
-//   - C2 [largo] FD 00 y una entrada por espectro (guerrero, mago, elfa): el estado de los espectros del jugador
-//     (invocado, nombre, nivel, resets, puntos, estadisticas, porcentajes y los 12 items equipados). Llega al
-//     invocar, retirar, equipar, quitar, cambiar porcentajes, resetear y subir de nivel, y al pedirlo.
+//   - C2 [largo] FD 00 y una entrada por espectro (las 7 clases): el estado de los espectros del jugador
+//     (invocado, nombre, nivel, resets, puntos, estadisticas con el comando del lord, porcentajes, victorias contra
+//     su rival y los 12 items equipados). Llega al invocar, retirar, equipar, quitar, cambiar porcentajes, resetear,
+//     subir de nivel, ganar un duelo del refugio y al pedirlo.
+//   - C2 [largo] FD 02 y un texto (lineas separadas por \n, termina en 0): la historia que cuenta el Guardian de los
+//     espectros. Se muestra en una ventana con Entrar (manda /espectro refugio) y Cerrar.
 // La ventana contesta con el comando de chat /espectro, que el servidor ya entiende.
 //
-// La ventana (Shift+S) muestra una pestana por espectro: invocar o retirar, resetear, los items equipados (un click
+// La ventana (Shift+S) muestra una pestana por espectro (los bloqueados dicen como desbloquearlos): invocar o retirar, resetear, los items equipados (un click
 // lo quita y lo devuelve al inventario), las estadisticas y los porcentajes con los que el espectro reparte sus
 // puntos (+ y -, y Aplicar cuando suman 100). Con la ventana abierta, un click derecho sobre un item equipable del
 // inventario se lo equipa al espectro de la pestana elegida.
@@ -85,22 +89,29 @@ namespace
 
     constexpr int CharacterCount = 400;
     constexpr DWORD CharacterSize = 0x598;
-    constexpr DWORD CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
+    constexpr DWORD CharName = 0x38, CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
+    constexpr size_t NameSize = 32; // lugar del nombre en el personaje; el protocolo manda 10 caracteres
     constexpr DWORD ObjAlpha = 0x98;
     constexpr WORD IdMask = 0x7FFF;
 
     // --- Paquetes ---
     constexpr int CodeSpectres = 0xFD;
-    constexpr BYTE SubCodePanel = 0x00, SubCodeSpectre = 0x01;
-    constexpr int KindCount = 3;
+    constexpr BYTE SubCodePanel = 0x00, SubCodeSpectre = 0x01, SubCodeStory = 0x02, SubCodeTitle = 0x03;
+    constexpr int KindCount = 7;
+    constexpr int StatCount = 5; // fuerza, agilidad, vitalidad, energia y comando (solo el lord)
+    constexpr int EvolutionCount = 8;
     constexpr int SlotCount = 12;
     constexpr int NameLength = 11;
     constexpr int ItemDataLength = 12;
     constexpr int DescriptionLength = 40;
     constexpr int SlotLength = 6 + ItemDataLength + DescriptionLength;
-    constexpr int EntryHeaderLength = 41;
+    constexpr int StatsOffset = 21;
+    constexpr int PercentagesOffset = StatsOffset + StatCount * 4;
+    constexpr int VictoriesOffset = PercentagesOffset + StatCount;
+    constexpr int EntryHeaderLength = VictoriesOffset + 2;
     constexpr int EntryLength = EntryHeaderLength + SlotCount * SlotLength;
     constexpr DWORD MarkDuration = 5000; // la marca se repite cada 2 segundos
+    constexpr DWORD TitleDuration = 10000; // el nombre largo se repite cada pocos segundos; despues el numero puede ser de otro
 
     using DispatchType = int(__cdecl*)(int, BYTE*, int, int);
     using DrawType = void(__cdecl*)();
@@ -130,14 +141,17 @@ namespace
         int level;
         int resets;
         int points;
-        int stats[4];
-        int percentages[4];
+        int stats[StatCount];
+        int percentages[StatCount];
+        int victories; // 0 bloqueado, 1 desbloqueado, 2 a 9 evoluciones 1 a 8
         Item items[SlotCount];
     };
 
-    const char* const KindName[KindCount] = { "Guerrero", "Mago", "Elfa" };
-    const char* const KindCommand[KindCount] = { "g", "m", "e" };
-    const char* const StatName[4] = { "FUE", "AGI", "VIT", "ENE" };
+    const char* const KindName[KindCount] = { "Guerrero", "Mago", "Elfa", "Gladiador", "Lord", "Invocadora", "Peleador" };
+    const char* const KindTab[KindCount] = { "Guerr.", "Mago", "Elfa", "Gladi.", "Lord", "Invoc.", "Pelea." };
+    const char* const KindCommand[KindCount] = { "g", "m", "e", "d", "l", "i", "p" };
+    const char* const StatName[StatCount] = { "FUE", "AGI", "VIT", "ENE", "CMD" };
+    constexpr int LordKind = 4;
 
     LogFunction g_log = nullptr;
     DispatchType g_nextDispatch = nullptr;
@@ -151,12 +165,25 @@ namespace
     bool g_received = false;
     int g_tab = 0;
     Spectre g_spectres[KindCount] = {};
-    int g_edit[KindCount][4] = {};   // porcentajes que el jugador esta cambiando
+    int g_edit[KindCount][StatCount] = {}; // porcentajes que el jugador esta cambiando
     bool g_editing[KindCount] = {};  // los cambio y todavia no los aplico
     DWORD g_marked[IdMask + 1] = {}; // GetTickCount de la ultima marca de espectro de cada objeto
+
+    // El nombre largo de cada objeto (p. ej. "Invocadora Recuperada") y cuando llego.
+    struct Title
+    {
+        DWORD time;
+        char name[NameSize];
+    };
+
+    Title g_titles[IdMask + 1] = {};
     float g_alpha = 0.5f;            // [Espectros] Alpha
     float g_left = 10.0f;            // [Espectros] Left, Top
     float g_top = 40.0f;
+    float g_ox = 0.0f;               // esquina de la ventana que se dibuja (panel o historia)
+    float g_oy = 0.0f;
+    bool g_storyOpen = false;        // la historia del Guardian
+    std::deque<std::string> g_story; // sus lineas, ya cortadas al ancho de la ventana
 
     struct SavedAlpha
     {
@@ -169,7 +196,9 @@ namespace
 
     // --- Ventana (en coordenadas de 640x480, relativas a la esquina de la ventana) ---
     constexpr float PanelWidth = 200.0f;
-    constexpr float PanelHeight = 340.0f;
+    constexpr float PanelHeight = 376.0f;
+    constexpr float StoryWidth = 380.0f, StoryLineHeight = 13.0f, StoryLeft = (640.0f - StoryWidth) / 2, StoryTop = 70.0f;
+    constexpr size_t StoryLineChars = 70;
 
     struct Rect
     {
@@ -181,7 +210,7 @@ namespace
 
     // Casilleros de equipo: 0 arma, 1 escudo, 2 casco, 3 armadura, 4 pantalones, 5 guantes, 6 botas, 7 alas,
     // 8 mascota, 9 colgante, 10 y 11 anillos.
-    constexpr float EquipTop = 78.0f;
+    constexpr float EquipTop = 90.0f;
     const Rect SlotRect[SlotCount] = {
         { 8, EquipTop + 46, 40, 62 },    // arma
         { 152, EquipTop + 46, 40, 62 },  // escudo
@@ -197,8 +226,8 @@ namespace
         { 126, EquipTop + 124, 22, 22 }, // anillo
     };
 
-    constexpr float TabTop = 20.0f, TabHeight = 14.0f, TabWidth = 60.0f, TabGap = 4.0f;
-    constexpr float ActionTop = 56.0f, ActionHeight = 14.0f, ActionWidth = 70.0f;
+    constexpr float TabTop = 20.0f, TabHeight = 14.0f, TabWidth = 44.0f, TabGap = 4.0f, TabsPerRow = 4;
+    constexpr float ActionTop = 70.0f, ActionHeight = 14.0f, ActionWidth = 70.0f;
     constexpr float StatsTop = EquipTop + 162, StatRowHeight = 16.0f;
     constexpr float SmallButton = 14.0f;
     constexpr float MinusLeft = 104.0f, PlusLeft = 158.0f, PercentLeft = 120.0f, PercentWidth = 36.0f;
@@ -217,12 +246,31 @@ namespace
         ButtonPlus = 50,       // + estadistica
         ButtonApply = 60,
         ButtonClose = 61,
+        ButtonStoryEnter = 70, // ventana de la historia
+        ButtonStoryClose = 71,
     };
 
+    // Dos filas: 4 pestanas arriba y 3 abajo.
     Rect TabRect(int tab)
     {
-        const float tabs = KindCount * TabWidth + (KindCount - 1) * TabGap;
-        return { (PanelWidth - tabs) / 2 + tab * (TabWidth + TabGap), TabTop, TabWidth, TabHeight };
+        const int row = tab / static_cast<int>(TabsPerRow);
+        const int column = tab % static_cast<int>(TabsPerRow);
+        const int inRow = row == 0 ? static_cast<int>(TabsPerRow) : KindCount - static_cast<int>(TabsPerRow);
+        const float tabs = inRow * TabWidth + (inRow - 1) * TabGap;
+        return { (PanelWidth - tabs) / 2 + column * (TabWidth + TabGap), TabTop + row * (TabHeight + 3), TabWidth, TabHeight };
+    }
+
+    float StoryHeight()
+    {
+        return 40.0f + g_story.size() * StoryLineHeight + 26.0f;
+    }
+
+    Rect StoryButtonRect(int button)
+    {
+        const float top = StoryHeight() - 22.0f;
+        return button == ButtonStoryEnter
+            ? Rect{ StoryWidth / 2 - 84, top, 80, 16 }
+            : Rect{ StoryWidth / 2 + 4, top, 80, 16 };
     }
 
     Rect ButtonRect(int button)
@@ -237,12 +285,12 @@ namespace
             return SlotRect[button - ButtonSlot];
         }
 
-        if (button >= ButtonMinus && button < ButtonMinus + 4)
+        if (button >= ButtonMinus && button < ButtonMinus + StatCount)
         {
             return { MinusLeft, StatsTop + (button - ButtonMinus) * StatRowHeight, SmallButton, SmallButton };
         }
 
-        if (button >= ButtonPlus && button < ButtonPlus + 4)
+        if (button >= ButtonPlus && button < ButtonPlus + StatCount)
         {
             return { PlusLeft, StatsTop + (button - ButtonPlus) * StatRowHeight, SmallButton, SmallButton };
         }
@@ -251,7 +299,7 @@ namespace
         {
         case ButtonSummon: return { PanelWidth / 2 - ActionWidth - 4, ActionTop, ActionWidth, ActionHeight };
         case ButtonReset: return { PanelWidth / 2 + 4, ActionTop, ActionWidth, ActionHeight };
-        case ButtonApply: return { ApplyLeft, StatsTop + 4 * StatRowHeight + 2, ApplyWidth, SmallButton };
+        case ButtonApply: return { ApplyLeft, StatsTop + StatCount * StatRowHeight + 2, ApplyWidth, SmallButton };
         case ButtonClose: return { PanelWidth - 16, 4, 12, 12 };
         default: return { 0, 0, 0, 0 };
         }
@@ -277,9 +325,53 @@ namespace
         return g_open && Inside({ 0, 0, PanelWidth, PanelHeight }, LocalMouseX(), LocalMouseY());
     }
 
+    bool MouseOverStory()
+    {
+        return g_storyOpen && Inside({ StoryLeft, StoryTop, StoryWidth, StoryHeight() }, static_cast<float>(*MouseX),
+            static_cast<float>(*MouseY));
+    }
+
+    // Boton de la historia bajo el mouse, o ButtonNone.
+    int HitStoryButton()
+    {
+        if (!MouseOverStory())
+        {
+            return ButtonNone;
+        }
+
+        const float x = static_cast<float>(*MouseX) - StoryLeft;
+        const float y = static_cast<float>(*MouseY) - StoryTop;
+        for (int button : { ButtonStoryEnter, ButtonStoryClose })
+        {
+            if (Inside(StoryButtonRect(button), x, y))
+            {
+                return button;
+            }
+        }
+
+        return ButtonNone;
+    }
+
+    // Solo el lord reparte puntos en comando.
+    int StatsOf(int kind)
+    {
+        return kind == LordKind ? StatCount : StatCount - 1;
+    }
+
     int EditTotal(int kind)
     {
-        return g_edit[kind][0] + g_edit[kind][1] + g_edit[kind][2] + g_edit[kind][3];
+        int total = 0;
+        for (int stat = 0; stat < StatsOf(kind); stat++)
+        {
+            total += g_edit[kind][stat];
+        }
+
+        return total;
+    }
+
+    bool IsLocked(int kind)
+    {
+        return g_received && g_spectres[kind].victories == 0;
     }
 
     bool IsEnabled(int button)
@@ -290,18 +382,19 @@ namespace
             return spectre.summoned && spectre.items[button - ButtonSlot].present;
         }
 
-        if (button >= ButtonMinus && button < ButtonMinus + 4)
+        if (button >= ButtonMinus && button < ButtonMinus + StatCount)
         {
-            return spectre.summoned && g_edit[g_tab][button - ButtonMinus] >= PercentStep;
+            return spectre.summoned && button - ButtonMinus < StatsOf(g_tab) && g_edit[g_tab][button - ButtonMinus] >= PercentStep;
         }
 
-        if (button >= ButtonPlus && button < ButtonPlus + 4)
+        if (button >= ButtonPlus && button < ButtonPlus + StatCount)
         {
-            return spectre.summoned && g_edit[g_tab][button - ButtonPlus] + PercentStep <= 100;
+            return spectre.summoned && button - ButtonPlus < StatsOf(g_tab) && g_edit[g_tab][button - ButtonPlus] + PercentStep <= 100;
         }
 
         switch (button)
         {
+        case ButtonSummon: return !IsLocked(g_tab);
         case ButtonReset: return spectre.summoned;
         case ButtonApply: return spectre.summoned && g_editing[g_tab] && EditTotal(g_tab) == 100;
         default: return true;
@@ -312,11 +405,12 @@ namespace
     int HitButton()
     {
         static const int Buttons[] = {
-            ButtonTab, ButtonTab + 1, ButtonTab + 2, ButtonSummon, ButtonReset, ButtonSlot, ButtonSlot + 1,
+            ButtonTab, ButtonTab + 1, ButtonTab + 2, ButtonTab + 3, ButtonTab + 4, ButtonTab + 5, ButtonTab + 6,
+            ButtonSummon, ButtonReset, ButtonSlot, ButtonSlot + 1,
             ButtonSlot + 2, ButtonSlot + 3, ButtonSlot + 4, ButtonSlot + 5, ButtonSlot + 6, ButtonSlot + 7,
             ButtonSlot + 8, ButtonSlot + 9, ButtonSlot + 10, ButtonSlot + 11, ButtonMinus, ButtonMinus + 1,
-            ButtonMinus + 2, ButtonMinus + 3, ButtonPlus, ButtonPlus + 1, ButtonPlus + 2, ButtonPlus + 3,
-            ButtonApply, ButtonClose,
+            ButtonMinus + 2, ButtonMinus + 3, ButtonMinus + 4, ButtonPlus, ButtonPlus + 1, ButtonPlus + 2,
+            ButtonPlus + 3, ButtonPlus + 4, ButtonApply, ButtonClose,
         };
 
         if (!MouseOverPanel())
@@ -390,11 +484,13 @@ namespace
         spectre.level = ReadShort(entry + 13);
         spectre.resets = ReadShort(entry + 15);
         spectre.points = ReadInt(entry + 17);
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < StatCount; i++)
         {
-            spectre.stats[i] = ReadInt(entry + 21 + i * 4);
-            spectre.percentages[i] = entry[37 + i];
+            spectre.stats[i] = ReadInt(entry + StatsOffset + i * 4);
+            spectre.percentages[i] = entry[PercentagesOffset + i];
         }
+
+        spectre.victories = entry[VictoriesOffset];
 
         for (int slot = 0; slot < SlotCount; slot++)
         {
@@ -413,11 +509,80 @@ namespace
         }
     }
 
+    // Corta el texto en lineas de como mucho StoryLineChars caracteres, por palabras.
+    void ReadStory(const BYTE* text, int length)
+    {
+        g_story.clear();
+        std::string line;
+        std::string word;
+        auto flushWord = [&]()
+        {
+            if (word.empty())
+            {
+                return;
+            }
+
+            if (!line.empty() && line.size() + 1 + word.size() > StoryLineChars)
+            {
+                g_story.push_back(line);
+                line.clear();
+            }
+
+            line += line.empty() ? word : " " + word;
+            word.clear();
+        };
+
+        for (int i = 0; i < length && text[i] != 0; i++)
+        {
+            const char c = static_cast<char>(text[i]);
+            if (c == '\n')
+            {
+                flushWord();
+                g_story.push_back(line);
+                g_story.push_back(std::string());
+                line.clear();
+            }
+            else if (c == ' ')
+            {
+                flushWord();
+            }
+            else
+            {
+                word += c;
+            }
+        }
+
+        flushWord();
+        if (!line.empty())
+        {
+            g_story.push_back(line);
+        }
+
+        g_storyOpen = !g_story.empty();
+    }
+
     void OnSpectresPacket(const BYTE* packet, int size)
     {
         if (packet[0] == 0xC1 && size >= 6 && packet[3] == SubCodeSpectre)
         {
             g_marked[((packet[4] << 8) | packet[5]) & IdMask] = GetTickCount();
+            return;
+        }
+
+        if (packet[0] == 0xC1 && size >= 7 && packet[3] == SubCodeTitle)
+        {
+            Title& title = g_titles[((packet[4] << 8) | packet[5]) & IdMask];
+            const size_t room = static_cast<size_t>(size - 6) < NameSize - 1 ? static_cast<size_t>(size - 6) : NameSize - 1;
+            const size_t length = strnlen(reinterpret_cast<const char*>(packet + 6), room);
+            memcpy(title.name, packet + 6, length);
+            title.name[length] = 0;
+            title.time = GetTickCount();
+            return;
+        }
+
+        if (packet[0] == 0xC2 && size >= 5 && packet[4] == SubCodeStory)
+        {
+            ReadStory(packet + 5, size - 5);
             return;
         }
 
@@ -491,12 +656,36 @@ namespace
         }
     }
 
+    // Pone el nombre largo a los objetos que lo tienen; el cliente lo vuelve a poner corto cuando el objeto entra a la vista.
+    void ApplyTitles()
+    {
+        BYTE* characters = Characters();
+        if (characters == nullptr)
+        {
+            return;
+        }
+
+        const DWORD now = GetTickCount();
+        for (int i = 0; i < CharacterCount; i++)
+        {
+            BYTE* character = characters + i * CharacterSize;
+            const Title& title = g_titles[*reinterpret_cast<const WORD*>(character + CharKey) & IdMask];
+            char* name = reinterpret_cast<char*>(character + CharName);
+            if (character[CharLive] && title.time != 0 && now - title.time <= TitleDuration && title.name[0] != 0
+                && strncmp(name, title.name, NameSize) != 0)
+            {
+                memcpy(name, title.name, NameSize);
+            }
+        }
+    }
+
     // Sin objetos con destructor: puede usar __try.
     void __cdecl BeforeRender()
     {
         __try
         {
             ApplyAlpha();
+            ApplyTitles();
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
@@ -523,12 +712,12 @@ namespace
             sprintf_s(text, "/espectro quitar %s %d", kind, button - ButtonSlot);
             QueueChat(text);
         }
-        else if (button >= ButtonMinus && button < ButtonMinus + 4)
+        else if (button >= ButtonMinus && button < ButtonMinus + StatCount)
         {
             g_edit[g_tab][button - ButtonMinus] -= PercentStep;
             g_editing[g_tab] = true;
         }
-        else if (button >= ButtonPlus && button < ButtonPlus + 4)
+        else if (button >= ButtonPlus && button < ButtonPlus + StatCount)
         {
             g_edit[g_tab][button - ButtonPlus] += PercentStep;
             g_editing[g_tab] = true;
@@ -546,7 +735,15 @@ namespace
         else if (button == ButtonApply)
         {
             const int* edit = g_edit[g_tab];
-            sprintf_s(text, "/espectro puntos %s %d %d %d %d", kind, edit[0], edit[1], edit[2], edit[3]);
+            if (g_tab == LordKind)
+            {
+                sprintf_s(text, "/espectro puntos %s %d %d %d %d %d", kind, edit[0], edit[1], edit[2], edit[3], edit[4]);
+            }
+            else
+            {
+                sprintf_s(text, "/espectro puntos %s %d %d %d %d", kind, edit[0], edit[1], edit[2], edit[3]);
+            }
+
             QueueChat(text);
             g_editing[g_tab] = false;
         }
@@ -559,6 +756,28 @@ namespace
     int __fastcall MouseHook(BYTE* manager, void* unused)
     {
         SendPendingChat();
+        if (MouseOverStory())
+        {
+            // La historia esta arriba del panel.
+            g_mouseOver = true;
+            *reinterpret_cast<DWORD*>(manager + WindowManagerMouse) = 0;
+            if (reinterpret_cast<KeyStateType>(IsReleaseFunction)(VK_LBUTTON))
+            {
+                const int button = HitStoryButton();
+                if (button == ButtonStoryEnter)
+                {
+                    QueueChat("/espectro refugio");
+                }
+
+                if (button != ButtonNone)
+                {
+                    g_storyOpen = false;
+                }
+            }
+
+            return 1;
+        }
+
         g_mouseOver = MouseOverPanel();
         if (!g_mouseOver)
         {
@@ -621,6 +840,11 @@ namespace
             g_suppressedKey = 'S';
             SetOpen(!g_open);
         }
+        else if (g_storyOpen && keyStates[VK_ESCAPE] == KeyPressed)
+        {
+            g_suppressedKey = VK_ESCAPE;
+            g_storyOpen = false;
+        }
         else if (g_open && keyStates[VK_ESCAPE] == KeyPressed)
         {
             g_suppressedKey = VK_ESCAPE;
@@ -655,13 +879,13 @@ namespace
     // --- Dibujo ---
     float ToPixelsX(float x)
     {
-        return (g_left + x) * *WindowWidth / 640.0f;
+        return (g_ox + x) * *WindowWidth / 640.0f;
     }
 
     // Proyeccion 2D del juego: pixeles con el origen abajo.
     float ToPixelsY(float y)
     {
-        return *WindowHeight - (g_top + y) * *WindowHeight / 480.0f;
+        return *WindowHeight - (g_oy + y) * *WindowHeight / 480.0f;
     }
 
     void Quad(const Rect& rect)
@@ -736,7 +960,7 @@ namespace
 
         if (spectre.summoned)
         {
-            for (int stat = 0; stat < 4; stat++)
+            for (int stat = 0; stat < StatsOf(g_tab); stat++)
             {
                 DrawButton(ButtonMinus + stat, hover, false);
                 DrawButton(ButtonPlus + stat, hover, false);
@@ -804,8 +1028,8 @@ namespace
         *reinterpret_cast<DWORD*>(renderer + 0x10) = color;
         *reinterpret_cast<DWORD*>(renderer + 0x14) = 0; // sin fondo
         reinterpret_cast<SetFontType>(SetFontFunction)(RenderText, nullptr, bold ? *BoldFont : *NormalFont);
-        reinterpret_cast<RenderTextType>(RenderTextFunction)(RenderText, nullptr, static_cast<int>(g_left + left),
-            static_cast<int>(g_top + top), text, static_cast<int>(width), 0, sort, nullptr);
+        reinterpret_cast<RenderTextType>(RenderTextFunction)(RenderText, nullptr, static_cast<int>(g_ox + left),
+            static_cast<int>(g_oy + top), text, static_cast<int>(width), 0, sort, nullptr);
     }
 
     void ButtonText(int button, const char* text, int hover)
@@ -839,31 +1063,39 @@ namespace
         for (int tab = 0; tab < KindCount; tab++)
         {
             const Rect rect = TabRect(tab);
-            Text(KindName[tab], rect.left, rect.top + 1, rect.width, SortCenter,
-                g_spectres[tab].summoned ? green : tab == g_tab ? Color(255, 240, 200) : Color(230, 210, 170), false);
+            Text(KindTab[tab], rect.left, rect.top + 1, rect.width, SortCenter,
+                g_spectres[tab].summoned ? green : IsLocked(tab) ? Color(120, 110, 100)
+                : tab == g_tab ? Color(255, 240, 200) : Color(230, 210, 170), false);
         }
 
         const Spectre& spectre = g_spectres[g_tab];
         char text[96];
+        constexpr float InfoTop = 54.0f;
         if (!g_received)
         {
-            Text("Esperando al servidor...", 0, 40, PanelWidth, SortCenter, gray, false);
+            Text("Esperando al servidor...", 0, InfoTop, PanelWidth, SortCenter, gray, false);
+        }
+        else if (IsLocked(g_tab))
+        {
+            sprintf_s(text, "%s: bloqueado", KindName[g_tab]);
+            Text(text, 0, InfoTop, PanelWidth, SortCenter, gray, true);
         }
         else if (spectre.summoned)
         {
-            sprintf_s(text, "%s  Nv %d  Resets %d", spectre.name, spectre.level, spectre.resets);
-            Text(text, 0, 40, PanelWidth, SortCenter, white, true);
+            sprintf_s(text, "%s  Nv %d  Resets %d  E%d", spectre.name, spectre.level, spectre.resets, spectre.victories - 1);
+            Text(text, 0, InfoTop, PanelWidth, SortCenter, white, true);
         }
         else
         {
-            Text("No invocado", 0, 40, PanelWidth, SortCenter, gray, false);
+            sprintf_s(text, "%s: no invocado (E%d de %d)", KindName[g_tab], spectre.victories - 1, EvolutionCount);
+            Text(text, 0, InfoTop, PanelWidth, SortCenter, gray, false);
         }
 
         ButtonText(ButtonSummon, spectre.summoned ? "Retirar" : "Invocar", hover);
         ButtonText(ButtonReset, "Reset", hover);
         if (spectre.summoned)
         {
-            for (int stat = 0; stat < 4; stat++)
+            for (int stat = 0; stat < StatsOf(g_tab); stat++)
             {
                 const float top = StatsTop + stat * StatRowHeight;
                 sprintf_s(text, "%s %d", StatName[stat], spectre.stats[stat]);
@@ -875,7 +1107,7 @@ namespace
                 ButtonText(ButtonPlus + stat, "+", hover);
             }
 
-            const float top = StatsTop + 4 * StatRowHeight + 2;
+            const float top = StatsTop + StatCount * StatRowHeight + 2;
             const int total = EditTotal(g_tab);
             sprintf_s(text, "Total %d%%", total);
             Text(text, 8, top + 1, 100, SortLeft, total == 100 ? white : Color(255, 90, 90), false);
@@ -888,7 +1120,8 @@ namespace
         }
 
         // Ayuda: el item bajo el mouse o como equipar.
-        const char* hint = spectre.summoned ? "Click derecho en tu inventario: equipar" : "Invoca al espectro para equiparlo";
+        const char* hint = IsLocked(g_tab) ? "Vencelo en el refugio (Guardian en Lorencia)"
+            : spectre.summoned ? "Click derecho en tu inventario: equipar" : "Invoca al espectro para equiparlo";
         DWORD hintColor = gray;
         if (hover >= ButtonSlot && hover < ButtonSlot + SlotCount && spectre.items[hover - ButtonSlot].present)
         {
@@ -904,12 +1137,91 @@ namespace
         reinterpret_cast<void(__cdecl*)()>(DisableAlphaBlendFunction)();
     }
 
+    void DrawStoryShapes(int hover)
+    {
+        glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_LINE_BIT);
+        glDisable(GL_TEXTURE_2D);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_ALPHA_TEST);
+        glDisable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glLineWidth(1.0f);
+        const Rect window = { 0, 0, StoryWidth, StoryHeight() };
+        Fill(window, 0.02f, 0.0f, 0.05f, 0.92f);
+        Outline(window, 0.55f, 0.35f, 0.8f, 0.9f);
+        for (int button : { ButtonStoryEnter, ButtonStoryClose })
+        {
+            const Rect rect = StoryButtonRect(button);
+            Fill(rect, button == hover ? 0.4f : 0.12f, button == hover ? 0.25f : 0.08f, button == hover ? 0.55f : 0.18f, 0.95f);
+            Outline(rect, 0.55f, 0.35f, 0.8f, 0.9f);
+        }
+
+        glPopAttrib();
+    }
+
+    void DrawStoryTexts(int hover)
+    {
+        BYTE* const renderer = *reinterpret_cast<BYTE**>(RenderText + 4);
+        if (renderer == nullptr)
+        {
+            return;
+        }
+
+        reinterpret_cast<void(__cdecl*)(bool)>(EnableAlphaBlendFunction)(true);
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        const DWORD savedText = *reinterpret_cast<DWORD*>(renderer + 0x10);
+        const DWORD savedBackground = *reinterpret_cast<DWORD*>(renderer + 0x14);
+        Text("Guardian de los espectros", 0, 8, StoryWidth, SortCenter, Color(200, 160, 255), true);
+        float top = 30.0f;
+        for (const std::string& line : g_story)
+        {
+            // Una linea vacia separa los parrafos; el texto vacio dibuja basura del cliente.
+            if (!line.empty())
+            {
+                Text(line.c_str(), 12, top, StoryWidth - 24, SortLeft, Color(225, 220, 235), false);
+            }
+
+            top += StoryLineHeight;
+        }
+
+        for (int button : { ButtonStoryEnter, ButtonStoryClose })
+        {
+            const Rect rect = StoryButtonRect(button);
+            Text(button == ButtonStoryEnter ? "Entrar" : "Cerrar", rect.left, rect.top + 2, rect.width, SortCenter,
+                button == hover ? Color(255, 240, 255) : Color(220, 200, 240), false);
+        }
+
+        *reinterpret_cast<DWORD*>(renderer + 0x10) = savedText;
+        *reinterpret_cast<DWORD*>(renderer + 0x14) = savedBackground;
+        reinterpret_cast<SetFontType>(SetFontFunction)(RenderText, nullptr, *NormalFont);
+        reinterpret_cast<void(__cdecl*)()>(DisableAlphaBlendFunction)();
+    }
+
+    // Sin objetos con destructor: puede usar __try.
+    void DrawStory()
+    {
+        __try
+        {
+            const int hover = HitStoryButton();
+            g_ox = StoryLeft;
+            g_oy = StoryTop;
+            DrawStoryShapes(hover);
+            DrawStoryTexts(hover);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+        }
+    }
+
     // Sin objetos con destructor: puede usar __try.
     void DrawPanel()
     {
         __try
         {
             const int hover = HitButton();
+            g_ox = g_left;
+            g_oy = g_top;
             DrawShapes(hover);
             DrawItems();
             DrawTexts(hover);
@@ -937,6 +1249,11 @@ namespace
         if (g_open)
         {
             DrawPanel();
+        }
+
+        if (g_storyOpen)
+        {
+            DrawStory();
         }
 
         g_nextDraw();

@@ -56,6 +56,7 @@ public class OpenNpcWindowPlugIn : IOpenNpcWindowPlugIn
             NpcWindow.Merchant => NpcWindowResponse.NpcWindow.Merchant,
             NpcWindow.Merchant1 => NpcWindowResponse.NpcWindow.Merchant1,
             NpcWindow.VaultStorage => NpcWindowResponse.NpcWindow.VaultStorage,
+            NpcWindow.MarketDepot => NpcWindowResponse.NpcWindow.VaultStorage,
             NpcWindow.ChaosMachine => NpcWindowResponse.NpcWindow.ChaosMachine,
             NpcWindow.DevilSquare => NpcWindowResponse.NpcWindow.DevilSquare,
             NpcWindow.BloodCastle => NpcWindowResponse.NpcWindow.BloodCastle,

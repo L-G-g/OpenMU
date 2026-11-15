@@ -127,6 +127,8 @@ internal sealed class BasicModelConverter
             LevelBonus value => this.Convert(value),
             LevelDependentDamage value => this.Convert(value),
             MagicEffectDefinition value => this.Convert(value),
+            MarketOrder value => this.Convert(value),
+            MarketTrade value => this.Convert(value),
             MasterSkillDefinition value => this.Convert(value),
             MasterSkillRoot value => this.Convert(value),
             MiniGameChangeEvent value => this.Convert(value),
@@ -188,6 +190,7 @@ internal sealed class BasicModelConverter
         target.TimeZone = source.TimeZone;
         target.VaultPassword = source.VaultPassword;
         target.Vault = (MUnique.OpenMU.DataModel.Entities.ItemStorage)this.ConvertObject(source.Vault)!;
+        target.MarketDepot = (MUnique.OpenMU.DataModel.Entities.ItemStorage)this.ConvertObject(source.MarketDepot)!;
         target.IsVaultExtended = source.IsVaultExtended;
         target.WCoinC = source.WCoinC;
         target.WCoinP = source.WCoinP;
@@ -2504,6 +2507,69 @@ internal sealed class BasicModelConverter
             }
         }
 
+        return target;
+    }
+
+    private BasicModel.MarketOrder Convert(MarketOrder source)
+    {
+        if (this._converted.TryGetValue(source, out var converted))
+        {
+            return (BasicModel.MarketOrder)converted;
+        }
+
+        var target = new BasicModel.MarketOrder();
+        this._converted.Add(source, target);
+        target.Id = source.Id;
+        target.AccountId = source.AccountId;
+        target.OwnerName = source.OwnerName;
+        target.Kind = source.Kind;
+        target.State = source.State;
+        target.ItemId = source.ItemId;
+        target.ItemGroup = source.ItemGroup;
+        target.ItemNumber = source.ItemNumber;
+        target.ItemName = source.ItemName;
+        target.Level = source.Level;
+        target.ExcellentOptionCount = source.ExcellentOptionCount;
+        target.HasLuck = source.HasLuck;
+        target.HasSkill = source.HasSkill;
+        target.OptionLevel = source.OptionLevel;
+        target.IsAncient = source.IsAncient;
+        target.SocketCount = source.SocketCount;
+        target.Description = source.Description;
+        target.Price = source.Price;
+        target.Quantity = source.Quantity;
+        target.RemainingQuantity = source.RemainingQuantity;
+        target.CreatedAt = source.CreatedAt;
+        target.ExpiresAt = source.ExpiresAt;
+        target.ClosedAt = source.ClosedAt;
+        return target;
+    }
+
+    private BasicModel.MarketTrade Convert(MarketTrade source)
+    {
+        if (this._converted.TryGetValue(source, out var converted))
+        {
+            return (BasicModel.MarketTrade)converted;
+        }
+
+        var target = new BasicModel.MarketTrade();
+        this._converted.Add(source, target);
+        target.Id = source.Id;
+        target.OrderId = source.OrderId;
+        target.ItemId = source.ItemId;
+        target.SellerAccountId = source.SellerAccountId;
+        target.SellerName = source.SellerName;
+        target.BuyerAccountId = source.BuyerAccountId;
+        target.BuyerName = source.BuyerName;
+        target.ItemGroup = source.ItemGroup;
+        target.ItemNumber = source.ItemNumber;
+        target.ItemName = source.ItemName;
+        target.Level = source.Level;
+        target.ExcellentOptionCount = source.ExcellentOptionCount;
+        target.Description = source.Description;
+        target.Price = source.Price;
+        target.Commission = source.Commission;
+        target.CreatedAt = source.CreatedAt;
         return target;
     }
 

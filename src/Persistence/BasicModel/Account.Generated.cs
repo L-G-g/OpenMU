@@ -106,6 +106,24 @@ public partial class Account : MUnique.OpenMU.DataModel.Entities.Account, IIdent
         set => base.Vault = value;
     }
 
+    /// <summary>
+    /// Gets the raw object of <see cref="MarketDepot" />.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("marketDepot")]
+    public ItemStorage RawMarketDepot
+    {
+        get => base.MarketDepot as ItemStorage;
+        set => base.MarketDepot = value;
+    }
+
+    /// <inheritdoc/>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public override MUnique.OpenMU.DataModel.Entities.ItemStorage MarketDepot
+    {
+        get => base.MarketDepot;
+        set => base.MarketDepot = value;
+    }
+
 
     /// <inheritdoc/>
     public override bool Equals(object obj)

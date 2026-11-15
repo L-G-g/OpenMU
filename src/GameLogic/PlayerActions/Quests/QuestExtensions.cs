@@ -20,7 +20,8 @@ public static class QuestExtensions
     {
         questState.ActiveQuest = null;
         questState.ClientActionPerformed = false;
-        foreach (var requirementState in questState.RequirementStates)
+        // A copy: with the entity framework, deleting a requirement state also removes it from the collection.
+        foreach (var requirementState in questState.RequirementStates.ToList())
         {
             await persistenceContext.DeleteAsync(requirementState).ConfigureAwait(false);
         }

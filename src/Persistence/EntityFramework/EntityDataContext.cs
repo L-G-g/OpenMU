@@ -76,6 +76,16 @@ public class EntityDataContext : ExtendedTypeContext
     internal DbSet<CashShopCoinGrant> CashShopCoinGrants => this.Set<CashShopCoinGrant>();
 
     /// <summary>
+    /// Gets the orders of the item market.
+    /// </summary>
+    internal DbSet<MarketOrder> MarketOrders => this.Set<MarketOrder>();
+
+    /// <summary>
+    /// Gets the trades of the item market.
+    /// </summary>
+    internal DbSet<MarketTrade> MarketTrades => this.Set<MarketTrade>();
+
+    /// <summary>
     /// Gets the links of the accounts to users of external services.
     /// </summary>
     internal DbSet<AccountExternalLink> AccountExternalLinks => this.Set<AccountExternalLink>();
@@ -142,6 +152,8 @@ public class EntityDataContext : ExtendedTypeContext
         modelBuilder.Entity<CashShopPackage>().Apply();
         modelBuilder.Entity<CashShopStorageItem>().Apply();
         modelBuilder.Entity<CashShopCoinGrant>().Apply();
+        modelBuilder.Entity<MarketOrder>().Apply();
+        modelBuilder.Entity<MarketTrade>().Apply();
         modelBuilder.Entity<AccountExternalLink>().Apply();
         modelBuilder.Entity<GuildChatBinding>().Apply();
         modelBuilder.Entity<DropItemGroup>().Apply();

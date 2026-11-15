@@ -40,8 +40,14 @@ internal static class DungeonMessages
     /// <summary>The member entered less than the cooldown ago, {0} hours and {1} minutes remaining.</summary>
     public const string ProblemCooldownFormat = "ya entro hoy, puede volver en {0} h {1} min";
 
-    /// <summary>The dungeon started, {0} is the duration in minutes.</summary>
-    public const string StartedFormat = "La dungeon empezo! Tienen {0} minutos.";
+    /// <summary>The name of a dungeon without name.</summary>
+    public const string DefaultName = "La dungeon";
+
+    /// <summary>The dungeon started, {0} is the duration in minutes and {1} the name of the dungeon.</summary>
+    public const string StartedFormat = "{1} empezo! Tienen {0} minutos.";
+
+    /// <summary>The extreme version of the dungeon started, {0} is the duration in minutes and {1} the name of the dungeon.</summary>
+    public const string StartedExtremeFormat = "{1} (EXTREMA) empezo! Tienen {0} minutos.";
 
     /// <summary>The remaining minutes, {0}.</summary>
     public const string RemainingMinutesFormat = "Quedan {0} minutos de dungeon.";

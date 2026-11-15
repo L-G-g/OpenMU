@@ -120,6 +120,14 @@ public class Account
     public virtual ItemStorage? Vault { get; set; }
 
     /// <summary>
+    /// Gets or sets the market depot. It's a second vault, which is opened at the market NPC.
+    /// Items which are offered on the market of the web portal are kept here, and bought items arrive here.
+    /// </summary>
+    [MemberOfAggregate]
+    [HiddenAtCreation]
+    public virtual ItemStorage? MarketDepot { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether this instance is vault extended.
     /// </summary>
     public bool IsVaultExtended { get; set; }

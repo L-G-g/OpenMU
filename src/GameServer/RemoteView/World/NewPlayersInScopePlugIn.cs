@@ -62,6 +62,11 @@ public class NewPlayersInScopePlugIn : INewPlayersInScopePlugIn
         {
             await this.Player.InvokeViewPlugInAsync<IAssignPlayersToGensPlugIn>(p => p.AssignPlayersToGensAsync(gensPlayers)).ConfigureAwait(false);
         }
+
+        foreach (var flyingPlayer in newPlayers.Where(p => p.IsFlying))
+        {
+            await this.Player.InvokeViewPlugInAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(flyingPlayer, true)).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -109,7 +114,7 @@ public class NewPlayersInScopePlugIn : INewPlayersInScopePlugIn
             playerBlock.CurrentPositionY = newPlayer.Position.Y;
 
             appearanceSerializer.WriteAppearanceData(playerBlock.Appearance, newPlayer.AppearanceData, true); // 4 ... 21
-            playerBlock.Name = selectedCharacter.Name;
+            playerBlock.Name = newPlayer.DisplayName;
             if (newPlayer.IsWalking)
             {
                 playerBlock.TargetPositionX = newPlayer.WalkTarget.X;
@@ -185,7 +190,7 @@ public class NewPlayersInScopePlugIn : INewPlayersInScopePlugIn
             playerBlock.CurrentPositionY = newPlayer.Position.Y;
 
             appearanceSerializer.WriteAppearanceData(playerBlock.Appearance, newPlayer.AppearanceData, true); // 4 ... 21
-            playerBlock.Name = selectedCharacter.Name;
+            playerBlock.Name = newPlayer.DisplayName;
             if (newPlayer.IsWalking)
             {
                 playerBlock.TargetPositionX = newPlayer.WalkTarget.X;

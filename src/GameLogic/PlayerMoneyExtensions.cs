@@ -56,7 +56,8 @@ public static class PlayerMoneyExtensions
     /// <returns><c>True</c>, if the player inventory had enough money to move; Otherwise, <c>false</c>.</returns>
     public static bool TryDepositVaultMoney(this Player player, uint value)
     {
-        if (player.Vault is null)
+        // The market depot is for items only; zen stays in the normal vault.
+        if (player.Vault is null || player.IsMarketDepotOpen())
         {
             return false;
         }
@@ -103,4 +104,12 @@ public static class PlayerMoneyExtensions
 
         return false;
     }
+
+    /// <summary>
+    /// Determines whether the player has the market depot open, instead of the normal vault.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <returns><c>true</c>, if the opened storage window is the market depot.</returns>
+    public static bool IsMarketDepotOpen(this Player player)
+        => player.Vault is not null && player.OpenedNpc?.Definition.NpcWindow == NpcWindow.MarketDepot;
 }

@@ -42,7 +42,7 @@ public class UpdateLevelPlugIn : IUpdateLevelPlugIn
 
         await connection.SendCharacterLevelUpdateAsync(
             (ushort)charStats[Stats.Level],
-            (ushort)Math.Max(selectedCharacter.LevelUpPoints, 0),
+            (ushort)Math.Clamp(selectedCharacter.LevelUpPoints, 0, ushort.MaxValue),
             charStats[Stats.MaximumHealth].ToUInt16Clamped(),
             charStats[Stats.MaximumMana].ToUInt16Clamped(),
             charStats[Stats.MaximumShield].ToUInt16Clamped(),
@@ -51,6 +51,7 @@ public class UpdateLevelPlugIn : IUpdateLevelPlugIn
             selectedCharacter.GetMaximumFruitPoints(),
             (ushort)selectedCharacter.UsedNegFruitPoints,
             selectedCharacter.GetMaximumFruitPoints()).ConfigureAwait(false);
+        await this._player.SendLevelUpPointsAboveClientLimitAsync().ConfigureAwait(false);
 
         await this._player.ShowLocalizedBlueMessageAsync(nameof(PlayerMessage.LevelUpCongrats), charStats[Stats.Level]).ConfigureAwait(false);
     }

@@ -39,6 +39,12 @@ public class HitAction
             return;
         }
 
+        if (player.IsFlying)
+        {
+            // Flying is movement only, see FlightPlugIn.
+            return;
+        }
+
         if (player.IsAtSafezone())
         {
             player.Logger.LogWarning("Probably Hacker - player {Player} is attacking from safezone", player);

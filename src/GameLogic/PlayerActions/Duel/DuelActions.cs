@@ -25,7 +25,14 @@ public class DuelActions
         ArgumentNullException.ThrowIfNull(player);
         ArgumentNullException.ThrowIfNull(target);
 
-        if (player is Spectres.SpectrePlayer || target is Spectres.SpectrePlayer)
+        if (target is Spectres.RivalPlayer rival && player.CurrentMiniGame is Spectres.SpectreHubContext hub)
+        {
+            // The player challenges a rival of its spectre hub.
+            await hub.AnswerChallengeAsync(player, rival, true).ConfigureAwait(false);
+            return;
+        }
+
+        if (player is Spectres.SpectrePlayer or Spectres.RivalPlayer || target is Spectres.SpectrePlayer or Spectres.RivalPlayer)
         {
             // Spectres don't duel.
             await player.InvokeViewPlugInAsync<IShowDuelRequestResultPlugIn>(p => p.ShowDuelRequestResultAsync(DuelStartResult.Refused, target)).ConfigureAwait(false);
@@ -70,6 +77,13 @@ public class DuelActions
     /// <param name="accepted">If set to <c>true</c> the duel request was accepted by the player.</param>
     public async ValueTask HandleDuelResponseAsync(Player player, Player target, bool accepted)
     {
+        if (target is Spectres.RivalPlayer rival && player.CurrentMiniGame is Spectres.SpectreHubContext hub)
+        {
+            // The player answers the challenge of a rival of its spectre hub.
+            await hub.AnswerChallengeAsync(player, rival, accepted).ConfigureAwait(false);
+            return;
+        }
+
         if (player.DuelRoom is not { } duelRoom)
         {
             player.Logger.LogWarning($"Player {player.Name} sent duel response, but has no context.");

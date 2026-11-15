@@ -71,7 +71,7 @@ public class NewPlayersInScopeExtendedPlugIn : NewPlayersInScopePlugIn, INewPlay
             packet.CurrentPositionX = newPlayer.Position.X;
             packet.CurrentPositionY = newPlayer.Position.Y;
 
-            packet.Name = selectedCharacter.Name;
+            packet.Name = newPlayer.DisplayName;
             if (newPlayer.IsWalking)
             {
                 packet.TargetPositionX = newPlayer.WalkTarget.X;
@@ -136,7 +136,7 @@ public class NewPlayersInScopeExtendedPlugIn : NewPlayersInScopePlugIn, INewPlay
             packet.CurrentPositionX = newPlayer.Position.X;
             packet.CurrentPositionY = newPlayer.Position.Y;
             packet.Skin = (ushort)newPlayer.Attributes![Stats.TransformationSkin];
-            packet.Name = selectedCharacter.Name;
+            packet.Name = newPlayer.DisplayName;
             if (newPlayer.IsWalking)
             {
                 packet.TargetPositionX = newPlayer.WalkTarget.X;

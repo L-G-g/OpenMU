@@ -34,6 +34,13 @@ public class QuestStartAction
             return;
         }
 
+        if (Story.StoryModeFeaturePlugIn.Get(player.GameContext)?.GetQuestBlock(player, quest) is { } storyBlock)
+        {
+            player.Logger.LogDebug("Failed, the story mode doesn't allow the quest yet.");
+            await player.ShowBlueMessageAsync(storyBlock).ConfigureAwait(false);
+            return;
+        }
+
         var questState = player.SelectedCharacter!.QuestStates.FirstOrDefault(q => q.Group == group);
         if (questState is null)
         {

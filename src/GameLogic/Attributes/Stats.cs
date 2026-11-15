@@ -11,6 +11,10 @@ using MUnique.OpenMU.AttributeSystem;
 /// </summary>
 public class Stats
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<byte, AttributeDefinition> DungeonLastEntries = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<byte, AttributeDefinition> DungeonEntryCounts = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<byte, AttributeDefinition> DungeonTokens = new();
+
     /// <summary>
     /// Gets the base strength attribute definition.
     /// </summary>
@@ -157,6 +161,59 @@ public class Stats
     /// in minutes since <see cref="MiniGames.Dungeon.DungeonEntryAction.EntryTimeEpoch"/>.
     /// </summary>
     public static AttributeDefinition DungeonLastEntry { get; } = new(new Guid("6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1E01"), "Dungeon last entry", "The time of the last entry into a dungeon, in minutes since 2026-01-01 (UTC).");
+
+    /// <summary>
+    /// Gets the attribute definition for the time of the last entry of a character into the dungeon with the specified number,
+    /// like <see cref="DungeonLastEntry"/>, which is the one of the first dungeon. Each dungeon has its own, so that
+    /// a character can enter each of them once per day.
+    /// </summary>
+    /// <param name="dungeonNumber">The number of the dungeon, see <see cref="MiniGames.Dungeon.DungeonSettings.Number"/>.</param>
+    /// <returns>The attribute definition.</returns>
+    public static AttributeDefinition GetDungeonLastEntry(byte dungeonNumber)
+    {
+        return dungeonNumber <= 1
+            ? DungeonLastEntry
+            : DungeonLastEntries.GetOrAdd(
+                dungeonNumber,
+                number => new(new Guid($"6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1E{number:X2}"), $"Dungeon {number} last entry", $"The time of the last entry into the dungeon {number}, in minutes since 2026-01-01 (UTC)."));
+    }
+
+    /// <summary>
+    /// Gets the attribute definition for the number of entries of a character into the dungeon with the specified number
+    /// since the time of <see cref="GetDungeonLastEntry"/>, which is the first entry of the current day of the character.
+    /// </summary>
+    /// <param name="dungeonNumber">The number of the dungeon, see <see cref="MiniGames.Dungeon.DungeonSettings.Number"/>.</param>
+    /// <returns>The attribute definition.</returns>
+    public static AttributeDefinition GetDungeonEntryCount(byte dungeonNumber)
+    {
+        return DungeonEntryCounts.GetOrAdd(
+            dungeonNumber,
+            number => new(new Guid($"6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F1F{number:X2}"), $"Dungeon {number} entries", $"The number of entries into the dungeon {number} since its last entry time."));
+    }
+
+    /// <summary>
+    /// Gets the attribute definition for the tokens which a character got for completing the dungeon with the specified number,
+    /// and which it spends at the token merchant of the dungeon (see <see cref="TokenMerchants.TokenMerchantFeaturePlugIn"/>).
+    /// </summary>
+    /// <param name="dungeonNumber">The number of the dungeon, see <see cref="MiniGames.Dungeon.DungeonSettings.Number"/>.</param>
+    /// <returns>The attribute definition.</returns>
+    public static AttributeDefinition GetDungeonTokens(byte dungeonNumber)
+    {
+        return DungeonTokens.GetOrAdd(
+            dungeonNumber,
+            number => new(new Guid($"6C0E2D5B-1B7F-4E0A-9A55-3D2C6A7F2A{number:X2}"), $"Dungeon {number} tokens", $"The tokens of the dungeon {number} which the character has."));
+    }
+
+    /// <summary>
+    /// Gets the attribute definition for the progress of a character in the story mode: the number of its last
+    /// finished step (see <see cref="Story.StoryScript"/>).
+    /// </summary>
+    public static AttributeDefinition StoryProgress { get; } = new(new Guid("3A7C9E15-6B2D-4F81-A4C3-8E1D5B7F2A60"), "Story progress", "The number of the last finished step of the story mode.");
+
+    /// <summary>
+    /// Gets the attribute definition for the flags of a character in the story mode (see <see cref="Story.StoryFlags"/>).
+    /// </summary>
+    public static AttributeDefinition StoryFlags { get; } = new(new Guid("3A7C9E15-6B2D-4F81-A4C3-8E1D5B7F2A61"), "Story flags", "The flags of the story mode: 1 = finished the dungeon of Devias, 2 = won the duel against the stranger.");
 
     /// <summary>
     /// Gets the registered renas / items attribute definition.

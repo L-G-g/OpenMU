@@ -46,6 +46,12 @@ internal class TargetedSkillHandlerPlugIn : IPacketHandlerPlugIn
     /// <param name="targetId">The target identifier.</param>
     protected async ValueTask HandleAsync(Player player, ushort skillId, ushort targetId)
     {
+        if (player.IsFlying)
+        {
+            // Flying is movement only, see FlightPlugIn.
+            return;
+        }
+
         var strategy = player.GameContext.
             PlugInManager.GetStrategy<short, ITargetedSkillPlugin>((short)skillId) ??
             this._defaultStrategy;

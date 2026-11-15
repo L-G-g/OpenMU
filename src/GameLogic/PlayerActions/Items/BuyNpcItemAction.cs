@@ -38,6 +38,13 @@ public class BuyNpcItemAction
         }
 
         var npcDefinition = player.OpenedNpc.Definition;
+        if (TokenMerchants.TokenMerchantFeaturePlugIn.Find(player.GameContext, npcDefinition) is { PlugIn.Configuration: { } tokenConfiguration } tokenMerchant)
+        {
+            // The items of a token merchant cost tokens instead of money.
+            await tokenMerchant.PlugIn.Shop.BuyAsync(player, tokenConfiguration, slot).ConfigureAwait(false);
+            return;
+        }
+
         if (npcDefinition?.MerchantStore is null || npcDefinition.MerchantStore.Items.Count == 0)
         {
             await player.InvokeViewPlugInAsync<IBuyNpcItemFailedPlugIn>(p => p.BuyNpcItemFailedAsync()).ConfigureAwait(false);

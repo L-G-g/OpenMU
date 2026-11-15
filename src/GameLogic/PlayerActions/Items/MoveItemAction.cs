@@ -11,6 +11,7 @@ using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.GameLogic.Views.Trade;
+using MUnique.OpenMU.Persistence;
 using static MUnique.OpenMU.DataModel.InventoryConstants;
 
 /// <summary>
@@ -58,7 +59,14 @@ public class MoveItemAction
             return;
         }
 
-        if (fromStorage != toStorage && GetRuleBlockingMove(item, toStorage) is { } blockedMessage)
+        if (Market.MarketLocks.IsItemListed(item.GetId()))
+        {
+            await player.ShowBlueMessageAsync(Market.MarketLocks.ItemIsListedMessage).ConfigureAwait(false);
+            await player.InvokeViewPlugInAsync<IItemMoveFailedPlugIn>(p => p.ItemMoveFailedAsync(item)).ConfigureAwait(false);
+            return;
+        }
+
+        if (fromStorage != toStorage && GetRuleBlockingMove(player, item, toStorage) is { } blockedMessage)
         {
             player.Logger.LogWarning(
                 "Player {0} tried to move {1} into the {2}, which its item definition doesn't allow. The client item data may differ from the server.",
@@ -131,7 +139,7 @@ public class MoveItemAction
     /// Gets the message to show when the item rules of the item definition don't allow
     /// moving it into the target storage, or <c>null</c> when they do.
     /// </summary>
-    private static string? GetRuleBlockingMove(Item item, Storages toStorage)
+    private static string? GetRuleBlockingMove(Player player, Item item, Storages toStorage)
     {
         var definition = item.Definition;
         if (definition is null)
@@ -143,6 +151,7 @@ public class MoveItemAction
         {
             Storages.Trade when !definition.IsTradable => nameof(PlayerMessage.ItemCannotBeTraded),
             Storages.Vault when !definition.IsStorable => nameof(PlayerMessage.ItemCannotBeStored),
+            Storages.Vault when !definition.IsTradable && player.IsMarketDepotOpen() => nameof(PlayerMessage.ItemCannotBeTraded),
             Storages.PersonalStore when !definition.IsPersonalStoreSellable => nameof(PlayerMessage.ItemCannotBeSoldInPersonalStore),
             _ => null,
         };
@@ -466,7 +475,7 @@ public class MoveItemAction
                                   || state == PlayerState.NpcDialogOpened
                                   || state == PlayerState.TradeOpened,
             Storages.PersonalStore => state == PlayerState.EnteredWorld && !(player.ShopStorage?.StoreOpen ?? true),
-            Storages.Vault => state == PlayerState.NpcDialogOpened && openedWindow == NpcWindow.VaultStorage,
+            Storages.Vault => state == PlayerState.NpcDialogOpened && openedWindow is NpcWindow.VaultStorage or NpcWindow.MarketDepot,
             Storages.Trade => state == PlayerState.TradeOpened,
             Storages.ChaosMachine => state == PlayerState.NpcDialogOpened && openedWindow == NpcWindow.ChaosMachine,
             Storages.PetTrainer => state == PlayerState.NpcDialogOpened && openedWindow == NpcWindow.PetTrainer,

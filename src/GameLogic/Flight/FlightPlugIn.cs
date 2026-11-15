@@ -1,0 +1,446 @@
+// <copyright file="FlightPlugIn.cs" company="MUnique">
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+// </copyright>
+
+namespace MUnique.OpenMU.GameLogic.Flight;
+
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using MUnique.OpenMU.AttributeSystem;
+using MUnique.OpenMU.DataModel.Configuration.Items;
+using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Views.World;
+using MUnique.OpenMU.Pathfinding;
+using MUnique.OpenMU.PlugIns;
+
+/// <summary>
+/// Lets players fly on their Dinorant or with their wings (<c>/volar</c>, or the key of the flight.dll client mod):
+/// a flying player walks over blocked tiles (walls, trees, houses), but not over tiles without ground,
+/// and moves faster by the factor of the Dinorant or of the level of the wings, the higher one
+/// (<see cref="GetSpeedFactor"/>). Flying is movement only: no attacks
+/// and no skills, and monsters don't attack a flying player. It can't be started in combat or in a safezone
+/// (entering one lands the player), and only on the allowed regular maps, never in a mini game.
+/// A player lands only on a walkable tile; when the flight is ended by force (the Dinorant or the wings are
+/// taken off or break), the player is put on the nearest walkable tile.
+/// </summary>
+[PlugIn]
+[Display(Name = nameof(PlugInResources.FlightPlugIn_Name), Description = nameof(PlugInResources.FlightPlugIn_Description), ResourceType = typeof(PlugInResources))]
+[Guid("E7B4D2A9-1C58-4F3E-8D6B-2A9F5C3E1B70")]
+public sealed class FlightPlugIn : IFeaturePlugIn,
+    IAttackableGotHitPlugIn,
+    IAttackableGotKilledPlugIn,
+    IAttackableMovedPlugIn,
+    IObjectRemovedFromMapPlugIn,
+    IItemMovedPlugIn,
+    IItemDestroyedPlugIn,
+    ISupportCustomConfiguration<FlightConfiguration>,
+    ISupportDefaultCustomConfiguration,
+    IDisabledByDefault
+{
+    /// <summary>
+    /// How far around the player a walkable tile is searched for a forced landing.
+    /// </summary>
+    private const int LandingSearchRadius = 30;
+
+    private const byte DinorantGroup = 13;
+
+    private const byte DinorantNumber = 3;
+
+    private const byte WingsGroup = 12;
+
+    private const byte CapeOfLordGroup = 13;
+
+    private const byte CapeOfLordNumber = 30;
+
+    // The plugin manager creates an instance for each plugin point (hits, map removal, moves...) besides the
+    // feature instance of /volar, so the state of the players is shared by all of them.
+    private static readonly ConditionalWeakTable<Player, StrongBox<long>> LastCombatTicks = new();
+
+    private static readonly ConcurrentDictionary<Player, IElement> SpeedElements = new();
+
+    private static readonly ConcurrentDictionary<Player, bool> SafezoneLandings = new();
+
+    /// <inheritdoc />
+    public FlightConfiguration? Configuration { get; set; }
+
+    private FlightConfiguration CurrentConfiguration => this.Configuration ?? new FlightConfiguration();
+
+    /// <summary>
+    /// Determines whether a flying player may be on the specified tile: anywhere, except where there's no ground.
+    /// </summary>
+    /// <param name="terrain">The terrain.</param>
+    /// <param name="point">The tile.</param>
+    /// <returns><c>True</c>, if a flying player may be on the tile.</returns>
+    public static bool IsFlyableTile(GameMapTerrain terrain, Point point)
+    {
+        return (terrain.AttributeMap[point.X, point.Y] & (byte)TerrainAttributeType.NoGround) == 0;
+    }
+
+    /// <summary>
+    /// Gets the level of the wings: 1 for the first wings (and the small ones), 2 for the second wings and the
+    /// capes of Lord and Fighter, 3 for the third wings and the capes of Emperor and Overrule.
+    /// </summary>
+    /// <param name="definition">The item definition.</param>
+    /// <returns>The level of the wings; 0, if the item is no wing.</returns>
+    public static int GetWingLevel(ItemDefinition? definition) => definition switch
+    {
+        { Group: WingsGroup, Number: 0 or 1 or 2 or 41 or (>= 130 and <= 135) } => 1,
+        { Group: WingsGroup, Number: 3 or 4 or 5 or 6 or 42 or 49 } or { Group: CapeOfLordGroup, Number: CapeOfLordNumber } => 2,
+        { Group: WingsGroup, Number: (>= 36 and <= 40) or 43 or 50 } => 3,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Gets the speed factor with which the player flies: the one of the Dinorant or of the wings, the higher one.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <returns>The speed factor; 0, if the player has neither the Dinorant nor wings equipped.</returns>
+    public static float GetSpeedFactor(Player player, FlightConfiguration configuration)
+    {
+        var factor = HasDinorant(player) ? configuration.SpeedFactor : 0;
+        if (player.Inventory?.GetItem(InventoryConstants.WingsSlot) is { Durability: > 0.0 } wings)
+        {
+            factor = Math.Max(factor, configuration.GetWingsSpeedFactor(GetWingLevel(wings.Definition)));
+        }
+
+        return factor;
+    }
+
+    /// <inheritdoc />
+    public object CreateDefaultConfig() => new FlightConfiguration();
+
+    /// <summary>
+    /// Starts the flight of the player, or lands it when it's already flying.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    public async ValueTask ToggleAsync(Player player)
+    {
+        player.Logger.LogInformation(
+            "Flight toggle by {Player}: flying {IsFlying}, alive {IsAlive}, map {Map}, position {Position}, safezone {Safezone}",
+            player,
+            player.IsFlying,
+            player.IsAlive,
+            player.CurrentMap?.MapId,
+            player.Position,
+            player.CurrentMap is not null && player.IsAtSafezone());
+        if (player.IsFlying)
+        {
+            await this.LandAsync(player).ConfigureAwait(false);
+        }
+        else
+        {
+            await this.StartAsync(player).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public void AttackableGotHit(IAttackable attackable, IAttacker attacker, HitInfo hitInfo)
+    {
+        var now = Environment.TickCount64;
+        if (attackable is Player victim)
+        {
+            LastCombatTicks.AddOrUpdate(victim, new StrongBox<long>(now));
+        }
+
+        if (attacker is Player attackerPlayer)
+        {
+            LastCombatTicks.AddOrUpdate(attackerPlayer, new StrongBox<long>(now));
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask AttackableGotKilledAsync(IAttackable killed, IAttacker? killer)
+    {
+        if (killed is Player { IsFlying: true } player)
+        {
+            // The player respawns in a town, so there's no need to look for a landing tile.
+            await this.EndFlightAsync(player, notifyObservers: true).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public void AttackableMoved(IAttackable attackable)
+    {
+        if (attackable is Player { IsFlying: true } player
+            && player.IsAtSafezone()
+            && SafezoneLandings.TryAdd(player, true))
+        {
+            // Called by the walker while it moves the player, so the landing (which stops the walk) runs apart.
+            _ = Task.Run(() => this.LandInSafezoneSafeAsync(player));
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ObjectRemovedFromMapAsync(GameMap map, ILocateable removedObject)
+    {
+        if (removedObject is Player { IsFlying: true } player)
+        {
+            // Warp, map change or logout. The others lose it out of scope; its own client needs to know.
+            // A character which logs out above a wall is moved to a walkable tile at the next login.
+            await this.EndFlightAsync(player, notifyObservers: false).ConfigureAwait(false);
+            await player.InvokeViewPlugInAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(player, false)).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ItemMovedAsync(Player player, Item item)
+    {
+        if (!player.IsFlying)
+        {
+            return;
+        }
+
+        var factor = GetSpeedFactor(player, this.CurrentConfiguration);
+        if (factor <= 0)
+        {
+            await this.ForceLandingAsync(player).ConfigureAwait(false);
+        }
+        else if (Math.Abs(factor - player.FlightSpeedFactor) > 0.001f)
+        {
+            // Other wings (or the Dinorant instead of the wings): the speed follows them.
+            await this.SetSpeedFactorAsync(player, factor).ConfigureAwait(false);
+            await player.ForEachWorldObserverAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(player, true), true).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public void ItemDestroyed(Item item)
+    {
+        if (item.Definition is not ({ Group: DinorantGroup, Number: DinorantNumber } or { Group: WingsGroup } or { Group: CapeOfLordGroup, Number: CapeOfLordNumber }))
+        {
+            return;
+        }
+
+        foreach (var player in SpeedElements.Keys)
+        {
+            if (GetSpeedFactor(player, this.CurrentConfiguration) <= 0)
+            {
+                _ = this.ForceLandingSafeAsync(player);
+            }
+        }
+    }
+
+    private static async ValueTask ResetSpeedCheckAsync(Player player)
+    {
+        if (player.GameContext.PlugInManager.GetPlugInPoint<ISpeedHackCheatCheckPlugIn>() is { } speedCheck)
+        {
+            await speedCheck.ResetMovementStateAsync(player).ConfigureAwait(false);
+        }
+    }
+
+    private static bool HasDinorant(Player player)
+    {
+        return player.Inventory?.GetItem(InventoryConstants.PetSlot) is { Durability: > 0.0, Definition: { Group: DinorantGroup, Number: DinorantNumber } };
+    }
+
+    private static Point? FindNearestWalkableTile(GameMapTerrain terrain, Point origin)
+    {
+        if (terrain.WalkMap[origin.X, origin.Y])
+        {
+            return origin;
+        }
+
+        // Rings of growing size around the origin; the first walkable tile of the smallest ring wins.
+        for (var radius = 1; radius <= LandingSearchRadius; radius++)
+        {
+            Point? best = null;
+            var bestDistance = double.MaxValue;
+            for (var dx = -radius; dx <= radius; dx++)
+            {
+                for (var dy = -radius; dy <= radius; dy++)
+                {
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != radius)
+                    {
+                        continue;
+                    }
+
+                    var x = origin.X + dx;
+                    var y = origin.Y + dy;
+                    if (x < 0 || y < 0 || x > byte.MaxValue || y > byte.MaxValue || !terrain.WalkMap[x, y])
+                    {
+                        continue;
+                    }
+
+                    var candidate = new Point((byte)x, (byte)y);
+                    var distance = candidate.EuclideanDistanceTo(origin);
+                    if (distance < bestDistance)
+                    {
+                        best = candidate;
+                        bestDistance = distance;
+                    }
+                }
+            }
+
+            if (best is not null)
+            {
+                return best;
+            }
+        }
+
+        return terrain.AnyWalkableCoordinate;
+    }
+
+    private static bool IsInCombat(Player player, FlightConfiguration configuration)
+    {
+        return LastCombatTicks.TryGetValue(player, out var lastCombat)
+               && Environment.TickCount64 - lastCombat.Value < configuration.CombatCooldownSeconds * 1000L;
+    }
+
+    private async ValueTask StartAsync(Player player)
+    {
+        var configuration = this.CurrentConfiguration;
+        if (!player.IsAlive || player.CurrentMap is not { } map || player.Attributes is not { } attributes)
+        {
+            await player.ShowBlueMessageAsync("Ahora no podes volar. Proba de nuevo en unos segundos.").ConfigureAwait(false);
+            return;
+        }
+
+        var factor = GetSpeedFactor(player, configuration);
+        if (factor <= 0)
+        {
+            await player.ShowBlueMessageAsync("Solo se puede volar con alas de 3ra generacion o con el Dinorant.").ConfigureAwait(false);
+            return;
+        }
+
+        if (player.CurrentMiniGame is not null || !configuration.IsMapAllowed(map.MapId))
+        {
+            await player.ShowBlueMessageAsync("En este mapa no se puede volar.").ConfigureAwait(false);
+            return;
+        }
+
+        if (player.IsAtSafezone())
+        {
+            await player.ShowBlueMessageAsync("En la zona segura no se puede volar.").ConfigureAwait(false);
+            return;
+        }
+
+        if (IsInCombat(player, configuration))
+        {
+            await player.ShowBlueMessageAsync("No podes volar en combate. Espera unos segundos.").ConfigureAwait(false);
+            return;
+        }
+
+        // A stale element (of a flight which didn't end cleanly) is replaced, so it can't block the new one.
+        await this.SetSpeedFactorAsync(player, factor).ConfigureAwait(false);
+        player.IsFlying = true;
+        await player.ForEachWorldObserverAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(player, true), true).ConfigureAwait(false);
+        await player.ShowBlueMessageAsync("Estas volando. Escribi /volar de nuevo para aterrizar.").ConfigureAwait(false);
+    }
+
+    private async ValueTask LandAsync(Player player)
+    {
+        if (player.CurrentMap is not { } map)
+        {
+            await this.EndFlightAsync(player, notifyObservers: false).ConfigureAwait(false);
+            return;
+        }
+
+        await player.StopWalkingAsync().ConfigureAwait(false);
+        if (!map.Terrain.WalkMap[player.Position.X, player.Position.Y])
+        {
+            await player.ShowBlueMessageAsync("Aca no podes aterrizar. Busca un lugar donde se pueda caminar.").ConfigureAwait(false);
+            return;
+        }
+
+        await this.EndFlightAsync(player, notifyObservers: true).ConfigureAwait(false);
+        await player.ShowBlueMessageAsync("Aterrizaste.").ConfigureAwait(false);
+    }
+
+    private async Task LandInSafezoneSafeAsync(Player player)
+    {
+        try
+        {
+            if (player.IsFlying)
+            {
+                // Safezone tiles are walkable, so the player lands right there.
+                await player.StopWalkingAsync().ConfigureAwait(false);
+                await this.EndFlightAsync(player, notifyObservers: true).ConfigureAwait(false);
+                await player.ShowBlueMessageAsync("Aterrizaste en la zona segura.").ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            player.Logger.LogError(ex, "Error during the safezone landing of {Player}", player);
+        }
+        finally
+        {
+            SafezoneLandings.TryRemove(player, out _);
+        }
+    }
+
+    private async Task ForceLandingSafeAsync(Player player)
+    {
+        try
+        {
+            await this.ForceLandingAsync(player).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            player.Logger.LogError(ex, "Error during the forced landing of {Player}", player);
+        }
+    }
+
+    private async ValueTask ForceLandingAsync(Player player)
+    {
+        if (!player.IsFlying)
+        {
+            return;
+        }
+
+        await player.StopWalkingAsync().ConfigureAwait(false);
+        await this.EndFlightAsync(player, notifyObservers: true).ConfigureAwait(false);
+        if (player.CurrentMap is { } map
+            && !map.Terrain.WalkMap[player.Position.X, player.Position.Y]
+            && FindNearestWalkableTile(map.Terrain, player.Position) is { } landingTile)
+        {
+            await player.MoveAsync(landingTile).ConfigureAwait(false);
+        }
+
+        await player.ShowBlueMessageAsync("Sin alas de 3ra generacion ni Dinorant no podes seguir volando.").ConfigureAwait(false);
+    }
+
+    private async ValueTask SetSpeedFactorAsync(Player player, float factor)
+    {
+        if (player.Attributes is not { } attributes)
+        {
+            return;
+        }
+
+        if (SpeedElements.TryRemove(player, out var oldElement))
+        {
+            attributes.RemoveElement(oldElement, Stats.MovementSpeedFactor);
+        }
+
+        var speedElement = new ConstantElement(factor, AggregateType.Multiplicate);
+        SpeedElements[player] = speedElement;
+        attributes.AddElement(speedElement, Stats.MovementSpeedFactor);
+        player.FlightSpeedFactor = factor;
+
+        // The speed check of the anti-cheat starts fresh with the new speed.
+        await ResetSpeedCheckAsync(player).ConfigureAwait(false);
+    }
+
+    private async ValueTask EndFlightAsync(Player player, bool notifyObservers)
+    {
+        if (SpeedElements.TryRemove(player, out var speedElement))
+        {
+            player.Attributes?.RemoveElement(speedElement, Stats.MovementSpeedFactor);
+        }
+
+        if (!player.IsFlying)
+        {
+            return;
+        }
+
+        player.IsFlying = false;
+        player.FlightSpeedFactor = 0;
+        await ResetSpeedCheckAsync(player).ConfigureAwait(false);
+        if (notifyObservers && player.CurrentMap is not null)
+        {
+            await player.ForEachWorldObserverAsync<IShowFlightStatePlugIn>(p => p.ShowFlightStateAsync(player, false), true).ConfigureAwait(false);
+        }
+    }
+}

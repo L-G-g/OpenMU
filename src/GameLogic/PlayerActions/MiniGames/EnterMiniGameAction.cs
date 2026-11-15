@@ -10,6 +10,7 @@ using MUnique.OpenMU.GameLogic.GuildWar;
 using MUnique.OpenMU.GameLogic.MiniGames;
 using MUnique.OpenMU.GameLogic.PlayerActions.PlayerStore;
 using MUnique.OpenMU.GameLogic.PlugIns.PeriodicTasks;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.GameLogic.Views.Inventory;
 
 /// <summary>
@@ -129,7 +130,7 @@ public class EnterMiniGameAction
 
             await this.ConsumeTicketItemAsync(ticketItem, player).ConfigureAwait(false);
 
-            if (!miniGameDefinition.AllowParty && player.Party is { } party)
+            if (!miniGameDefinition.AllowParty && player.GetPlayerParty() is { } party)
             {
                 await party.KickMySelfAsync(player).ConfigureAwait(false);
             }

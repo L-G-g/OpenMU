@@ -1,0 +1,31 @@
+# Agregado para la web pública. Se usa junto al compose del server:
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.portal.yml up -d
+services:
+  openmu-startup:
+    environment:
+      Portal__Urls: http://+:8090
+      Portal__InviteCodes: ${PORTAL_INVITE_CODES:-}
+      Portal__ClientDownloadUrl: ${PORTAL_CLIENT_URL:-}
+      Portal__MarketCommissionPercent: ${PORTAL_MARKET_COMMISSION:-1}
+    volumes:
+      - ./noticias.md:/app/portal/noticias.md:ro
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:-peroniamu.duckdns.org}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - openmu-startup
+
+volumes:
+  caddy-data:
+  caddy-config:

@@ -45,7 +45,7 @@ public class CurrentlyActiveQuestsPlugIn : ICurrentlyActiveQuestsPlugIn
         {
             const int maxQuestsPerPacket = 62;
             var activeQuests = character.QuestStates
-                .Where(state => state.Group != QuestConstants.LegacyQuestGroup && state.ActiveQuest != null)
+                .Where(state => state.Group != QuestConstants.LegacyQuestGroup && state.ActiveQuest != null && !GameLogic.SkillQuests.SkillQuestGroups.IsSkillQuestGroup(state.Group))
                 .Select(s => s.ActiveQuest!)
                 .Take(maxQuestsPerPacket)
                 .ToList();

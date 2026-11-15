@@ -180,6 +180,13 @@ public enum NpcWindow
     /// The castle siege guardsman window, which shows the castle siege status and the guild registration.
     /// </summary>
     CastleSiegeGuardsman,
+
+    /// <summary>
+    /// The market depot: a second vault of the account, shown with the vault window.
+    /// Items for the market of the web portal are kept there, and bought items arrive there.
+    /// Only tradable items can be put into it.
+    /// </summary>
+    MarketDepot,
 }
 
 /// <summary>

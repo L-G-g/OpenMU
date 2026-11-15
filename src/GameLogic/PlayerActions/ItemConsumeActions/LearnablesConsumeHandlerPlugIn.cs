@@ -28,6 +28,15 @@ public class LearnablesConsumeHandlerPlugIn : BaseConsumeHandlerPlugIn
             return false;
         }
 
+        if (player.GameContext.FeaturePlugIns.GetPlugIn<SkillQuests.SkillQuestFeaturePlugIn>() is not null
+            && SkillQuests.SkillQuestFeaturePlugIn.FindQuestOfSkill(player.GameContext.Configuration, skill) is { } quest)
+        {
+            // Skills which a skill quest teaches can only be learned by that quest.
+            var giver = quest.QuestGiver?.Designation.GetTranslation(player.Culture) ?? "un NPC";
+            await player.ShowBlueMessageAsync($"Esta skill se aprende con una quest de {giver}.").ConfigureAwait(false);
+            return false;
+        }
+
         if (!await base.ConsumeItemAsync(player, item, targetItem, fruitUsage).ConfigureAwait(false))
         {
             return false;

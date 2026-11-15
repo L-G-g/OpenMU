@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.GameLogic.PlayerActions.Quests;
 
 using MUnique.OpenMU.DataModel.Configuration.Quests;
+using MUnique.OpenMU.GameLogic.SkillQuests;
 
 /// <summary>
 /// Quest related extension methods.
@@ -44,7 +45,7 @@ public static class PlayerQuestExtensions
     public static QuestDefinition? GetQuest(this Player player, short group, short number)
     {
         var possibleQuestsOfGroup = player.OpenedNpc?.Definition.Quests
-                .Where(q => q.Group == group)
+                .Where(q => q.Group == group && !q.IsSkillQuest())
                 .Where(q => q.QualifiedCharacter is null || Equals(q.QualifiedCharacter, player.SelectedCharacter?.CharacterClass))
                 .Where(q => !q.EvolvesIntoInactiveClass(player))
                 .OrderBy(q => q.Number);
@@ -60,6 +61,7 @@ public static class PlayerQuestExtensions
     public static IEnumerable<QuestDefinition> GetAvailableQuestsOfOpenedNpc(this Player player)
     {
         return player.OpenedNpc?.Definition.Quests
+                   .Where(q => !q.IsSkillQuest())
                    .Where(q => q.QualifiedCharacter is null
                                || Equals(q.QualifiedCharacter, player.SelectedCharacter?.CharacterClass))
                    .Where(q => q.MinimumCharacterLevel <= player.Level

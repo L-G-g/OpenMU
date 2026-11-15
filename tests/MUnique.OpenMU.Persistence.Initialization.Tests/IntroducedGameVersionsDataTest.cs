@@ -93,10 +93,11 @@ internal class IntroducedGameVersionsDataTest
         Assert.That(gameConfiguration.Items.Single(i => i.Group == 14 && i.Number == 42).IntroducedIn, Is.EqualTo(GameVersion.Season2)); // Jewel of Harmony
         Assert.That(gameConfiguration.MiniGameDefinitions.Single(m => m.Type == MiniGameType.BloodCastle && m.GameLevel == 8).IntroducedIn, Is.EqualTo(GameVersion.Season3Episode1));
 
+        // The spectre hub of PeroniaMU (the world of the character selection as a playable map) is no content of the original game either.
         Assert.That(gameConfiguration.Maps.Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
         Assert.That(gameConfiguration.CharacterClasses.Select(c => c.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
         // The dungeons of PeroniaMU are no content of the original game, so they keep the unknown version and are never deactivated by version.
-        Assert.That(gameConfiguration.MiniGameDefinitions.Where(m => m.Type != MiniGameType.Dungeon).Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
+        Assert.That(gameConfiguration.MiniGameDefinitions.Where(m => m.Type is not (MiniGameType.Dungeon or MiniGameType.SpectreHub)).Select(m => m.IntroducedIn), Has.None.EqualTo(GameVersion.Unknown));
     }
 
     /// <summary>

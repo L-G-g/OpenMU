@@ -6,6 +6,7 @@ RUN apk add --no-cache icu-libs tzdata
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 EXPOSE 8080
+EXPOSE 8090
 EXPOSE 45901
 EXPOSE 45902
 EXPOSE 45903
@@ -14,6 +15,14 @@ EXPOSE 45905
 EXPOSE 45906
 EXPOSE 44405
 EXPOSE 45980
+
+# The web client of the public portal (Web/Portal/client), built once and copied into the server build.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS portal
+WORKDIR /portal
+COPY Web/Portal/client/package.json Web/Portal/client/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY Web/Portal/client/ ./
+RUN npm run build
 
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
@@ -27,6 +36,7 @@ COPY Persistence/**/*.csproj Persistence/
 RUN dotnet restore "Startup/MUnique.OpenMU.Startup.csproj"
 
 COPY . .
+COPY --from=portal /portal/dist Web/Portal/client/dist
 
 WORKDIR /src/Startup
 

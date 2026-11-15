@@ -23,4 +23,24 @@ public enum SpectreKind : byte
     /// The elf, a Fairy Elf.
     /// </summary>
     Elf = 2,
+
+    /// <summary>
+    /// The gladiator, a Magic Gladiator.
+    /// </summary>
+    Gladiator = 3,
+
+    /// <summary>
+    /// The lord, a Dark Lord.
+    /// </summary>
+    Lord = 4,
+
+    /// <summary>
+    /// The summoner, a Summoner.
+    /// </summary>
+    Summoner = 5,
+
+    /// <summary>
+    /// The fighter, a Rage Fighter.
+    /// </summary>
+    Fighter = 6,
 }

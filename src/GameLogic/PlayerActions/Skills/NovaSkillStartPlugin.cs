@@ -120,7 +120,7 @@ public class NovaSkillStartPlugin : TargetedSkillPluginBase
 
     private async ValueTask AttackTargetsAsync(Player player, SkillEntry skillEntry, SkillCancellationTokenSource cancellationTokenSource)
     {
-        if (!player.IsAlive || player.IsAtSafezone() || skillEntry.Skill is not { } skill)
+        if (!player.IsAlive || player.IsFlying || player.IsAtSafezone() || skillEntry.Skill is not { } skill)
         {
             return;
         }

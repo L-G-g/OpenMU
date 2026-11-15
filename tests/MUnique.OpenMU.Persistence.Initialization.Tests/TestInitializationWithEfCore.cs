@@ -238,8 +238,9 @@ internal class TestInitializationWithEfCore
         var featherGroup = gameConfiguration.DropItemGroups.Single(group => group.GetId() == FeatherDropGroupId);
         var crestGroup = gameConfiguration.DropItemGroups.Single(group => group.GetId() == CrestDropGroupId);
 
-        Assert.That(map.DropItemGroups.Count(group => group.GetId() == FeatherDropGroupId), Is.EqualTo(1));
-        Assert.That(map.DropItemGroups.Count(group => group.GetId() == CrestDropGroupId), Is.EqualTo(1));
+        // MapDropsAndInvasions moves the feathers of Icarus to the drop item groups of its monsters.
+        Assert.That(map.DropItemGroups.Count(group => group.GetId() == FeatherDropGroupId), Is.EqualTo(0));
+        Assert.That(map.DropItemGroups.Count(group => group.GetId() == CrestDropGroupId), Is.EqualTo(0));
 
         Assert.That(featherGroup.Chance, Is.EqualTo(0.001));
         Assert.That(featherGroup.MinimumMonsterLevel, Is.EqualTo((byte)74), "Moved by the MapLevelLadder.");
@@ -505,7 +506,7 @@ internal class TestInitializationWithEfCore
         Assert.That((actual.X1, actual.Y1, actual.X2, actual.Y2), Is.EqualTo(expected));
     }
 
-    private void AssertFenrirMaterialDropGroups(GameConfiguration gameConfiguration, GameMapDefinition map)
+    private void AssertFenrirMaterialDropGroups(GameConfiguration gameConfiguration, GameMapDefinition map, bool isOnMap = true)
     {
         (short ItemNumber, double Chance)[] expected = [(32, 0.05), (33, 0.02), (34, 0.005)];
         for (var i = 0; i < expected.Length; i++)
@@ -514,7 +515,13 @@ internal class TestInitializationWithEfCore
             var id = FenrirMaterialDropGroupIds[i];
             var groups = gameConfiguration.DropItemGroups.Where(group => group.GetId() == id).ToList();
             Assert.That(groups, Has.Count.EqualTo(1));
-            Assert.That(map.DropItemGroups.Count(group => group.GetId() == id), Is.EqualTo(1));
+            Assert.That(map.DropItemGroups.Count(group => group.GetId() == id), Is.EqualTo(isOnMap ? 1 : 0));
+            if (!isOnMap)
+            {
+                // MapDropsAndInvasions moves them to some of the monsters of Crywolf.
+                Assert.That(gameConfiguration.Monsters.Any(m => m.DropItemGroups.Contains(groups[0])), Is.True);
+            }
+
             Assert.That(groups[0].Chance, Is.EqualTo(chance));
             Assert.That(groups[0].MinimumMonsterLevel, Is.Null);
             Assert.That(groups[0].MaximumMonsterLevel, Is.Null);
@@ -530,6 +537,6 @@ internal class TestInitializationWithEfCore
         using var context = contextProvider.CreateNewConfigurationContext();
         var gameConfiguration = (await context.GetAsync<GameConfiguration>().ConfigureAwait(false)).First();
         var map = gameConfiguration.Maps.First(m => m.Number == CrywolfMapNumber && m.Discriminator == 0);
-        this.AssertFenrirMaterialDropGroups(gameConfiguration, map);
+        this.AssertFenrirMaterialDropGroups(gameConfiguration, map, false);
     }
 }

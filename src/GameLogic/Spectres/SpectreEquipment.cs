@@ -84,6 +84,10 @@ internal static class SpectreEquipment
 
         var slot = slots.FirstOrDefault(s => spectreInventory.GetItem(s) is null, slots[0]);
         var replaced = spectreInventory.GetItem(slot);
+        if (replaced is not null && SpectreGrowth.IsGrantedPet(spectre, replaced))
+        {
+            return $"Ese lugar lo ocupa {Describe(replaced)}, que tu espectro gano en su evolucion.";
+        }
 
         // The transfer context only updates items which are already in the database, so items which the
         // owner just got (e.g. by a drop) have to be saved first.
@@ -172,6 +176,11 @@ internal static class SpectreEquipment
         if (equipmentSlot >= InventoryConstants.EquippableSlotsCount || spectreInventory.GetItem(equipmentSlot) is not { } item)
         {
             return "Tu espectro no tiene un item en ese lugar.";
+        }
+
+        if (SpectreGrowth.IsGrantedPet(spectre, item))
+        {
+            return $"{Describe(item)} es de la evolucion de tu espectro y no se puede quitar.";
         }
 
         if (ownerInventory.CheckInvSpace(item) is not { } ownerSlot)

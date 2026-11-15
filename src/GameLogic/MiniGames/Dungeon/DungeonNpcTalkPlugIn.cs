@@ -10,7 +10,8 @@ using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// Lets the party enter the dungeon when its leader talks to the NPC of the dungeon (<see cref="DungeonConfiguration.NpcDesignation"/>).
+/// Lets the party enter a dungeon when its leader talks to the NPC of its normal version (<see cref="DungeonSettings.NpcDesignation"/>)
+/// or of its extreme version (<see cref="DungeonSettings.ExtremeNpcDesignation"/>).
 /// </summary>
 /// <remarks>
 /// The NPC is recognized by the designation of its definition instead of its number, because it uses the number
@@ -27,7 +28,7 @@ public class DungeonNpcTalkPlugIn : IPlayerTalkToNpcPlugIn
     public async ValueTask PlayerTalksToNpcAsync(Player player, NonPlayerCharacter npc, NpcTalkEventArgs eventArgs)
     {
         if (DungeonFeaturePlugIn.GetConfiguration(player.GameContext) is not { } configuration
-            || npc.Definition.Designation.ValueInNeutralLanguage != configuration.NpcDesignation)
+            || configuration.FindByNpc(npc.Definition.Designation.ValueInNeutralLanguage) is not var (dungeon, isExtreme))
         {
             return;
         }
@@ -39,6 +40,6 @@ public class DungeonNpcTalkPlugIn : IPlayerTalkToNpcPlugIn
             return;
         }
 
-        await this._entryAction.TryEnterAsync(player).ConfigureAwait(false);
+        await this._entryAction.TryEnterAsync(player, dungeon, isExtreme).ConfigureAwait(false);
     }
 }

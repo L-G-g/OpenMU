@@ -2880,6 +2880,24 @@ namespace MUnique.OpenMU.GameLogic.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Tells the clients every second whether their character meets the requirements of the next reset.
+        /// </summary>
+        public static string ResetButtonPlugIn_Description {
+            get {
+                return ResourceManager.GetString("ResetButtonPlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reset button.
+        /// </summary>
+        public static string ResetButtonPlugIn_Name {
+            get {
+                return ResourceManager.GetString("ResetButtonPlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Reset chat command.
         /// </summary>
         public static string ResetChatCommandPlugIn_Name {
@@ -4444,6 +4462,48 @@ namespace MUnique.OpenMU.GameLogic.Properties {
                 return ResourceManager.GetString("CastleSiegeLifeStoneConsumeHandlerPlugIn_Name", resourceCulture);
             }
         }
+        /// <summary>Gets the localized SpectreConfiguration_RivalHealthMultiplier_Description text.</summary>
+        public static string SpectreConfiguration_RivalHealthMultiplier_Description => ResourceManager.GetString("SpectreConfiguration_RivalHealthMultiplier_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_RivalHealthMultiplier_Name text.</summary>
+        public static string SpectreConfiguration_RivalHealthMultiplier_Name => ResourceManager.GetString("SpectreConfiguration_RivalHealthMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_FemaleNames_Description text.</summary>
+        public static string SpectreConfiguration_FemaleNames_Description => ResourceManager.GetString("SpectreConfiguration_FemaleNames_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_FemaleNames_Name text.</summary>
+        public static string SpectreConfiguration_FemaleNames_Name => ResourceManager.GetString("SpectreConfiguration_FemaleNames_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaleNames_Description text.</summary>
+        public static string SpectreConfiguration_MaleNames_Description => ResourceManager.GetString("SpectreConfiguration_MaleNames_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaleNames_Name text.</summary>
+        public static string SpectreConfiguration_MaleNames_Name => ResourceManager.GetString("SpectreConfiguration_MaleNames_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumVictoriesPerDay_Description text.</summary>
+        public static string SpectreConfiguration_MaximumVictoriesPerDay_Description => ResourceManager.GetString("SpectreConfiguration_MaximumVictoriesPerDay_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_MaximumVictoriesPerDay_Name text.</summary>
+        public static string SpectreConfiguration_MaximumVictoriesPerDay_Name => ResourceManager.GetString("SpectreConfiguration_MaximumVictoriesPerDay_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_VictoriesPerReset_Description text.</summary>
+        public static string SpectreConfiguration_VictoriesPerReset_Description => ResourceManager.GetString("SpectreConfiguration_VictoriesPerReset_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_VictoriesPerReset_Name text.</summary>
+        public static string SpectreConfiguration_VictoriesPerReset_Name => ResourceManager.GetString("SpectreConfiguration_VictoriesPerReset_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Description text.</summary>
+        public static string SpectreGuardianTalkPlugIn_Description => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreGuardianTalkPlugIn_Name text.</summary>
+        public static string SpectreGuardianTalkPlugIn_Name => ResourceManager.GetString("SpectreGuardianTalkPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_GuardianDesignation_Description text.</summary>
+        public static string SpectreConfiguration_GuardianDesignation_Description => ResourceManager.GetString("SpectreConfiguration_GuardianDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized SpectreConfiguration_GuardianDesignation_Name text.</summary>
+        public static string SpectreConfiguration_GuardianDesignation_Name => ResourceManager.GetString("SpectreConfiguration_GuardianDesignation_Name", resourceCulture)!;
+
         /// <summary>Gets the localized BotConfiguration_Enabled_Name text.</summary>
         public static string BotConfiguration_Enabled_Name => ResourceManager.GetString("BotConfiguration_Enabled_Name", resourceCulture)!;
 
@@ -5199,5 +5259,390 @@ namespace MUnique.OpenMU.GameLogic.Properties {
                 return ResourceManager.GetString("DiscordIntegrationFeaturePlugIn_Description", resourceCulture);
             }
         }
+    
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Map invasions.
+        /// </summary>
+        public static string MapInvasionsPlugIn_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsPlugIn_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invades one map after another, in a random order which repeats only after every map was invaded. The monsters of an invasion stay until the next invasion of their map, which replaces the ones that are left, and each of them always drops the configured items..
+        /// </summary>
+        public static string MapInvasionsPlugIn_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsPlugIn_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interval.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Interval_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Interval_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The time between two invasions (at least one minute)..
+        /// </summary>
+        public static string MapInvasionsConfiguration_Interval_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Interval_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to First invasion delay.
+        /// </summary>
+        public static string MapInvasionsConfiguration_FirstInvasionDelay_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_FirstInvasionDelay_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The time between the start of the game server and the first invasion. The invasions start a new cycle when the game server starts..
+        /// </summary>
+        public static string MapInvasionsConfiguration_FirstInvasionDelay_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_FirstInvasionDelay_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spawn distance.
+        /// </summary>
+        public static string MapInvasionsConfiguration_SpawnDistance_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_SpawnDistance_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The monsters appear at random coordinates within this distance of random monster spots of the map..
+        /// </summary>
+        public static string MapInvasionsConfiguration_SpawnDistance_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_SpawnDistance_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Start message.
+        /// </summary>
+        public static string MapInvasionsConfiguration_StartMessage_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_StartMessage_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The message which all players get when an invasion starts. {monster} is replaced by the name of the monster and {map} by the name of the map..
+        /// </summary>
+        public static string MapInvasionsConfiguration_StartMessage_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_StartMessage_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invasions.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Invasions_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Invasions_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The invasions of a cycle, each one happens once per cycle..
+        /// </summary>
+        public static string MapInvasionsConfiguration_Invasions_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Invasions_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Map number.
+        /// </summary>
+        public static string MapInvasionsConfiguration_MapNumber_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_MapNumber_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Monster.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Monster_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Monster_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Number of monsters.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Count_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Count_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drops.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Drops_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Drops_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The items which each monster always drops, in addition to its normal drop..
+        /// </summary>
+        public static string MapInvasionsConfiguration_Drops_Description {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Drops_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Items.
+        /// </summary>
+        public static string MapInvasionsConfiguration_Items_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_Items_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minimum number of items.
+        /// </summary>
+        public static string MapInvasionsConfiguration_MinimumCount_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_MinimumCount_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum number of items.
+        /// </summary>
+        public static string MapInvasionsConfiguration_MaximumCount_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_MaximumCount_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Item group.
+        /// </summary>
+        public static string MapInvasionsConfiguration_ItemGroup_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_ItemGroup_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Item number.
+        /// </summary>
+        public static string MapInvasionsConfiguration_ItemNumber_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_ItemNumber_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Item level.
+        /// </summary>
+        public static string MapInvasionsConfiguration_ItemLevel_Name {
+            get {
+                return ResourceManager.GetString("MapInvasionsConfiguration_ItemLevel_Name", resourceCulture);
+            }
+        }
+
+        /// <summary>Gets the localized FlightPlugIn_Name text.</summary>
+        public static string FlightPlugIn_Name => ResourceManager.GetString("FlightPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightPlugIn_Description text.</summary>
+        public static string FlightPlugIn_Description => ResourceManager.GetString("FlightPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightChatCommandPlugIn_Name text.</summary>
+        public static string FlightChatCommandPlugIn_Name => ResourceManager.GetString("FlightChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized FlightChatCommandPlugIn_Description text.</summary>
+        public static string FlightChatCommandPlugIn_Description => ResourceManager.GetString("FlightChatCommandPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Number_Name text.</summary>
+        public static string DungeonSettings_Number_Name => ResourceManager.GetString("DungeonSettings_Number_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Number_Description text.</summary>
+        public static string DungeonSettings_Number_Description => ResourceManager.GetString("DungeonSettings_Number_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Name_Name text.</summary>
+        public static string DungeonSettings_Name_Name => ResourceManager.GetString("DungeonSettings_Name_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_NpcDesignation_Name text.</summary>
+        public static string DungeonSettings_NpcDesignation_Name => ResourceManager.GetString("DungeonSettings_NpcDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_NpcDesignation_Description text.</summary>
+        public static string DungeonSettings_NpcDesignation_Description => ResourceManager.GetString("DungeonSettings_NpcDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_ExtremeNpcDesignation_Name text.</summary>
+        public static string DungeonSettings_ExtremeNpcDesignation_Name => ResourceManager.GetString("DungeonSettings_ExtremeNpcDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_GameLevel_Name text.</summary>
+        public static string DungeonSettings_GameLevel_Name => ResourceManager.GetString("DungeonSettings_GameLevel_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_GameLevel_Description text.</summary>
+        public static string DungeonSettings_GameLevel_Description => ResourceManager.GetString("DungeonSettings_GameLevel_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_ExtremeGameLevel_Name text.</summary>
+        public static string DungeonSettings_ExtremeGameLevel_Name => ResourceManager.GetString("DungeonSettings_ExtremeGameLevel_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_DropMaps_Name text.</summary>
+        public static string DungeonSettings_DropMaps_Name => ResourceManager.GetString("DungeonSettings_DropMaps_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_DropMaps_Description text.</summary>
+        public static string DungeonSettings_DropMaps_Description => ResourceManager.GetString("DungeonSettings_DropMaps_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_Dungeon_Name text.</summary>
+        public static string DungeonStage_Dungeon_Name => ResourceManager.GetString("DungeonStage_Dungeon_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_Dungeon_Description text.</summary>
+        public static string DungeonStage_Dungeon_Description => ResourceManager.GetString("DungeonStage_Dungeon_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_SecondMonsterNumber_Name text.</summary>
+        public static string DungeonStage_SecondMonsterNumber_Name => ResourceManager.GetString("DungeonStage_SecondMonsterNumber_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_SecondMonsterNumber_Description text.</summary>
+        public static string DungeonStage_SecondMonsterNumber_Description => ResourceManager.GetString("DungeonStage_SecondMonsterNumber_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_SecondKillCount_Name text.</summary>
+        public static string DungeonStage_SecondKillCount_Name => ResourceManager.GetString("DungeonStage_SecondKillCount_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortDesignation_Name text.</summary>
+        public static string DungeonStage_EscortDesignation_Name => ResourceManager.GetString("DungeonStage_EscortDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortDesignation_Description text.</summary>
+        public static string DungeonStage_EscortDesignation_Description => ResourceManager.GetString("DungeonStage_EscortDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortCount_Name text.</summary>
+        public static string DungeonStage_EscortCount_Name => ResourceManager.GetString("DungeonStage_EscortCount_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonStage_EscortExcellentDropChance_Name text.</summary>
+        public static string DungeonStage_EscortExcellentDropChance_Name => ResourceManager.GetString("DungeonStage_EscortExcellentDropChance_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_Dungeons_Name text.</summary>
+        public static string DungeonConfiguration_Dungeons_Name => ResourceManager.GetString("DungeonConfiguration_Dungeons_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_Dungeons_Description text.</summary>
+        public static string DungeonConfiguration_Dungeons_Description => ResourceManager.GetString("DungeonConfiguration_Dungeons_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeHealthMultiplier_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeHealthMultiplier_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeHealthMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeDamageMultiplier_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeDamageMultiplier_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeDamageMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeDefenseMultiplier_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeDefenseMultiplier_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeDefenseMultiplier_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeMultiplier_Description text.</summary>
+        public static string DungeonConfiguration_ExtremeMultiplier_Description => ResourceManager.GetString("DungeonConfiguration_ExtremeMultiplier_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_HighItemWeight_Name text.</summary>
+        public static string DungeonConfiguration_HighItemWeight_Name => ResourceManager.GetString("DungeonConfiguration_HighItemWeight_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_ExtremeHighItemWeight_Name text.</summary>
+        public static string DungeonConfiguration_ExtremeHighItemWeight_Name => ResourceManager.GetString("DungeonConfiguration_ExtremeHighItemWeight_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_HighItemWeight_Description text.</summary>
+        public static string DungeonConfiguration_HighItemWeight_Description => ResourceManager.GetString("DungeonConfiguration_HighItemWeight_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_EntriesPerDay_Name text.</summary>
+        public static string DungeonSettings_EntriesPerDay_Name => ResourceManager.GetString("DungeonSettings_EntriesPerDay_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonSettings_Override_Description text.</summary>
+        public static string DungeonSettings_Override_Description => ResourceManager.GetString("DungeonSettings_Override_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_EntriesPerCooldown_Name text.</summary>
+        public static string DungeonConfiguration_EntriesPerCooldown_Name => ResourceManager.GetString("DungeonConfiguration_EntriesPerCooldown_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_EntriesPerCooldown_Description text.</summary>
+        public static string DungeonConfiguration_EntriesPerCooldown_Description => ResourceManager.GetString("DungeonConfiguration_EntriesPerCooldown_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_MonsterExcellentDropChance_Name text.</summary>
+        public static string DungeonConfiguration_MonsterExcellentDropChance_Name => ResourceManager.GetString("DungeonConfiguration_MonsterExcellentDropChance_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_MonsterExcellentDropChance_Description text.</summary>
+        public static string DungeonConfiguration_MonsterExcellentDropChance_Description => ResourceManager.GetString("DungeonConfiguration_MonsterExcellentDropChance_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_OnlyExcellentItems_Name text.</summary>
+        public static string DungeonConfiguration_OnlyExcellentItems_Name => ResourceManager.GetString("DungeonConfiguration_OnlyExcellentItems_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized DungeonConfiguration_OnlyExcellentItems_Description text.</summary>
+        public static string DungeonConfiguration_OnlyExcellentItems_Description => ResourceManager.GetString("DungeonConfiguration_OnlyExcellentItems_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantFeaturePlugIn_Name text.</summary>
+        public static string TokenMerchantFeaturePlugIn_Name => ResourceManager.GetString("TokenMerchantFeaturePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantFeaturePlugIn_Description text.</summary>
+        public static string TokenMerchantFeaturePlugIn_Description => ResourceManager.GetString("TokenMerchantFeaturePlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_NormalTokens_Name text.</summary>
+        public static string TokenMerchantConfiguration_NormalTokens_Name => ResourceManager.GetString("TokenMerchantConfiguration_NormalTokens_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_ExtremeTokens_Name text.</summary>
+        public static string TokenMerchantConfiguration_ExtremeTokens_Name => ResourceManager.GetString("TokenMerchantConfiguration_ExtremeTokens_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_ItemsHaveLuck_Name text.</summary>
+        public static string TokenMerchantConfiguration_ItemsHaveLuck_Name => ResourceManager.GetString("TokenMerchantConfiguration_ItemsHaveLuck_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_Merchants_Name text.</summary>
+        public static string TokenMerchantConfiguration_Merchants_Name => ResourceManager.GetString("TokenMerchantConfiguration_Merchants_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantConfiguration_Merchants_Description text.</summary>
+        public static string TokenMerchantConfiguration_Merchants_Description => ResourceManager.GetString("TokenMerchantConfiguration_Merchants_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_Dungeon_Name text.</summary>
+        public static string TokenMerchantSettings_Dungeon_Name => ResourceManager.GetString("TokenMerchantSettings_Dungeon_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_Dungeon_Description text.</summary>
+        public static string TokenMerchantSettings_Dungeon_Description => ResourceManager.GetString("TokenMerchantSettings_Dungeon_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_NpcDesignation_Name text.</summary>
+        public static string TokenMerchantSettings_NpcDesignation_Name => ResourceManager.GetString("TokenMerchantSettings_NpcDesignation_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_NpcDesignation_Description text.</summary>
+        public static string TokenMerchantSettings_NpcDesignation_Description => ResourceManager.GetString("TokenMerchantSettings_NpcDesignation_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_TokenName_Name text.</summary>
+        public static string TokenMerchantSettings_TokenName_Name => ResourceManager.GetString("TokenMerchantSettings_TokenName_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_SetPiecePrice_Name text.</summary>
+        public static string TokenMerchantSettings_SetPiecePrice_Name => ResourceManager.GetString("TokenMerchantSettings_SetPiecePrice_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokenMerchantSettings_WeaponPrice_Name text.</summary>
+        public static string TokenMerchantSettings_WeaponPrice_Name => ResourceManager.GetString("TokenMerchantSettings_WeaponPrice_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TabChatCommandPlugIn_Name text.</summary>
+        public static string TabChatCommandPlugIn_Name => ResourceManager.GetString("TabChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TabChatCommandPlugIn_Description text.</summary>
+        public static string TabChatCommandPlugIn_Description => ResourceManager.GetString("TabChatCommandPlugIn_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized TokensChatCommandPlugIn_Name text.</summary>
+        public static string TokensChatCommandPlugIn_Name => ResourceManager.GetString("TokensChatCommandPlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized TokensChatCommandPlugIn_Description text.</summary>
+        public static string TokensChatCommandPlugIn_Description => ResourceManager.GetString("TokensChatCommandPlugIn_Description", resourceCulture)!;
     }
 }

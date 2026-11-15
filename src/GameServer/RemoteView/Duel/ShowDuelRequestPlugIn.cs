@@ -32,6 +32,6 @@ public class ShowDuelRequestPlugIn : IShowDuelRequestPlugIn
     /// <inheritdoc />
     public async ValueTask ShowDuelRequestAsync(Player requester)
     {
-        await this._player.Connection.SendDuelStartRequestAsync(requester.GetId(this._player), requester.Name).ConfigureAwait(false);
+        await this._player.Connection.SendDuelStartRequestAsync(requester.GetId(this._player), requester.DisplayName).ConfigureAwait(false);
     }
 }

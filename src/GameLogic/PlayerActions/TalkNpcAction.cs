@@ -50,7 +50,13 @@ public class TalkNpcAction
         }
 
         player.OpenedNpc = npc;
-        if (npcStats.MerchantStore != null && npcStats.MerchantStore.Items.Count > 0)
+        if (TokenMerchants.TokenMerchantFeaturePlugIn.Find(player.GameContext, npcStats) is { PlugIn.Configuration: { } tokenConfiguration } tokenMerchant)
+        {
+            // A token merchant shows its own items instead of the ones of its merchant store.
+            await Task.Delay(500).ConfigureAwait(false);
+            await tokenMerchant.PlugIn.Shop.OpenAsync(player, tokenConfiguration, tokenMerchant.Merchant).ConfigureAwait(false);
+        }
+        else if (npcStats.MerchantStore != null && npcStats.MerchantStore.Items.Count > 0)
         {
             await Task.Delay(500).ConfigureAwait(false);
             await player.InvokeViewPlugInAsync<IOpenNpcWindowPlugIn>(p => p.OpenNpcWindowAsync(npcStats.NpcWindow != NpcWindow.Undefined ? npcStats.NpcWindow : NpcWindow.Merchant)).ConfigureAwait(false);
@@ -102,6 +108,19 @@ public class TalkNpcAction
                 player.Account!.Vault ??= player.PersistenceContext.CreateNew<ItemStorage>();
                 var warehouseSize = player.Account.IsVaultExtended ? InventoryConstants.WarehouseSize * 2 : InventoryConstants.WarehouseSize;
                 player.Vault = new Storage(warehouseSize, player.Account.Vault);
+                await player.InvokeViewPlugInAsync<IShowVaultPlugIn>(p => p.ShowVaultAsync()).ConfigureAwait(false);
+                break;
+            case NpcWindow.MarketDepot:
+                if (player.Account is { } marketAccount && Market.MarketLocks.IsAccountBusy(marketAccount.LoginName))
+                {
+                    await player.ShowBlueMessageAsync(Market.MarketLocks.DepotIsBusyMessage).ConfigureAwait(false);
+                    player.OpenedNpc = null;
+                    await player.PlayerState.TryAdvanceToAsync(PlayerState.EnteredWorld).ConfigureAwait(false);
+                    break;
+                }
+
+                player.Account!.MarketDepot ??= player.PersistenceContext.CreateNew<ItemStorage>();
+                player.Vault = new Storage(InventoryConstants.WarehouseSize, player.Account.MarketDepot);
                 await player.InvokeViewPlugInAsync<IShowVaultPlugIn>(p => p.ShowVaultAsync()).ConfigureAwait(false);
                 break;
             case NpcWindow.GuildMaster:

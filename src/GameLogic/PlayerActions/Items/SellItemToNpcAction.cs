@@ -40,7 +40,8 @@ public class SellItemToNpcAction
             return false;
         }
 
-        if (player.OpenedNpc?.Definition.MerchantStore is null)
+        if (player.OpenedNpc?.Definition.MerchantStore is null
+            && TokenMerchants.TokenMerchantFeaturePlugIn.Find(player.GameContext, player.OpenedNpc?.Definition) is null)
         {
             player.Logger.LogWarning("Player {0} requested to sell item at slot {1} to an npc, but no npc merchant store is currently opened.", player, slot);
             await player.InvokeViewPlugInAsync<IItemSoldToNpcPlugIn>(p => p.ItemSoldToNpcAsync(false)).ConfigureAwait(false);

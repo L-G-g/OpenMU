@@ -2003,6 +2003,75 @@
   <data name="ShopPriceChatCommandPlugIn_Description" xml:space="preserve">
     <value>Sets the price of an item of the own personal store in one of the enabled currencies, e.g. '/shopprice 1 10 bless'. Without arguments, it lists the prices.</value>
   </data>
+  <data name="MapInvasionsPlugIn_Name" xml:space="preserve">
+    <value>Map invasions</value>
+  </data>
+  <data name="MapInvasionsPlugIn_Description" xml:space="preserve">
+    <value>Invades one map after another, in a random order which repeats only after every map was invaded. The monsters of an invasion stay until the next invasion of their map, which replaces the ones that are left, and each of them always drops the configured items.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Interval_Name" xml:space="preserve">
+    <value>Interval</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Interval_Description" xml:space="preserve">
+    <value>The time between two invasions (at least one minute).</value>
+  </data>
+  <data name="MapInvasionsConfiguration_FirstInvasionDelay_Name" xml:space="preserve">
+    <value>First invasion delay</value>
+  </data>
+  <data name="MapInvasionsConfiguration_FirstInvasionDelay_Description" xml:space="preserve">
+    <value>The time between the start of the game server and the first invasion. The invasions start a new cycle when the game server starts.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_SpawnDistance_Name" xml:space="preserve">
+    <value>Spawn distance</value>
+  </data>
+  <data name="MapInvasionsConfiguration_SpawnDistance_Description" xml:space="preserve">
+    <value>The monsters appear at random coordinates within this distance of random monster spots of the map.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_StartMessage_Name" xml:space="preserve">
+    <value>Start message</value>
+  </data>
+  <data name="MapInvasionsConfiguration_StartMessage_Description" xml:space="preserve">
+    <value>The message which all players get when an invasion starts. {monster} is replaced by the name of the monster and {map} by the name of the map.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Invasions_Name" xml:space="preserve">
+    <value>Invasions</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Invasions_Description" xml:space="preserve">
+    <value>The invasions of a cycle, each one happens once per cycle.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_MapNumber_Name" xml:space="preserve">
+    <value>Map number</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Monster_Name" xml:space="preserve">
+    <value>Monster</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Count_Name" xml:space="preserve">
+    <value>Number of monsters</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Drops_Name" xml:space="preserve">
+    <value>Drops</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Drops_Description" xml:space="preserve">
+    <value>The items which each monster always drops, in addition to its normal drop.</value>
+  </data>
+  <data name="MapInvasionsConfiguration_Items_Name" xml:space="preserve">
+    <value>Items</value>
+  </data>
+  <data name="MapInvasionsConfiguration_MinimumCount_Name" xml:space="preserve">
+    <value>Minimum number of items</value>
+  </data>
+  <data name="MapInvasionsConfiguration_MaximumCount_Name" xml:space="preserve">
+    <value>Maximum number of items</value>
+  </data>
+  <data name="MapInvasionsConfiguration_ItemGroup_Name" xml:space="preserve">
+    <value>Item group</value>
+  </data>
+  <data name="MapInvasionsConfiguration_ItemNumber_Name" xml:space="preserve">
+    <value>Item number</value>
+  </data>
+  <data name="MapInvasionsConfiguration_ItemLevel_Name" xml:space="preserve">
+    <value>Item level</value>
+  </data>
   <data name="ServerAnnouncementsPlugIn_Name" xml:space="preserve">
     <value>Server announcements</value>
   </data>
@@ -2083,5 +2152,230 @@
   </data>
   <data name="DiscordIntegrationFeaturePlugIn_Description" xml:space="preserve">
     <value>Tells game clients which ask for it how the server is connected to Discord (invite link, Rich Presence application, account link, mirrored chats), lets players link their account from the client, and sends them messages written in Discord as such.</value>
+  </data>
+  <data name="FlightPlugIn_Name" xml:space="preserve">
+    <value>Flight (Dinorant or wings, flight.dll)</value>
+  </data>
+  <data name="FlightPlugIn_Description" xml:space="preserve">
+    <value>Players fly on their Dinorant or with their wings with /volar: they walk over walls (not over tiles without ground) faster by the speed factor of the Dinorant or of the level of the wings, and can only move: no attacks or skills, and monsters don't attack them. Not in combat or in a safezone (entering one lands them), only on the allowed maps, never in mini games. Needs flight.dll on the clients.</value>
+  </data>
+  <data name="FlightChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Chat command: /volar (flight)</value>
+  </data>
+  <data name="FlightChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Starts or ends the flight on the Dinorant or with the wings. Needs the "Flight" plugin.</value>
+  </data>
+  <data name="SpectreConfiguration_GuardianDesignation_Name" xml:space="preserve">
+    <value>Guardian designation</value>
+  </data>
+  <data name="SpectreConfiguration_GuardianDesignation_Description" xml:space="preserve">
+    <value>The designation of the NPC which tells the story of the spectres and lets the players enter the spectre hub, where they unlock and evolve their spectres in duels.</value>
+  </data>
+  <data name="SpectreGuardianTalkPlugIn_Name" xml:space="preserve">
+    <value>Spectre guardian talk</value>
+  </data>
+  <data name="SpectreGuardianTalkPlugIn_Description" xml:space="preserve">
+    <value>Shows the story of the spectres when a player talks to their guardian, and lets the player enter the spectre hub with /espectro refugio.</value>
+  </data>
+  <data name="SpectreConfiguration_RivalHealthMultiplier_Name" xml:space="preserve">
+    <value>Rival health multiplier</value>
+  </data>
+  <data name="SpectreConfiguration_RivalHealthMultiplier_Description" xml:space="preserve">
+    <value>The multiplier of the maximum health and shield of the rivals of the spectre hub, e.g. 3 for three times as much.</value>
+  </data>
+  <data name="SpectreConfiguration_VictoriesPerReset_Name" xml:space="preserve">
+    <value>Spectre victories per reset</value>
+  </data>
+  <data name="SpectreConfiguration_VictoriesPerReset_Description" xml:space="preserve">
+    <value>How many victories in the spectre hub (each unlocked spectre and each evolution counts as one) a player may have per reset. With 1: one reset for the first spectre, two resets for a second spectre or the first evolution, and so on. 0 means no limit.</value>
+  </data>
+  <data name="SpectreConfiguration_MaximumVictoriesPerDay_Name" xml:space="preserve">
+    <value>Spectre victories per day</value>
+  </data>
+  <data name="SpectreConfiguration_MaximumVictoriesPerDay_Description" xml:space="preserve">
+    <value>How often a player may win in the spectre hub per day, in the time of Argentina. 0 means no limit.</value>
+  </data>
+  <data name="SpectreConfiguration_MaleNames_Name" xml:space="preserve">
+    <value>Names of the male spectres</value>
+  </data>
+  <data name="SpectreConfiguration_MaleNames_Description" xml:space="preserve">
+    <value>The names, separated by commas, of which a male spectre gets a random one when its story is finished. Add new names at the end: the spectres keep the position of their name.</value>
+  </data>
+  <data name="SpectreConfiguration_FemaleNames_Name" xml:space="preserve">
+    <value>Names of the female spectres</value>
+  </data>
+  <data name="SpectreConfiguration_FemaleNames_Description" xml:space="preserve">
+    <value>The names, separated by commas, of which a female spectre (elf and summoner) gets a random one when its story is finished. Add new names at the end: the spectres keep the position of their name.</value>
+  </data>
+  <data name="ResetButtonPlugIn_Name" xml:space="preserve">
+    <value>Reset button</value>
+  </data>
+  <data name="ResetButtonPlugIn_Description" xml:space="preserve">
+    <value>Tells the clients every second whether their character meets the requirements of the next reset (level, zen, reset limit, items), so that the reset button of the PeroniaMU client (resetbutton.dll) is shown only then. Needs the reset feature.</value>
+  </data>
+  <data name="DungeonSettings_Number_Name" xml:space="preserve">
+    <value>Number</value>
+  </data>
+  <data name="DungeonSettings_Number_Description" xml:space="preserve">
+    <value>The number of the dungeon, to which its stages refer. A character can enter each number once per entry cooldown, in the normal or in the extreme version.</value>
+  </data>
+  <data name="DungeonSettings_Name_Name" xml:space="preserve">
+    <value>Name (shown to the players)</value>
+  </data>
+  <data name="DungeonSettings_NpcDesignation_Name" xml:space="preserve">
+    <value>NPC (designation)</value>
+  </data>
+  <data name="DungeonSettings_NpcDesignation_Description" xml:space="preserve">
+    <value>The designation of the NPC at which the party leader enters the normal version of the dungeon.</value>
+  </data>
+  <data name="DungeonSettings_ExtremeNpcDesignation_Name" xml:space="preserve">
+    <value>NPC of the extreme version (designation)</value>
+  </data>
+  <data name="DungeonSettings_GameLevel_Name" xml:space="preserve">
+    <value>Game level</value>
+  </data>
+  <data name="DungeonSettings_GameLevel_Description" xml:space="preserve">
+    <value>The game level of the mini game definition of the type Dungeon which belongs to the normal version of the dungeon.</value>
+  </data>
+  <data name="DungeonSettings_ExtremeGameLevel_Name" xml:space="preserve">
+    <value>Game level of the extreme version</value>
+  </data>
+  <data name="DungeonSettings_DropMaps_Name" xml:space="preserve">
+    <value>Maps of the drops</value>
+  </data>
+  <data name="DungeonSettings_DropMaps_Description" xml:space="preserve">
+    <value>The numbers of the maps whose zones give the excellent weapons, shields and armor sets of the dungeon, separated by commas, e.g. 0,3,51,2 for Lorencia, Noria, Elbeland and Devias.</value>
+  </data>
+  <data name="DungeonStage_Dungeon_Name" xml:space="preserve">
+    <value>Dungeon (number)</value>
+  </data>
+  <data name="DungeonStage_Dungeon_Description" xml:space="preserve">
+    <value>The number of the dungeon of this stage. The stages of a dungeon follow each other in the order of this list.</value>
+  </data>
+  <data name="DungeonStage_SecondMonsterNumber_Name" xml:space="preserve">
+    <value>Second monster number</value>
+  </data>
+  <data name="DungeonStage_SecondMonsterNumber_Description" xml:space="preserve">
+    <value>The number of a second kind of monsters which the players have to kill, too. 0 if the stage has only one kind.</value>
+  </data>
+  <data name="DungeonStage_SecondKillCount_Name" xml:space="preserve">
+    <value>Kills of the second monster</value>
+  </data>
+  <data name="DungeonStage_EscortDesignation_Name" xml:space="preserve">
+    <value>Escort (designation)</value>
+  </data>
+  <data name="DungeonStage_EscortDesignation_Description" xml:space="preserve">
+    <value>The designation of the monsters which appear around the boss, e.g. Zaikan Boss. Empty if the boss comes alone.</value>
+  </data>
+  <data name="DungeonStage_EscortCount_Name" xml:space="preserve">
+    <value>Number of escorts</value>
+  </data>
+  <data name="DungeonStage_EscortExcellentDropChance_Name" xml:space="preserve">
+    <value>Excellent drop chance of each escort (0 to 1)</value>
+  </data>
+  <data name="DungeonConfiguration_Dungeons_Name" xml:space="preserve">
+    <value>Dungeons</value>
+  </data>
+  <data name="DungeonConfiguration_Dungeons_Description" xml:space="preserve">
+    <value>The dungeons. Each one is an instance of the entrance map of its mini game definitions, with a normal and an extreme version.</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeHealthMultiplier_Name" xml:space="preserve">
+    <value>Extreme version: health multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeDamageMultiplier_Name" xml:space="preserve">
+    <value>Extreme version: damage multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeDefenseMultiplier_Name" xml:space="preserve">
+    <value>Extreme version: defense multiplier</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeMultiplier_Description" xml:space="preserve">
+    <value>In the extreme version of a dungeon, the monsters and the bosses get this multiplier on top of their usual multiplier.</value>
+  </data>
+  <data name="DungeonConfiguration_HighItemWeight_Name" xml:space="preserve">
+    <value>Normal version: weight of the high items</value>
+  </data>
+  <data name="DungeonConfiguration_ExtremeHighItemWeight_Name" xml:space="preserve">
+    <value>Extreme version: weight of the high items</value>
+  </data>
+  <data name="DungeonConfiguration_HighItemWeight_Description" xml:space="preserve">
+    <value>The excellent weapons, shields and armor sets of a dungeon are split per character class into a low and a high half (with an odd number, the low half gets one more). A high item drops this many times as often as a low item; 1 gives all items the same chance.</value>
+  </data>
+  <data name="DungeonSettings_EntriesPerDay_Name" xml:space="preserve">
+    <value>Entries per day</value>
+  </data>
+  <data name="DungeonSettings_Override_Description" xml:space="preserve">
+    <value>The value of this dungeon. 0 uses the general value of the plugin.</value>
+  </data>
+  <data name="DungeonConfiguration_EntriesPerCooldown_Name" xml:space="preserve">
+    <value>Entries per day (per entry cooldown)</value>
+  </data>
+  <data name="DungeonConfiguration_EntriesPerCooldown_Description" xml:space="preserve">
+    <value>How many times a character can enter each dungeon per entry cooldown, which starts with the first of these entries. A dungeon can have its own value in the table of the dungeons.</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterExcellentDropChance_Name" xml:space="preserve">
+    <value>Excellent drop chance of a monster (0 to 1)</value>
+  </data>
+  <data name="DungeonConfiguration_MonsterExcellentDropChance_Description" xml:space="preserve">
+    <value>The chance of a monster of a dungeon which is not a boss to drop an excellent item when it is killed, e.g. 0.005 for 1 of 200 kills. It does not depend on the chance of the map. A dungeon can have its own value in the table of the dungeons.</value>
+  </data>
+  <data name="DungeonConfiguration_OnlyExcellentItems_Name" xml:space="preserve">
+    <value>Only excellent items</value>
+  </data>
+  <data name="DungeonConfiguration_OnlyExcellentItems_Description" xml:space="preserve">
+    <value>The monsters of the dungeons drop only excellent items. Otherwise, they also drop what they drop on the map outside of the dungeon, e.g. normal items, jewels and money.</value>
+  </data>
+  <data name="TokenMerchantFeaturePlugIn_Name" xml:space="preserve">
+    <value>Dungeon token merchants</value>
+  </data>
+  <data name="TokenMerchantFeaturePlugIn_Description" xml:space="preserve">
+    <value>Completing a dungeon gives tokens, and the merchant of the dungeon sells its best armor set, shield and weapons for each character class for them. The sold items are usual excellent items with luck. Needs the configuration update Dungeon Token Merchants.</value>
+  </data>
+  <data name="TokenMerchantConfiguration_NormalTokens_Name" xml:space="preserve">
+    <value>Tokens for the normal version</value>
+  </data>
+  <data name="TokenMerchantConfiguration_ExtremeTokens_Name" xml:space="preserve">
+    <value>Tokens for the extreme version</value>
+  </data>
+  <data name="TokenMerchantConfiguration_ItemsHaveLuck_Name" xml:space="preserve">
+    <value>Items have luck</value>
+  </data>
+  <data name="TokenMerchantConfiguration_Merchants_Name" xml:space="preserve">
+    <value>Merchants</value>
+  </data>
+  <data name="TokenMerchantConfiguration_Merchants_Description" xml:space="preserve">
+    <value>One merchant for each dungeon which gives tokens. It sells the best items of the drop maps of the dungeon.</value>
+  </data>
+  <data name="TokenMerchantSettings_Dungeon_Name" xml:space="preserve">
+    <value>Dungeon number</value>
+  </data>
+  <data name="TokenMerchantSettings_Dungeon_Description" xml:space="preserve">
+    <value>The number of the dungeon in the plugin Dungeon, whose tokens the merchant takes and whose items it sells.</value>
+  </data>
+  <data name="TokenMerchantSettings_NpcDesignation_Name" xml:space="preserve">
+    <value>NPC designation</value>
+  </data>
+  <data name="TokenMerchantSettings_NpcDesignation_Description" xml:space="preserve">
+    <value>The designation of the NPC in the game configuration (Monsters).</value>
+  </data>
+  <data name="TokenMerchantSettings_TokenName_Name" xml:space="preserve">
+    <value>Token name</value>
+  </data>
+  <data name="TokenMerchantSettings_SetPiecePrice_Name" xml:space="preserve">
+    <value>Price of a set piece (tokens)</value>
+  </data>
+  <data name="TokenMerchantSettings_WeaponPrice_Name" xml:space="preserve">
+    <value>Price of a weapon or shield (tokens)</value>
+  </data>
+  <data name="TabChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Tab chat command (/tab)</value>
+  </data>
+  <data name="TabChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Shows another tab (character class) of the opened token merchant: /tab 1 to 7.</value>
+  </data>
+  <data name="TokensChatCommandPlugIn_Name" xml:space="preserve">
+    <value>Tokens chat command (/tokens)</value>
+  </data>
+  <data name="TokensChatCommandPlugIn_Description" xml:space="preserve">
+    <value>Shows the dungeon tokens of the character. A game master can add tokens to its character: /tokens [dungeon number] [amount].</value>
   </data>
 </root>

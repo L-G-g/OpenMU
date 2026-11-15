@@ -17,6 +17,12 @@ public class AreaSkillHitAction
     /// <param name="skill">The skill.</param>
     public async ValueTask AttackTargetAsync(Player player, IAttackable target, SkillEntry skill)
     {
+        if (player.IsFlying)
+        {
+            // Flying is movement only, see FlightPlugIn.
+            return;
+        }
+
         if (skill.Skill?.SkillType != SkillType.AreaSkillExplicitHits
             || !target.IsAlive
             || target.IsAtSafezone()

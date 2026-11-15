@@ -10,6 +10,7 @@ using System.Threading;
 using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.PlugIns;
+using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.GameLogic.Views.World;
 using MUnique.OpenMU.Pathfinding;
 using MUnique.OpenMU.Persistence;
@@ -284,7 +285,14 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
     protected virtual Player? GetHitNotificationTarget(IAttacker attacker)
     {
         // A spectre is a player on its own, but it hunts for its owner (see Spectres.SpectrePlayer).
-        return attacker is IPlayerSurrogate surrogate ? surrogate.Owner : attacker as Player;
+        // The raven of a spectre hunts for the spectre, so for the owner of the spectre, too.
+        var target = attacker is IPlayerSurrogate surrogate ? surrogate.Owner : attacker as Player;
+        while (target is IPlayerSurrogate { Owner: { } owner } && !ReferenceEquals(owner, target))
+        {
+            target = owner;
+        }
+
+        return target;
     }
 
     /// <summary>
@@ -362,7 +370,7 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
         var player = this.GetHitNotificationTarget(attacker);
         if (player is { })
         {
-            var experienceShares = player.Party is { } party
+            var experienceShares = player.GetPlayerParty() is { } party
                 ? await party.DistributeExperienceAfterKillAsync(this, player).ConfigureAwait(false)
                 : [new ExperienceShare(player, await player.AddExpAfterKillAsync(this).ConfigureAwait(false))];
             await Spectres.SpectreFeaturePlugIn.ShareExperienceAsync(experienceShares, this).ConfigureAwait(false);
@@ -461,7 +469,7 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
         var shouldDropMoney = killer.GameContext.Configuration.ShouldDropMoney && killer.CurrentMiniGame is null;
         if (!shouldDropMoney)
         {
-            if (killer.Party is { } party)
+            if (killer.GetPlayerParty() is { } party)
             {
                 await party.DistributeMoneyAfterKillAsync(this, killer, shares).ConfigureAwait(false);
             }

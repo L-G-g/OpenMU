@@ -31,6 +31,6 @@ public class DuelFinishedPlugIn : IDuelFinishedPlugIn
     /// <inheritdoc />
     public async ValueTask DuelFinishedAsync(Player winner, Player loser)
     {
-        await this._player.Connection.SendDuelFinishedAsync(winner.Name, loser.Name).ConfigureAwait(false);
+        await this._player.Connection.SendDuelFinishedAsync(winner.DisplayName, loser.DisplayName).ConfigureAwait(false);
     }
 }

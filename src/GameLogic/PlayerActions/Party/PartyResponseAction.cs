@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.GameLogic.PlayerActions.Party;
 
 using MUnique.OpenMU.GameLogic;
+using MUnique.OpenMU.GameLogic.Spectres;
 
 /// <summary>
 /// The party response action.
@@ -37,7 +38,15 @@ public class PartyResponseAction
             return;
         }
 
-        if (player.Party != null)
+        if (player.GetPlayerParty() != null)
+        {
+            player.LastPartyRequester = null;
+            return;
+        }
+
+        // The spectres leave, when the player gets into a party with another player.
+        await SpectreParty.PrepareForPlayerPartyAsync(player, player.LastPartyRequester).ConfigureAwait(false);
+        if (player.LastPartyRequester is null || player.Party != null)
         {
             player.LastPartyRequester = null;
             return;

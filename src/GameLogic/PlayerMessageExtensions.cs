@@ -63,4 +63,14 @@ public static class PlayerMessageExtensions
     {
         return player.InvokeViewPlugInAsync<IShowMessagePlugIn>(p => p.ShowMessageAsync(message, MessageType.BlueNormal));
     }
+
+    /// <summary>
+    /// Easier way to show a golden message in the center of the screen of the player.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="message">The message.</param>
+    public static ValueTask ShowGoldenMessageAsync(this Player player, string message)
+    {
+        return player.InvokeViewPlugInAsync<IShowMessagePlugIn>(p => p.ShowMessageAsync(message, MessageType.GoldenCenter));
+    }
 }
