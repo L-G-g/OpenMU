@@ -696,6 +696,7 @@ carpeta, después de `espectros.dll` (`src/loadcinematicas.cpp`):
 Enabled=1               ; 0: no se carga cinematicas.dll
 Frontal=1               ; escenas de la historia: la cámara se pone de frente al NPC, sin importar desde dónde se habló
 FrontAngle=0            ; grados que se suman al giro del NPC para esa cámara (por si un modelo mira torcido)
+Music=1                 ; 0: los recuerdos de la historia no cambian la música
 ```
 
 El servidor (la misma vista `ShowSpectresViewPlugIn`) marca a los rivales con `C1 06 FD 05 [objeto]` cada
@@ -703,6 +704,28 @@ pocos segundos; un click sobre uno manda `/espectro hablar [objeto]`. El diálog
 `C2 [largo] FD 04 [objeto] [se puede pelear] [clase] [bit 0: con montura]` con tres textos Latin-1 terminados en 0 (nombre, lo
 que dice y por qué no se puede pelear); "Duelo" manda `/espectro duelo [objeto]`. Los demás paquetes `FD`
 siguen a `espectros.dll`.
+
+### Recuerdos de la historia
+
+Un recuerdo es una escena del pasado que el jugador solo mira (servidor: `StoryMemory` y `StorySceneContext`): actores
+del servidor (personajes con su set, como los rivales del refugio) en una instancia de un mapa, la cámara fija y la
+misma caja de diálogo, con el nombre del que habla en cada línea. El primero ("el sacrificio") se ve con la Vidente
+de la entrada de Atlans y pasa en la sala del trono del castillo de Devias.
+
+- `C1 04 FF 32`: telón. La pantalla se va a negro hasta que llega el recuerdo (mientras el servidor lleva al jugador
+  al escenario y aparecen los actores).
+- `C2 [largo] FF 31 [x] [y] [altura] [giro] [inclinación x10] [distancia] [líneas]` y los textos Latin-1 terminados en
+  0: el sonido de fondo, el botón final y, por línea, `[avisar]`, quién habla y qué dice. `x`, `y` es la casilla a la
+  que mira la cámara y `altura` la del piso ahí (short, como el giro, la inclinación y la distancia). Giro 0 mira
+  hacia +Y y 90 hacia +X (la cámara normal del juego tiene -45); inclinación 0 mira hacia abajo y 90 al horizonte (la
+  normal, 48,5).
+- Al mostrar una línea con aviso se manda `/historia linea [número]` (el servidor hace entrar a un actor). El botón
+  final y Esc mandan `/historia salir`, y la pantalla queda en negro hasta que el jugador vuelve a su mapa.
+- El sonido de fondo es un archivo del cliente (el primer recuerdo usa `Data\Sound\iBloodCastle.wav`, la música del
+  Blood Castle) y suena con `PlaySound` en vez de la música del mapa: mientras dura, la tabla de mp3 del juego
+  (`0x00E609F0`) apunta a un nombre que no existe y ese nombre queda como el que suena (`0x00E8C2A8`), así el juego no
+  vuelve a poner la música del mapa; al terminar se repone la tabla y el juego la pone solo. `Music=0` en
+  `[Cinematicas]` lo apaga, y tampoco suena si la música del juego está apagada.
 
 La cámara: `camera3d.dll` llama a `cinematicas.dll` después de calcular la suya en cada cuadro; durante la
 escena la DLL pone la posición (a 230 unidades del espectro, del lado del personaje, a la altura de los
@@ -796,7 +819,7 @@ cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
-cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib winmm.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib

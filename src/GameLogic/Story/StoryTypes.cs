@@ -23,6 +23,11 @@ public enum StoryActor
     /// Sebina the Priestess of Devias.
     /// </summary>
     Sebina,
+
+    /// <summary>
+    /// The seer of Atlans, who shows the memories (see <see cref="StoryMemory"/>). She has no step of the story.
+    /// </summary>
+    Seer,
 }
 
 /// <summary>
@@ -138,6 +143,11 @@ public readonly record struct StoryButton(byte Id, string Label)
     /// The id of the button which starts the duel of a <see cref="StoryStepKind.Duel"/> step.
     /// </summary>
     public const byte DuelId = 2;
+
+    /// <summary>
+    /// The id of the button of the seer which starts a memory (see <see cref="StoryMemory"/>).
+    /// </summary>
+    public const byte MemoryId = 3;
 }
 
 /// <summary>

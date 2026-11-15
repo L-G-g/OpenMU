@@ -20,6 +20,18 @@
 //     pasan con "Continuar" (o un click en la caja); los botones salen en la ultima. Cada boton manda
 //     /historia [id] [objeto]; el id 0 (y Escape) solo cierra la escena. La camara se pone de frente al NPC. Los demas paquetes FF siguen a quests.dll y las otras.
 //
+// Los recuerdos de la historia (OpenMU, StorySceneContext): una escena del pasado que el jugador solo mira, actuada por
+// personajes del servidor en una instancia de un mapa, con la camara fija y la misma caja de dialogo:
+//   - C1 04 FF 32: telon. La pantalla se va a negro y queda asi hasta que llega el recuerdo (el servidor lleva al
+//     jugador al escenario mientras tanto).
+//   - C2 [largo] FF 31 [x] [y] (la casilla a la que mira la camara) [altura del piso] [giro] [inclinacion en decimas
+//     de grado] [distancia] (cuatro shorts little endian) [lineas] y los textos (Latin-1, cada uno termina en 0): el
+//     sonido de fondo (un .wav del cliente, o vacio), el texto del boton final y, por cada linea, [avisar, 0 o 1], el
+//     nombre del que habla y lo que dice. Al mostrar una linea con aviso se manda /historia linea [numero]: el servidor
+//     hace entrar a un actor. El boton final y Escape mandan /historia salir; la pantalla queda en negro hasta que el
+//     jugador vuelve a su mapa.
+//   - El sonido de fondo reemplaza a la musica del mapa mientras dura el recuerdo (ver StartMusic).
+//
 // Como funciona:
 //   - El reparto de paquetes (0x0065FD79), el dibujo despues de la interfaz (0x004D9CCC), los eventos del mouse de las
 //     ventanas (0x00860998) y el "mouse sobre la interfaz" (0x00860910) se encadenan a lo que ya haya (espectros.dll,
@@ -35,6 +47,7 @@
 #include "../ui/peroniaui.h"
 
 #include <GL/gl.h>
+#include <mmsystem.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,6 +109,21 @@ namespace
     constexpr DWORD RivalMarkDuration = 10000; // la marca se repite cada 4 segundos
     constexpr int CodeInterface = 0xFF;        // interfaz de PeroniaMU
     constexpr BYTE SubCodeStoryScene = 0x30;
+    constexpr BYTE SubCodeMemory = 0x31, SubCodeCurtain = 0x32;
+    constexpr DWORD CurtainSceneTimeout = 15000; // ms de telon esperando el recuerdo
+    constexpr DWORD CurtainExitTimeout = 8000;   // ms de telon esperando volver al mapa
+    constexpr float MemoryLookHeight = 60.0f;    // la camara del recuerdo mira a esta altura sobre el piso
+
+    // --- Musica (main.exe 1.04d) ---
+    // El juego llama en cada cuadro a PlayMp3(tabla[mapa]) (0x004CF050), que no hace nada si ese nombre ya es el que
+    // suena (0x00E8C2A8). Durante un recuerdo con sonido, toda la tabla apunta a un nombre que no existe y ese nombre
+    // queda como "el que suena": la musica del mapa se calla sin tocar el codigo. Al reponer la tabla, el juego vuelve
+    // a poner la musica del mapa por su cuenta.
+    char** const Mp3Table = reinterpret_cast<char**>(0x00E609F0);
+    constexpr int Mp3Count = 47;
+    char* const CurrentMp3 = reinterpret_cast<char*>(0x00E8C2A8);
+    int* const MusicEnabled = reinterpret_cast<int*>(0x00E8C26C);
+    char g_silentMp3[] = "data\\music\\_recuerdo_.mp3";
     constexpr size_t MaxButtons = 3;
 
     // --- Escena ---
@@ -128,6 +156,7 @@ namespace
         Showing,   // camara en el espectro, la imagen vuelve y se ve la caja
         FadeOut,   // eligio: pantalla a negro, camara en el espectro
         Returning, // camara normal, la imagen vuelve
+        Curtain,   // recuerdo: pantalla en negro mientras el servidor mueve al jugador
     };
 
     LogFunction g_log = nullptr;
@@ -168,6 +197,18 @@ namespace
     bool g_frontal = false;           // escena de la historia: la camara se pone de frente al NPC, este donde este el jugador
     bool g_frontCaptured = false;
     float g_frontAngle = 0.0f;        // el giro del NPC cuando empezo la escena
+    bool g_staged = false;            // recuerdo: camara fija, cada pagina con su titulo
+    std::vector<std::string> g_pageTitles;
+    std::vector<bool> g_pageNotify;   // paginas que se avisan al servidor
+    size_t g_notifiedPages = 0;       // paginas ya avisadas
+    float g_stageTarget[3] = {};      // a donde mira la camara del recuerdo
+    float g_stageYaw = 0.0f, g_stageTilt = 48.5f, g_stageDistance = 1000.0f;
+    std::string g_stageSound;
+    bool g_curtainForScene = false;   // el telon espera el recuerdo (si no, espera el cambio de mapa)
+    int g_curtainMap = -1;
+    bool g_musicReplaced = false;
+    char* g_savedMp3[Mp3Count] = {};
+    bool g_musicOption = true;        // [Cinematicas] Music
     bool g_frontalEnabled = true;     // [Cinematicas] Frontal
     float g_frontOffset = 0.0f;       // [Cinematicas] FrontAngle: grados que se suman al giro del NPC
 
@@ -359,6 +400,61 @@ namespace
         }
     }
 
+    // --- Musica del recuerdo ---
+    void StopMusic()
+    {
+        if (!g_musicReplaced)
+        {
+            return;
+        }
+
+        g_musicReplaced = false;
+        PlaySoundA(nullptr, nullptr, 0);
+        for (int i = 0; i < Mp3Count; i++)
+        {
+            if (g_savedMp3[i] != nullptr)
+            {
+                Mp3Table[i] = g_savedMp3[i];
+                g_savedMp3[i] = nullptr;
+            }
+        }
+    }
+
+    void StartMusic()
+    {
+        if (g_musicReplaced || g_stageSound.empty())
+        {
+            return;
+        }
+
+        if (!g_musicOption || *MusicEnabled == 0 || GetFileAttributesA(g_stageSound.c_str()) == INVALID_FILE_ATTRIBUTES)
+        {
+            g_stageSound.clear(); // sin musica en el juego, o el cliente no tiene el archivo
+            return;
+        }
+
+        g_musicReplaced = true;
+        for (int i = 0; i < Mp3Count; i++)
+        {
+            g_savedMp3[i] = Mp3Table[i];
+            if (Mp3Table[i] != nullptr)
+            {
+                Mp3Table[i] = g_silentMp3;
+            }
+        }
+
+        strcpy_s(CurrentMp3, sizeof(g_silentMp3), g_silentMp3);
+        const HMODULE audio = GetModuleHandleA("wzAudio.dll");
+        const FARPROC stop = audio != nullptr ? GetProcAddress(audio, "wzAudioStop") : nullptr;
+        if (stop != nullptr)
+        {
+            reinterpret_cast<void(__cdecl*)()>(stop)();
+        }
+
+        PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
+        g_log("Cinematicas: sonido del recuerdo %s.", g_stageSound.c_str());
+    }
+
     void EndSceneNow()
     {
         if (g_phase != Phase::Idle)
@@ -366,6 +462,8 @@ namespace
             g_log("Cinematicas: fin de la escena.");
         }
 
+        StopMusic();
+        g_staged = false;
         SetPhase(Phase::Idle);
         g_loggedCamera = false;
     }
@@ -375,6 +473,21 @@ namespace
         g_page = page;
         Wrap(g_page < g_pages.size() ? g_pages[g_page].c_str() : "");
         g_revealed = 0.0f;
+        if (g_staged && g_page < g_pageTitles.size())
+        {
+            g_title = g_pageTitles[g_page];
+
+            // Cada aviso una sola vez, en orden.
+            for (; g_notifiedPages <= g_page; g_notifiedPages++)
+            {
+                if (g_notifiedPages < g_pageNotify.size() && g_pageNotify[g_notifiedPages])
+                {
+                    char command[32];
+                    sprintf_s(command, "/historia linea %u", static_cast<unsigned>(g_notifiedPages));
+                    QueueChat(command);
+                }
+            }
+        }
     }
 
     void Choose(int button)
@@ -402,9 +515,9 @@ namespace
         ShowPage(0);
         g_sceneMap = *CurrentMap;
         g_sceneStart = GetTickCount();
-        if (CameraOnRival())
+        if (CameraOnRival() || g_phase == Phase::Curtain)
         {
-            SetPhase(Phase::Showing); // otro dialogo durante la escena: sin fundido
+            SetPhase(Phase::Showing); // otro dialogo durante la escena, o el telon ya esta en negro: sin fundido
         }
         else
         {
@@ -421,6 +534,8 @@ namespace
 
         const WORD id = static_cast<WORD>(((packet[5] << 8) | packet[6]) & IdMask);
         const bool canDuel = packet[7] != 0;
+        StopMusic();
+        g_staged = false;
         g_frontal = false;
         g_closeCommand.clear();
         g_rivalMounted = (packet[9] & 1) != 0;
@@ -540,6 +655,8 @@ namespace
             g_frontCaptured = false; // otra escena del mismo NPC sin salir de la camara: no se mueve
         }
 
+        StopMusic();
+        g_staged = false;
         g_frontal = true;
         g_closeCommand = closeCommand;
         g_title = title;
@@ -551,6 +668,79 @@ namespace
         StartScene(id);
         g_log("Cinematicas: escena de %s (objeto %d, %d paginas, %d botones).", g_title.c_str(), id, pageCount,
             static_cast<int>(g_buttons.size()));
+    }
+
+    // C1 04 FF 32: la pantalla se va a negro hasta que llega el recuerdo.
+    void OnCurtain()
+    {
+        g_curtainForScene = true;
+        g_curtainMap = *CurrentMap;
+        SetPhase(Phase::Curtain);
+        g_log("Cinematicas: telon.");
+    }
+
+    // C2 [largo] FF 31: un recuerdo (ver arriba).
+    void OnMemory(const BYTE* packet, int size)
+    {
+        if (size < 18)
+        {
+            return;
+        }
+
+        auto readShort = [packet](int offset)
+        {
+            return static_cast<float>(static_cast<short>(packet[offset] | (packet[offset + 1] << 8)));
+        };
+        const int lineCount = packet[15];
+        int offset = 16;
+        std::string sound, endLabel, title, text;
+        std::vector<std::string> titles, pages;
+        std::vector<bool> notify;
+        if (lineCount < 1 || !ReadText(packet, size, offset, sound) || !ReadText(packet, size, offset, endLabel))
+        {
+            return;
+        }
+
+        for (int i = 0; i < lineCount; i++)
+        {
+            if (offset >= size)
+            {
+                return;
+            }
+
+            const bool tell = packet[offset++] != 0;
+            if (!ReadText(packet, size, offset, title) || !ReadText(packet, size, offset, text))
+            {
+                return;
+            }
+
+            notify.push_back(tell);
+            titles.push_back(title);
+            pages.push_back(text);
+        }
+
+        StopMusic();
+        g_stageTarget[0] = packet[5] * 100.0f + 50.0f;
+        g_stageTarget[1] = packet[6] * 100.0f + 50.0f;
+        g_stageTarget[2] = readShort(7) + MemoryLookHeight;
+        g_stageYaw = readShort(9);
+        g_stageTilt = readShort(11) / 10.0f;
+        g_stageDistance = readShort(13);
+        g_stageSound = sound.find("..") == std::string::npos && sound.find(':') == std::string::npos ? sound : "";
+        g_staged = true;
+        g_frontal = false;
+        g_rivalMounted = false;
+        g_turnedRival = false;
+        g_closeCommand = "/historia salir";
+        g_reason.clear();
+        g_pageTitles = titles;
+        g_pageNotify = notify;
+        g_notifiedPages = 0;
+        g_pages = pages;
+        g_buttons.assign(1, SceneButton{ endLabel.empty() ? "Volver" : endLabel, g_closeCommand });
+        StartScene(0);
+        g_log("Cinematicas: recuerdo de %d lineas, camara en (%.0f, %.0f) giro %.0f.", lineCount, g_stageTarget[0],
+            g_stageTarget[1], g_stageYaw);
     }
 
     void OnSpectresPacket(const BYTE* packet, int size)
@@ -582,6 +772,18 @@ namespace
             OnStoryScene(packet, size);
             return 1;
         }
+        else if (code == CodeInterface && packet != nullptr && size >= 5 && packet[0] == 0xC2
+            && packet[4] == SubCodeMemory)
+        {
+            OnMemory(packet, size);
+            return 1;
+        }
+        else if (code == CodeInterface && packet != nullptr && size >= 4 && packet[0] == 0xC1
+            && packet[3] == SubCodeCurtain)
+        {
+            OnCurtain();
+            return 1;
+        }
 
         return g_nextDispatch(code, packet, size, encrypted);
     }
@@ -591,7 +793,7 @@ namespace
     {
         const DWORD now = GetTickCount();
         const DWORD elapsed = now - g_phaseStart;
-        if (g_phase != Phase::Idle && g_phase != Phase::Waiting
+        if (g_phase != Phase::Idle && g_phase != Phase::Waiting && g_phase != Phase::Curtain
             && (*CurrentMap != g_sceneMap || now - g_sceneStart > MaxSceneDuration || *HeroPointer == 0))
         {
             EndSceneNow();
@@ -610,13 +812,29 @@ namespace
         case Phase::FadeIn:
             if (elapsed >= FadeDuration)
             {
-                SetPhase(FindCharacter(g_rival) != nullptr ? Phase::Showing : Phase::Returning);
+                SetPhase(g_staged || FindCharacter(g_rival) != nullptr ? Phase::Showing : Phase::Returning);
             }
 
             break;
         case Phase::Showing:
-            if (FindCharacter(g_rival) == nullptr)
+            if (g_staged)
             {
+                StartMusic();
+            }
+            else if (FindCharacter(g_rival) == nullptr)
+            {
+                SetPhase(Phase::Returning);
+            }
+
+            break;
+        case Phase::Curtain:
+            // El recuerdo lo levanta (StartScene); la vuelta, el cambio de mapa. Si no llegan, se levanta solo.
+            if (elapsed > (g_curtainForScene ? CurtainSceneTimeout : CurtainExitTimeout)
+                || (!g_curtainForScene && *CurrentMap != g_curtainMap))
+            {
+                g_staged = false;
+                g_sceneMap = *CurrentMap;
+                g_sceneStart = now;
                 SetPhase(Phase::Returning);
             }
 
@@ -628,6 +846,16 @@ namespace
                 {
                     QueueChat(g_chosenCommand.c_str());
                     g_chosenCommand.clear();
+                }
+
+                if (g_staged)
+                {
+                    // En negro hasta que el servidor devuelve al jugador a su mapa.
+                    StopMusic();
+                    g_curtainForScene = false;
+                    g_curtainMap = *CurrentMap;
+                    SetPhase(Phase::Curtain);
+                    break;
                 }
 
                 SetPhase(Phase::Returning);
@@ -659,6 +887,8 @@ namespace
         case Phase::Showing:
         case Phase::Returning:
             return 1.0f - clamped;
+        case Phase::Curtain:
+            return g_curtainForScene ? clamped : 1.0f;
         default:
             return 0.0f;
         }
@@ -721,6 +951,20 @@ namespace
     // mira al horizonte; con la inclinacion -90 el giro Y mira hacia (sin Y, cos Y).
     bool SetCamera(float* position, float* angle)
     {
+        if (g_staged)
+        {
+            // Fija: mira a un punto del mapa como la camara del juego mira al personaje, pero girada.
+            const float yaw = g_stageYaw * 3.14159265f / 180.0f;
+            const float tilt = g_stageTilt * 3.14159265f / 180.0f;
+            position[0] = g_stageTarget[0] - sinf(yaw) * sinf(tilt) * g_stageDistance;
+            position[1] = g_stageTarget[1] - cosf(yaw) * sinf(tilt) * g_stageDistance;
+            position[2] = g_stageTarget[2] + cosf(tilt) * g_stageDistance;
+            angle[0] = -g_stageTilt;
+            angle[1] = 0.0f;
+            angle[2] = g_stageYaw;
+            return *HeroPointer != 0;
+        }
+
         const DWORD hero = *HeroPointer;
         BYTE* rival = FindCharacter(g_rival);
         if (hero == 0 || rival == nullptr)
@@ -1214,6 +1458,7 @@ extern "C" __declspec(dllexport) bool StartCinematicas(const CinematicasHost* ho
     g_log = host->log;
     g_frontalEnabled = GetPrivateProfileIntA("Cinematicas", "Frontal", 1, host->iniPath) != 0;
     g_frontOffset = static_cast<float>(GetPrivateProfileIntA("Cinematicas", "FrontAngle", 0, host->iniPath));
+    g_musicOption = GetPrivateProfileIntA("Cinematicas", "Music", 1, host->iniPath) != 0;
     const DWORD dispatch = CallTarget(DispatchCallSite);
     const DWORD draw = CallTarget(DrawCallSite);
     const DWORD mouse = CallTarget(MouseCallSite);
@@ -1251,6 +1496,10 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
     if (reason == DLL_PROCESS_ATTACH)
     {
         DisableThreadLibraryCalls(module);
+    }
+    else if (reason == DLL_PROCESS_DETACH)
+    {
+        PlaySoundA(nullptr, nullptr, 0);
     }
 
     return TRUE;

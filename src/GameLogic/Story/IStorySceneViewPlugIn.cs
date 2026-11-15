@@ -19,4 +19,18 @@ public interface IStorySceneViewPlugIn : IViewPlugIn
     /// <param name="scene">The scene.</param>
     /// <returns>The task.</returns>
     ValueTask ShowSceneAsync(NonPlayerCharacter npc, StoryScene scene);
+
+    /// <summary>
+    /// Makes the screen black until the memory is shown (or the map changes back), so that the player doesn't see how the
+    /// stage is set up.
+    /// </summary>
+    /// <returns>The task.</returns>
+    ValueTask ShowCurtainAsync();
+
+    /// <summary>
+    /// Shows a memory: the fixed camera looks at the stage, and the lines of the actors are shown one after another.
+    /// </summary>
+    /// <param name="memory">The memory.</param>
+    /// <returns>The task.</returns>
+    ValueTask ShowMemoryAsync(StoryMemory memory);
 }
