@@ -133,5 +133,5 @@ public sealed record StoryMemory(
             new(Mephis, "Estoy listo para el sacrificio."),
         ],
         "Volver a Atlans",
-        "Data\\Sound\\iBloodCastle.wav"); // the music of the Blood Castle
+        "Data\\Sound\\RecuerdoSacrificio.wav"); // a file of the PeroniaMU client, not of the original one
 }

@@ -721,8 +721,8 @@ de la entrada de Atlans y pasa en la sala del trono del castillo de Devias.
   normal, 48,5).
 - Al mostrar una línea con aviso se manda `/historia linea [número]` (el servidor hace entrar a un actor). El botón
   final y Esc mandan `/historia salir`, y la pantalla queda en negro hasta que el jugador vuelve a su mapa.
-- El sonido de fondo es un archivo del cliente (el primer recuerdo usa `Data\Sound\iBloodCastle.wav`, la música del
-  Blood Castle) y suena con `PlaySound` en vez de la música del mapa: mientras dura, la tabla de mp3 del juego
+- El sonido de fondo es un archivo del cliente (un .wav PCM; el primer recuerdo usa `Data\Sound\RecuerdoSacrificio.wav`,
+  que no es del cliente original: va con el cliente de PeroniaMU y sin él la escena queda sin música) y suena con `PlaySound` en vez de la música del mapa: mientras dura, la tabla de mp3 del juego
   (`0x00E609F0`) apunta a un nombre que no existe y ese nombre queda como el que suena (`0x00E8C2A8`), así el juego no
   vuelve a poner la música del mapa; al terminar se repone la tabla y el juego la pone solo. `Music=0` en
   `[Cinematicas]` lo apaga. Suena aunque la música del juego esté apagada.
