@@ -102,6 +102,9 @@ public sealed class MiniGameManager : IMiniGameManager
                 case MiniGameType.SpectreHub:
                     miniGameContext = new SpectreHubContext(miniGameKey, miniGameDefinition, this._gameContext, this._mapInitializer);
                     break;
+                case MiniGameType.StoryScene:
+                    miniGameContext = new Story.StorySceneContext(miniGameKey, miniGameDefinition, this._gameContext, this._mapInitializer);
+                    break;
                 default:
                     miniGameContext = new MiniGameContext(miniGameKey, miniGameDefinition, this._gameContext, this._mapInitializer);
                     break;

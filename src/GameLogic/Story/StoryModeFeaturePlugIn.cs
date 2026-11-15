@@ -9,6 +9,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using MUnique.OpenMU.DataModel.Configuration.Quests;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.MiniGames;
+using MUnique.OpenMU.GameLogic.PlayerActions.MiniGames;
 using MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.Offline;
@@ -98,6 +100,11 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         if (npc.Designation.ValueInNeutralLanguage == StoryScript.StrangerName)
         {
             return StoryActor.Stranger;
+        }
+
+        if (npc.Designation.ValueInNeutralLanguage == StoryMemory.SeerName)
+        {
+            return StoryActor.Seer;
         }
 
         return npc.Number switch
@@ -266,10 +273,14 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         }
 
         state.LastTitlesUtc = now;
-        var name = GetActorName(StoryActor.Stranger, StoryProgress.GetFinishedStep(character), false);
-        foreach (var npc in npcs.Where(n => GetActor(n.Definition) == StoryActor.Stranger))
+        var finishedStep = StoryProgress.GetFinishedStep(character);
+        foreach (var npc in npcs)
         {
-            await player.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(npc, name)).ConfigureAwait(false);
+            if (GetActor(npc.Definition) is { } actor and (StoryActor.Stranger or StoryActor.Seer))
+            {
+                var name = GetActorName(actor, finishedStep, false);
+                await player.InvokeViewPlugInAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(npc, name)).ConfigureAwait(false);
+            }
         }
     }
 
@@ -323,8 +334,22 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         if (GetActor(npc.Definition) is not { } actor
             || !IsStoryPlayer(player)
             || npc.CurrentMap != player.CurrentMap
-            || player.GetDistanceTo(npc) > this.CurrentConfiguration.InteractionRange
-            || this.GetNextStep(player) is not { } step
+            || player.GetDistanceTo(npc) > this.CurrentConfiguration.InteractionRange)
+        {
+            return;
+        }
+
+        if (actor == StoryActor.Seer)
+        {
+            if (buttonId == StoryButton.MemoryId)
+            {
+                await this.StartMemoryAsync(player, npc, StoryMemory.Sacrifice).ConfigureAwait(false);
+            }
+
+            return;
+        }
+
+        if (this.GetNextStep(player) is not { } step
             || step.Actor != actor
             || this.GetMissingRequirement(player, step) is not null)
         {
@@ -442,6 +467,7 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     {
         StoryActor.Lumen => "Lumen",
         StoryActor.Sebina => "Sebina",
+        StoryActor.Seer => StoryMemory.SeerName,
         _ when finishedStep >= StoryScript.Dungeon => StoryScript.StrangerRealName,
         _ => withArticle ? "el " + StoryScript.StrangerName : StoryScript.StrangerName,
     };
@@ -475,6 +501,11 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     {
         var finishedStep = StoryProgress.GetFinishedStep(character);
         var title = GetActorName(actor, finishedStep, false);
+        if (actor == StoryActor.Seer)
+        {
+            return new StoryScene(title, StoryScript.Paginate(StoryMemory.SeerText), [new(StoryButton.MemoryId, "Ver el recuerdo"), new(StoryButton.CloseId, "Más tarde")], null);
+        }
+
         if (step is null || step.Actor != actor)
         {
             return new StoryScene(title, StoryScript.Paginate([StoryScript.GetIdleText(actor, finishedStep)]), [new(StoryButton.CloseId, "Cerrar")], null);
@@ -560,6 +591,56 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         {
             player.Logger.LogWarning("Story: the duel of {Player} against the stranger couldn't start.", player);
         }
+    }
+
+    /// <summary>
+    /// Starts a memory: the player goes to the stage of the memory (<see cref="StorySceneContext"/>), and comes back to
+    /// the NPC afterwards.
+    /// </summary>
+    private async ValueTask StartMemoryAsync(Player player, NonPlayerCharacter npc, StoryMemory memory)
+    {
+        var definition = player.GameContext.Configuration.MiniGameDefinitions.FirstOrDefault(d => d.Type == MiniGameType.StoryScene);
+        if (definition?.Entrance is not { } entrance
+            || player.CurrentMiniGame is not null || player.DuelRoom is not null || !player.IsAlive
+            || player.PlayerState.CurrentState != PlayerState.EnteredWorld
+            || player.CurrentMap?.Definition is not { } returnMap)
+        {
+            await player.ShowBlueMessageAsync("Ahora no podes ver el recuerdo.").ConfigureAwait(false);
+            return;
+        }
+
+        var returnPosition = player.Position;
+        var returnGate = new ExitGate
+        {
+            Map = returnMap,
+            X1 = returnPosition.X,
+            X2 = returnPosition.X,
+            Y1 = returnPosition.Y,
+            Y2 = returnPosition.Y,
+            Direction = player.Rotation,
+        };
+
+        // Nobody else on the stage: the spectres of the player stay behind.
+        await SpectreFeaturePlugIn.DismissAllAsync(player).ConfigureAwait(false);
+        var game = await player.GameContext.MiniGames.GetOrCreateAsync(definition, player).ConfigureAwait(false);
+        if (game is not StorySceneContext stage)
+        {
+            return;
+        }
+
+        stage.Prepare(memory, owner => owner.WarpToAsync(returnGate));
+        var result = await game.TryEnterAsync(player).ConfigureAwait(false);
+        if (result != EnterResult.Success)
+        {
+            player.Logger.LogWarning("Story: {Player} couldn't enter the stage of a memory: {Result}.", player, result);
+            await player.ShowBlueMessageAsync("Ahora no podes ver el recuerdo.").ConfigureAwait(false);
+            return;
+        }
+
+        // The stage is a map with monsters around; the player only watches.
+        player.InvulnerableUntilUtc = DateTime.UtcNow.Add(definition.GameDuration + TimeSpan.FromMinutes(1));
+        await player.InvokeViewPlugInAsync<IStorySceneViewPlugIn>(p => p.ShowCurtainAsync()).ConfigureAwait(false);
+        await player.WarpToAsync(entrance).ConfigureAwait(false);
     }
 
     private static async ValueTask ReturnToStrangerAsync(Player player, Pathfinding.Point strangerPosition)

@@ -58,4 +58,9 @@ public enum MiniGameType
     /// The spectre hub: an instance for one player, where the player duels the abandoned spectres to unlock and evolve them.
     /// </summary>
     SpectreHub,
+
+    /// <summary>
+    /// A scene of the story mode: an instance for one player, in which actors play a memory of the past.
+    /// </summary>
+    StoryScene,
 }

@@ -19,7 +19,7 @@ using MUnique.OpenMU.PlugIns;
 /// </summary>
 [Guid("2F8C5A17-6D3E-4B91-A7C4-5E9B1D3F8A62")]
 [PlugIn]
-[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>. Game masters: /historia paso <number>, /historia dungeon, /historia resets <number>, /historia info.")]
+[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>, /historia linea <number> and /historia salir (in a memory). Game masters: /historia paso <number>, /historia dungeon, /historia resets <number>, /historia info.")]
 [ChatCommandHelp(Command, CharacterStatus.Normal)]
 public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
 {
@@ -77,6 +77,12 @@ public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
                 return;
             case "info":
                 await ShowInfoAsync(player, story).ConfigureAwait(false);
+                return;
+            case "linea" when arguments.Count == 2 && int.TryParse(arguments[1], out var line) && player.CurrentMiniGame is StorySceneContext stage:
+                await stage.OnLineShownAsync(player, line).ConfigureAwait(false);
+                return;
+            case "salir" when player.CurrentMiniGame is StorySceneContext leftStage:
+                await leftStage.LeaveAsync(player).ConfigureAwait(false);
                 return;
             case "hablar" when arguments.Count == 2 && ushort.TryParse(arguments[1], out var talkId) && FindActor(player, talkId) is { } talkNpc:
                 await story.TryShowSceneAsync(player, talkNpc, false).ConfigureAwait(false);

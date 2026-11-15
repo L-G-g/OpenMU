@@ -171,6 +171,14 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
     internal virtual bool SpawnsMonstersOfMap => true;
 
     /// <summary>
+    /// Gets a value indicating whether the spawns of the event of the map definition appear when the game starts
+    /// (<see cref="SpawnTrigger.OnceAtEventStart"/> and <see cref="SpawnTrigger.AutomaticDuringEvent"/>). A game which
+    /// shares its map definition with another event doesn't want them, e.g. a stage of the story in Devias, whose event
+    /// spawns are the monsters of the dungeon of Devias.
+    /// </summary>
+    internal virtual bool SpawnsMonstersOfEvent => true;
+
+    /// <summary>
     /// Gets a value indicating whether entering is allowed while the game is already
     /// running. Specific games override this to let players (re-)join mid-event.
     /// </summary>
@@ -810,7 +818,11 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
         var players = await this._players.GetSnapshotAsync().ConfigureAwait(false);
 
         await this.OnGameStartAsync(players).ConfigureAwait(false);
-        await this._mapInitializer.InitializeNpcsOnEventStartAsync(this.Map, this).ConfigureAwait(false);
+        if (this.SpawnsMonstersOfEvent)
+        {
+            await this._mapInitializer.InitializeNpcsOnEventStartAsync(this.Map, this).ConfigureAwait(false);
+        }
+
         _ = Task.Run(() => this._spawnWaves.RunAsync(this.GameEndedToken), this.GameEndedToken);
         await this.NotifyPlugInsAsync<IMiniGameStartedPlugIn>(p => p.MiniGameStartedAsync(this, players)).ConfigureAwait(false);
     }
