@@ -454,4 +454,10 @@
   <data name="DungeonTokenMerchantsUpdatePlugIn_Description" xml:space="preserve">
     <value>Completing a dungeon gives each player a token of the dungeon (two in the extreme version): Gelid Token in Devias, Arid Token in Tarkan and Ancient Token in Kanturu. Zienna in Devias and two new merchants next to the dungeon guards of Tarkan and Kanturu Ruins sell the best armor set, shield and weapons of their dungeon for each character class for these tokens. The sold items are usual excellent items with luck and the excellent options of a dropped one. Adds the attributes of the tokens and the two merchants. The prices and rules can be changed in the plugin 'Dungeon token merchants'.</value>
   </data>
+  <data name="EventReworkUpdatePlugIn_Name" xml:space="preserve">
+    <value>Event Rework</value>
+  </data>
+  <data name="EventReworkUpdatePlugIn_Description" xml:space="preserve">
+    <value>Activates the plugin 'Event rework': Devil Square, Blood Castle, Chaos Castle and Kalima by resets (one entrance per event), Devil Square with experience rising from 1.5x to 3x and without drops, Blood Castle with an item for the player who delivers the weapon, Chaos Castle without experience and with a jewel per kill. Devil Square, Blood Castle and Chaos Castle follow each other in a cycle of 65 minutes (Devil Square, 10 minutes later Blood Castle, 10 minutes later Chaos Castle, then 45 minutes until Devil Square), announced in golden messages every minute from 5 minutes before each opening. Activates the chat command /eventos of the event board (key H).</value>
+  </data>
 </root>

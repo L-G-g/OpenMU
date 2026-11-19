@@ -314,6 +314,27 @@ struct QuestsHost
 using StartQuestsFunction = bool (*)(const QuestsHost* host);
 constexpr const char* StartQuestsName = "StartQuests";
 
+// --- Board de los proximos eventos (eventboard.dll) ---
+// camera3d.dll carga eventboard.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([EventBoard]
+// Enabled=0), y llama a su funcion exportada StartEventBoard, despues de tabmap.dll. eventboard.dll encadena el
+// reparto de paquetes, el dibujo despues de la interfaz y el mouse de las ventanas a lo que haya, y recibe el paso de
+// logica de camera3d.dll para su tecla (H).
+
+constexpr int EventBoardHostVersion = 1;
+
+// Lo que camera3d.dll le ofrece a eventboard.dll.
+struct EventBoardHost
+{
+    int version;
+    LogFunction log;
+    const char* iniPath; // camera3d.ini, para leer las secciones [EventBoard] y [PeroniaUi]
+    void (*setKeyTick)(KeyTickCallback callback);
+};
+
+// bool StartEventBoard(const EventBoardHost* host): se llama una vez, despues de StartTabMap.
+using StartEventBoardFunction = bool (*)(const EventBoardHost* host);
+constexpr const char* StartEventBoardName = "StartEventBoard";
+
 // --- Puntos libres de mas de 65535 en la ventana del personaje (points.dll) ---
 // camera3d.dll carga points.dll si el archivo esta junto a ella y camera3d.ini no la desactiva ([Points]
 // Enabled=0), y llama a su funcion exportada StartPoints, despues de tabmap.dll. points.dll encadena la

@@ -1078,5 +1078,12 @@ namespace MUnique.OpenMU.Persistence.Initialization.Properties {
 
         /// <summary>Gets the localized DungeonTokenMerchantsUpdatePlugIn_Description text.</summary>
         public static string DungeonTokenMerchantsUpdatePlugIn_Description => ResourceManager.GetString("DungeonTokenMerchantsUpdatePlugIn_Description", resourceCulture)!;
+    
+
+        /// <summary>Gets the localized EventReworkUpdatePlugIn_Name text.</summary>
+        public static string EventReworkUpdatePlugIn_Name => ResourceManager.GetString("EventReworkUpdatePlugIn_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized EventReworkUpdatePlugIn_Description text.</summary>
+        public static string EventReworkUpdatePlugIn_Description => ResourceManager.GetString("EventReworkUpdatePlugIn_Description", resourceCulture)!;
     }
 }

@@ -1,0 +1,57 @@
+// <copyright file="EventReworkUpdatePlugIn.cs" company="MUnique">
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+// </copyright>
+
+namespace MUnique.OpenMU.Persistence.Initialization.Updates;
+
+using System.Runtime.InteropServices;
+using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
+using MUnique.OpenMU.PlugIns;
+
+/// <summary>
+/// Activates the rework of the events, see <see cref="EventRework"/>.
+/// </summary>
+/// <remarks>
+/// It's optional, because it changes how the game plays instead of correcting data.
+/// </remarks>
+[PlugIn]
+[Display(Name = nameof(PlugInResources.EventReworkUpdatePlugIn_Name), Description = nameof(PlugInResources.EventReworkUpdatePlugIn_Description), ResourceType = typeof(PlugInResources))]
+[Guid("E1B5C7A3-8F24-4D69-B3E0-6A9D2F4C7B58")]
+public class EventReworkUpdatePlugIn : UpdatePlugInBase
+{
+    /// <summary>
+    /// The plugin name.
+    /// </summary>
+    internal const string PlugInName = "Event Rework";
+
+    /// <summary>
+    /// The plugin description.
+    /// </summary>
+    internal const string PlugInDescription = "Activates the plugin 'Event rework': Devil Square, Blood Castle, Chaos Castle and Kalima by resets (one entrance per event), Devil Square with experience rising from 1.5x to 3x and without drops, Blood Castle with an item for the player who delivers the weapon, Chaos Castle without experience and with a jewel per kill. Devil Square, Blood Castle and Chaos Castle follow each other in a cycle of 65 minutes (Devil Square, 10 minutes later Blood Castle, 10 minutes later Chaos Castle, then 45 minutes until Devil Square), announced in golden messages every minute from 5 minutes before each opening. Activates the chat command /eventos of the event board (key H).";
+
+    /// <inheritdoc />
+    public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;
+
+    /// <inheritdoc />
+    public override string Name => PlugInName;
+
+    /// <inheritdoc />
+    public override string Description => PlugInDescription;
+
+    /// <inheritdoc />
+    public override bool IsMandatory => false;
+
+    /// <inheritdoc />
+    /// <remarks>The rewards of Blood Castle use the drop maps of the dungeons.</remarks>
+    public override IEnumerable<UpdateDependency> DependsOn => [typeof(MoreDungeonsUpdatePlugIn).GUID];
+
+    /// <inheritdoc />
+    public override DateTime CreatedAt => new(2026, 11, 19, 12, 0, 0, DateTimeKind.Utc);
+
+    /// <inheritdoc />
+    protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
+    {
+        EventRework.Apply(context, gameConfiguration);
+        return ValueTask.CompletedTask;
+    }
+}
