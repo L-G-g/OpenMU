@@ -1,4 +1,4 @@
-// <copyright file="EventReworkUpdatePlugIn.cs" company="MUnique">
+﻿// <copyright file="EventReworkUpdatePlugIn.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -27,7 +27,7 @@ public class EventReworkUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "Activates the plugin 'Event rework': Devil Square, Blood Castle, Chaos Castle and Kalima by resets (one entrance per event), Devil Square with experience rising from 1.5x to 3x and without drops, Blood Castle with an item for the player who delivers the weapon, Chaos Castle without experience and with a jewel per kill. Devil Square, Blood Castle and Chaos Castle follow each other in a cycle of 65 minutes (Devil Square, 10 minutes later Blood Castle, 10 minutes later Chaos Castle, then 45 minutes until Devil Square), announced in golden messages every minute from 5 minutes before each opening. Activates the chat command /eventos of the event board (key H).";
+    internal const string PlugInDescription = "Activates the plugin 'Event rework': Devil Square, Blood Castle, Chaos Castle and Kalima by resets (one entrance per event), Devil Square with experience rising from 1.5x to 3x and without drops, Blood Castle with an item for the player who delivers the weapon, Chaos Castle without experience and with a jewel per kill. Devil Square, Blood Castle and Chaos Castle follow each other in a cycle: Blood Castle opens 10 minutes after Devil Square ended, Chaos Castle 10 minutes after Blood Castle ended, and Devil Square 45 minutes after Chaos Castle ended (with the original durations: Devil Square at 0, Blood Castle at 39 and Chaos Castle at 76 minutes of a 138 minute cycle), announced in golden messages every minute from 5 minutes before each opening. Activates the chat command /eventos of the event board (key H).";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;

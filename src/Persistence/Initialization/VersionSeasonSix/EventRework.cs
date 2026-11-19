@@ -10,16 +10,27 @@ using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// The rework of the events of PeroniaMU, see <see cref="EventReworkPlugIn"/>: activates the plugin, and lets Devil Square,
-/// Blood Castle and Chaos Castle follow each other in a cycle of 65 minutes (Devil Square, 10 minutes later Blood Castle,
-/// 10 minutes later Chaos Castle, 45 minutes later Devil Square again), with golden announcements every minute from
-/// 5 minutes before each opening.
+/// Blood Castle and Chaos Castle follow each other in a cycle: Blood Castle opens 10 minutes after Devil Square ended,
+/// Chaos Castle 10 minutes after Blood Castle ended, and Devil Square 45 minutes after Chaos Castle ended. An event ends
+/// when its players are taken out (entrance, countdown, game and exit durations of its definitions, rounded up to minutes).
+/// The events are announced in golden messages every minute from 5 minutes before each opening.
 /// </summary>
 internal static class EventRework
 {
     /// <summary>
-    /// The length of the cycle of the events.
+    /// The pause after Devil Square and after Blood Castle until the next event opens.
     /// </summary>
-    internal static readonly TimeSpan CycleLength = TimeSpan.FromMinutes(65);
+    internal static readonly TimeSpan ShortPause = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// The pause after Chaos Castle until Devil Square opens again.
+    /// </summary>
+    internal static readonly TimeSpan LongPause = TimeSpan.FromMinutes(45);
+
+    /// <summary>
+    /// The countdown of a mini game between the closing of the entrance and the start of the game.
+    /// </summary>
+    private static readonly TimeSpan CountdownDuration = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// The minutes before the opening of an event, from which it's announced every minute.
@@ -33,9 +44,15 @@ internal static class EventRework
     /// <param name="gameConfiguration">The game configuration.</param>
     public static void Apply(IContext context, GameConfiguration gameConfiguration)
     {
-        Configure<DevilSquareStartPlugIn, DevilSquareStartConfiguration>(context, gameConfiguration, DevilSquareStartConfiguration.Default, "Devil Square", TimeSpan.Zero);
-        Configure<BloodCastleStartPlugIn, BloodCastleStartConfiguration>(context, gameConfiguration, BloodCastleStartConfiguration.Default, "Blood Castle", TimeSpan.FromMinutes(10));
-        Configure<ChaosCastleStartPlugIn, ChaosCastleStartConfiguration>(context, gameConfiguration, ChaosCastleStartConfiguration.Default, "Chaos Castle", TimeSpan.FromMinutes(20));
+        var devilSquare = GetEventDuration(gameConfiguration, MiniGameType.DevilSquare);
+        var bloodCastle = GetEventDuration(gameConfiguration, MiniGameType.BloodCastle);
+        var chaosCastle = GetEventDuration(gameConfiguration, MiniGameType.ChaosCastle);
+        var bloodCastleOffset = devilSquare + ShortPause;
+        var chaosCastleOffset = bloodCastleOffset + bloodCastle + ShortPause;
+        var cycleLength = chaosCastleOffset + chaosCastle + LongPause;
+        Configure<DevilSquareStartPlugIn, DevilSquareStartConfiguration>(context, gameConfiguration, DevilSquareStartConfiguration.Default, "Devil Square", cycleLength, TimeSpan.Zero);
+        Configure<BloodCastleStartPlugIn, BloodCastleStartConfiguration>(context, gameConfiguration, BloodCastleStartConfiguration.Default, "Blood Castle", cycleLength, bloodCastleOffset);
+        Configure<ChaosCastleStartPlugIn, ChaosCastleStartConfiguration>(context, gameConfiguration, ChaosCastleStartConfiguration.Default, "Chaos Castle", cycleLength, chaosCastleOffset);
 
         var rework = GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(EventReworkPlugIn).GUID);
         rework.IsActive = true;
@@ -47,12 +64,12 @@ internal static class EventRework
         GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(EventBoardChatCommandPlugIn).GUID).IsActive = true;
     }
 
-    private static void Configure<TPlugIn, TConfiguration>(IContext context, GameConfiguration gameConfiguration, TConfiguration defaultConfiguration, string eventName, TimeSpan offset)
+    private static void Configure<TPlugIn, TConfiguration>(IContext context, GameConfiguration gameConfiguration, TConfiguration defaultConfiguration, string eventName, TimeSpan cycleLength, TimeSpan offset)
         where TConfiguration : MiniGameStartConfiguration
     {
         var plugInConfiguration = GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(TPlugIn).GUID);
         var configuration = plugInConfiguration.GetConfiguration<TConfiguration>(null) ?? defaultConfiguration;
-        configuration.CycleLength = CycleLength;
+        configuration.CycleLength = cycleLength;
         configuration.CycleOffset = offset;
         configuration.Timetable = new List<TimeOnly>();
         configuration.PreStartMessageDelay = TimeSpan.Zero;
@@ -61,6 +78,23 @@ internal static class EventRework
         configuration.EntranceOpenedMessage = $"{eventName} esta abierto, cierra en {{0}} min. Entrada unica por resets.";
         configuration.EntranceClosedMessage = $"Se cerro la entrada a {eventName}.";
         plugInConfiguration.SetConfiguration(configuration, null);
+    }
+
+    /// <summary>
+    /// Gets the time from the opening of an event until its players are taken out, rounded up to whole minutes:
+    /// the longest of its definitions.
+    /// </summary>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    /// <param name="type">The type of the event.</param>
+    /// <returns>The duration.</returns>
+    private static TimeSpan GetEventDuration(GameConfiguration gameConfiguration, MiniGameType type)
+    {
+        var duration = gameConfiguration.MiniGameDefinitions
+            .Where(d => d.Type == type)
+            .Select(d => d.EnterDuration + CountdownDuration + d.GameDuration + d.ExitDuration)
+            .DefaultIfEmpty(TimeSpan.FromMinutes(30))
+            .Max();
+        return TimeSpan.FromMinutes(Math.Ceiling(duration.TotalMinutes));
     }
 
     private static PlugInConfiguration GetOrCreatePlugInConfiguration(IContext context, GameConfiguration gameConfiguration, Guid typeId)
