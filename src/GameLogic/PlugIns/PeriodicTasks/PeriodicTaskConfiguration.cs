@@ -145,6 +145,8 @@ public class PeriodicTaskConfiguration
     /// <returns>The next start time, in UTC; or <see langword="null"/>, if the timetable is empty.</returns>
     public DateTime? GetNextStartUtc(DateTime utcNow, TimeZoneInfo serverTimeZone)
     {
+        // A context without a time zone (e.g. a mocked one) uses UTC.
+        serverTimeZone ??= TimeZoneInfo.Utc;
         if (this.UsesCycle)
         {
             var sinceStart = this.GetTimeSinceCycleStart(utcNow);
