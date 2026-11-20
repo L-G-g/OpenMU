@@ -231,9 +231,16 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
             }
         }
 
+        // The game ends shortly after the delivery and warps the players out, so an item on the floor would be lost easily.
+        if (await TryAddToVaultAsync(winner, item).ConfigureAwait(false))
+        {
+            await winner.ShowGoldenMessageAsync($"Premio de Blood Castle: {name} (inventario lleno, quedo en el baul)").ConfigureAwait(false);
+            return;
+        }
+
         var droppedItem = new DroppedItem(item, winner.Position, winner.CurrentMap ?? map, winner, winner.GetAsEnumerable());
         await (winner.CurrentMap ?? map).AddAsync(droppedItem).ConfigureAwait(false);
-        await winner.ShowGoldenMessageAsync($"Premio de Blood Castle: {name} (en el piso, inventario lleno)").ConfigureAwait(false);
+        await winner.ShowGoldenMessageAsync($"Premio de Blood Castle: {name} (en el piso, inventario y baul llenos)").ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -308,6 +315,54 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
     };
 
     private static int GetResets(Player player) => (int)(player.Attributes?[Stats.Resets] ?? 0);
+
+    /// <summary>
+    /// Tries to add an item to the vault of the account of the player.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="item">The item, which may be temporary.</param>
+    /// <returns><c>true</c>, if the item was added to the vault.</returns>
+    private static async ValueTask<bool> TryAddToVaultAsync(Player player, Item item)
+    {
+        if (player.Account is not { } account)
+        {
+            return false;
+        }
+
+        IStorage vault;
+        try
+        {
+            account.Vault ??= player.PersistenceContext.CreateNew<ItemStorage>();
+
+            // An opened vault window already holds the storage of the vault; otherwise, it's created like the vault NPC does.
+            vault = player.Vault is { } opened && ReferenceEquals(opened.ItemStorage, account.Vault)
+                ? opened
+                : new Storage(account.IsVaultExtended ? InventoryConstants.WarehouseSize * 2 : InventoryConstants.WarehouseSize, account.Vault);
+        }
+        catch (Exception ex)
+        {
+            player.Logger.LogError(ex, "Error when opening the vault for the Blood Castle reward");
+            return false;
+        }
+
+        if (vault.CheckInvSpace(item) is not { } slot)
+        {
+            return false;
+        }
+
+        var persistentItem = item is TemporaryItem temporaryItem ? temporaryItem.MakePersistent(player.PersistenceContext) : item;
+        if (await vault.AddItemAsync(slot, persistentItem).ConfigureAwait(false))
+        {
+            return true;
+        }
+
+        if (!ReferenceEquals(persistentItem, item))
+        {
+            player.PersistenceContext.Detach(persistentItem);
+        }
+
+        return false;
+    }
 
     private static bool IsJewelry(ItemDefinition definition) => definition.Group == 13;
 
