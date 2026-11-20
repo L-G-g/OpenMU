@@ -488,6 +488,7 @@ namespace
 
     bool RedirectCall(DWORD callSite, const void* target);
     void PatchKalimaTooltip(const int (&minimums)[ChaosCastleLevelCount]);
+    void PatchInvitationTooltips(const int (&minimums)[ChaosCastleLevelCount]);
 
     bool PatchByte(DWORD address, BYTE expected, BYTE value)
     {
@@ -543,6 +544,7 @@ namespace
         }
 
         PatchKalimaTooltip(minimums);
+        PatchInvitationTooltips(minimums);
 
         const int* levels = reinterpret_cast<const int*>(ChaosCastleLevels);
         if (levels[0] != 15 || levels[1] != 49)
@@ -639,6 +641,96 @@ namespace
         }
 
         g_log("EventBoard: tooltip del Lost Map por resets.");
+    }
+
+    // --- Tabla de resets en el tooltip de la Devil's Invitation y del Cloak of Invisibility ---
+    // Sus tooltips no traen tabla de niveles. En la cadena de tipos de item del tooltip (cmp ecx,1C1Ch del Lost Map) se
+    // salta a TooltipTypeHook: para la invitacion (14,19) y el cloak (13,18) agrega la tabla de resets y sigue la cadena,
+    // asi los textos originales quedan igual.
+    constexpr DWORD TooltipTypeCheck = 0x007E4C37;   // cmp ecx,1C1Ch ; jne 007E4C57 (8 bytes)
+    DWORD g_tooltipLostMap = 0x007E4C3F;             // rama del Lost Map
+    DWORD g_tooltipNext = 0x007E4C57;                // siguiente tipo de la cadena
+    constexpr DWORD TooltipLines = 0x081C0AE0;       // lineas del tooltip, 100 bytes cada una
+    constexpr DWORD TooltipColors = 0x081C0A68;
+    constexpr DWORD TooltipBold = 0x081C09F0;
+    constexpr int DevilsInvitation = 14 * 512 + 19;
+    constexpr int CloakOfInvisibility = 13 * 512 + 18;
+    int g_eventMinimums[ChaosCastleLevelCount];
+
+    void SetTooltipLine(int line, const char* text, int color)
+    {
+        char* buffer = reinterpret_cast<char*>(TooltipLines + line * 100);
+        strncpy_s(buffer, 100, text, _TRUNCATE);
+        reinterpret_cast<int*>(TooltipColors)[line] = color;
+        reinterpret_cast<int*>(TooltipBold)[line] = 0;
+    }
+
+    int __cdecl AddEventResetsTable(int line, int itemType)
+    {
+        char text[100];
+        SetTooltipLine(line++, "\n", 0);
+        sprintf_s(text, "%s Level       Resets    ", itemType == DevilsInvitation ? "Devil Square" : "Blood Castle");
+        SetTooltipLine(line++, text, 0);
+        for (int level = 0; level < ChaosCastleLevelCount; level++)
+        {
+            if (level + 1 < ChaosCastleLevelCount)
+            {
+                sprintf_s(text, "        %d             %3d~%3d     ", level + 1, g_eventMinimums[level], g_eventMinimums[level + 1] - 1);
+            }
+            else
+            {
+                sprintf_s(text, "        %d             %3d+          ", level + 1, g_eventMinimums[level]);
+            }
+
+            SetTooltipLine(line++, text, 0);
+        }
+
+        SetTooltipLine(line++, "\n", 0);
+        return line;
+    }
+
+    __declspec(naked) void TooltipTypeHook()
+    {
+        __asm
+        {
+            cmp ecx, 0x1C1C
+            je lostMap
+            cmp ecx, DevilsInvitation
+            je table
+            cmp ecx, CloakOfInvisibility
+            jne next
+        table:
+            push ecx
+            push dword ptr [ebp - 0x74]
+            call AddEventResetsTable
+            add esp, 8
+            mov dword ptr [ebp - 0x74], eax
+        next:
+            jmp dword ptr [g_tooltipNext]
+        lostMap:
+            jmp dword ptr [g_tooltipLostMap]
+        }
+    }
+
+    void PatchInvitationTooltips(const int (&minimums)[ChaosCastleLevelCount])
+    {
+        static const BYTE expected[] = { 0x81, 0xF9, 0x1C, 0x1C, 0x00, 0x00, 0x75, 0x18 };
+        if (memcmp(reinterpret_cast<const void*>(TooltipTypeCheck), expected, sizeof(expected)) != 0)
+        {
+            g_log("EventBoard: el tooltip de los items no coincide; la invitacion y el cloak quedan sin resets.");
+            return;
+        }
+
+        memcpy(g_eventMinimums, minimums, sizeof(g_eventMinimums));
+        BYTE jump[8] = { 0xE9, 0, 0, 0, 0, 0x90, 0x90, 0x90 };
+        *reinterpret_cast<DWORD*>(jump + 1) = reinterpret_cast<DWORD>(&TooltipTypeHook) - (TooltipTypeCheck + 5);
+        if (!WriteCode(TooltipTypeCheck, jump, sizeof(jump)))
+        {
+            g_log("EventBoard: no se pudo cambiar el tooltip de la invitacion y el cloak.");
+            return;
+        }
+
+        g_log("EventBoard: tooltip de la Devil's Invitation y del Cloak con los resets.");
     }
 
     // --- Instalacion ---
