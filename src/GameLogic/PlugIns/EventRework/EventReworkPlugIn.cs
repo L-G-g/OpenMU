@@ -12,6 +12,7 @@ using MUnique.OpenMU.GameLogic.MiniGames;
 using MUnique.OpenMU.GameLogic.MiniGames.Dungeon;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.PlayerActions.MiniGames;
+using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
@@ -213,10 +214,21 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
         }
 
         var name = item.Definition?.Name.ValueInNeutralLanguage ?? "?";
-        if (winner.Inventory is not null && await winner.Inventory.AddItemAsync(item).ConfigureAwait(false))
+        if (winner.Inventory?.CheckInvSpace(item) is { } slot && slot >= InventoryConstants.LastEquippableItemSlotIndex)
         {
-            await winner.ShowGoldenMessageAsync($"Premio de Blood Castle: {name}").ConfigureAwait(false);
-            return;
+            // The generated item is temporary; the inventory only accepts an item of the persistence context of the player.
+            var persistentItem = item is TemporaryItem temporaryItem ? temporaryItem.MakePersistent(winner.PersistenceContext) : item;
+            if (await winner.Inventory.AddItemAsync(slot, persistentItem).ConfigureAwait(false))
+            {
+                await winner.InvokeViewPlugInAsync<IItemAppearPlugIn>(p => p.ItemAppearAsync(persistentItem)).ConfigureAwait(false);
+                await winner.ShowGoldenMessageAsync($"Premio de Blood Castle: {name}").ConfigureAwait(false);
+                return;
+            }
+
+            if (!ReferenceEquals(persistentItem, item))
+            {
+                winner.PersistenceContext.Detach(persistentItem);
+            }
         }
 
         var droppedItem = new DroppedItem(item, winner.Position, winner.CurrentMap ?? map, winner, winner.GetAsEnumerable());
