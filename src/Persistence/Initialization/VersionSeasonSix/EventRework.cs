@@ -1,4 +1,4 @@
-// <copyright file="EventRework.cs" company="MUnique">
+﻿// <copyright file="EventRework.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -62,6 +62,50 @@ internal static class EventRework
         }
 
         GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(EventBoardChatCommandPlugIn).GUID).IsActive = true;
+        UseOneTicketPerEvent(gameConfiguration);
+    }
+
+    /// <summary>
+    /// There is one ticket per event, because the level is chosen by the resets: Lumen sells only the Devil's Invitation +1
+    /// and the Cloak of Invisibility +1, and only the Symbol of Kundun +1 drops (from all the monsters which dropped one of the
+    /// levels before). Tickets of other levels which the players already have still work.
+    /// </summary>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    private static void UseOneTicketPerEvent(GameConfiguration gameConfiguration)
+    {
+        if (gameConfiguration.Monsters.FirstOrDefault(m => m.Number == EventEntryItemShop.LumenTheBarmaidNumber)?.MerchantStore is { } store)
+        {
+            foreach (var item in store.Items.Where(IsTicketOfHigherLevel).ToList())
+            {
+                store.Items.Remove(item);
+            }
+        }
+
+        var symbols = Enumerable.Range(1, MapLevelLadder.SymbolOfKundunDropLevels.Count)
+            .Select(level => (Level: level, Group: gameConfiguration.DropItemGroups.FirstOrDefault(g => g.GetId() == GuidHelper.CreateGuid<DropItemGroup>(14, 29, (byte)level))))
+            .Where(s => s.Group is not null)
+            .ToList();
+        if (symbols.FirstOrDefault(s => s.Level == 1).Group is not { } first)
+        {
+            return;
+        }
+
+        first.MinimumMonsterLevel = MapLevelLadder.SymbolOfKundunDropLevels[0].MinimumLevel;
+        first.MaximumMonsterLevel = byte.MaxValue;
+        foreach (var (_, group) in symbols.Where(s => s.Level > 1))
+        {
+            // A monster level can't be at least 255 and at most 0 at the same time: it doesn't drop anymore.
+            group!.MinimumMonsterLevel = byte.MaxValue;
+            group.MaximumMonsterLevel = 0;
+        }
+    }
+
+    private static bool IsTicketOfHigherLevel(Item item)
+    {
+        return item.Level > 1
+               && item.Definition is { } definition
+               && ((definition.Group == 14 && definition.Number == 19) // Devil's Invitation
+                   || (definition.Group == 13 && definition.Number == 18)); // Cloak of Invisibility
     }
 
     private static void Configure<TPlugIn, TConfiguration>(IContext context, GameConfiguration gameConfiguration, TConfiguration defaultConfiguration, string eventName, TimeSpan cycleLength, TimeSpan offset)

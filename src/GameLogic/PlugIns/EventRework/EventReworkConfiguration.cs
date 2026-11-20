@@ -1,4 +1,4 @@
-// <copyright file="EventReworkConfiguration.cs" company="MUnique">
+﻿// <copyright file="EventReworkConfiguration.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -35,6 +35,14 @@ public class EventReworkConfiguration
     /// </summary>
     [Display(Name = "Chaos Castle level by resets")]
     public bool ChaosCastleByResets { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether talking to Charon (Devil Square) or to the Messenger of Archangel (Blood Castle)
+    /// enters the event directly with a ticket of any level, instead of opening the window of the game client, which asks
+    /// for the level and only accepts a ticket of the chosen level.
+    /// </summary>
+    [Display(Name = "Direct entry at the NPC", Description = "Talking to Charon (Devil Square) or to the Messenger of Archangel (Blood Castle) enters the event of the resets directly, with a ticket of any level, instead of opening the window of the game client, which asks for a level.")]
+    public bool DirectEntryAtNpc { get; set; } = true;
 
     /// <summary>
     /// Gets or sets a value indicating whether a Lost Kalima Map of any level opens the Kalima of the resets of the player who drops it.

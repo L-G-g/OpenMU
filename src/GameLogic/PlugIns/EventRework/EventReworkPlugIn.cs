@@ -1,4 +1,4 @@
-// <copyright file="EventReworkPlugIn.cs" company="MUnique">
+﻿// <copyright file="EventReworkPlugIn.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -86,6 +86,27 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
 
         var level = configuration.GetLevelOfResets(GetResets(player));
         return levels.Where(l => l <= level).DefaultIfEmpty(levels.Min()).Max();
+    }
+
+    /// <summary>
+    /// Gets the mini game which an NPC enters directly, see <see cref="EventReworkConfiguration.DirectEntryAtNpc"/>.
+    /// </summary>
+    /// <param name="player">The player who talks to the NPC.</param>
+    /// <param name="npcWindow">The window of the NPC.</param>
+    /// <returns>The type of the mini game, or <c>null</c> if the NPC opens its window as usual.</returns>
+    public static MiniGameType? GetDirectEntryMiniGame(Player player, NpcWindow npcWindow)
+    {
+        var type = npcWindow switch
+        {
+            NpcWindow.DevilSquare => MiniGameType.DevilSquare,
+            NpcWindow.BloodCastle => MiniGameType.BloodCastle,
+            _ => MiniGameType.Undefined,
+        };
+        return type != MiniGameType.Undefined
+               && GetConfiguration(player.GameContext) is { DirectEntryAtNpc: true }
+               && GetGameLevelByResets(player, type) is not null
+            ? type
+            : null;
     }
 
     /// <summary>
