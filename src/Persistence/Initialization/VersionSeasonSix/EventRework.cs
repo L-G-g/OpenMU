@@ -66,8 +66,8 @@ internal static class EventRework
     }
 
     /// <summary>
-    /// There is one ticket per event, because the level is chosen by the resets: Lumen sells only the Devil's Invitation +1
-    /// and the Cloak of Invisibility +1, and only the Symbol of Kundun +1 drops (from all the monsters which dropped one of the
+    /// There is one ticket per event, because the level is chosen by the resets: Lumen sells only the +1 of the Devil's Eye and Key
+    /// and of the Scroll of Archangel and Blood Bone (the ingredients of the Devil's Invitation +1 and the Cloak of Invisibility +1), and only the Symbol of Kundun +1 drops (from all the monsters which dropped one of the
     /// levels before). Tickets of other levels which the players already have still work.
     /// </summary>
     /// <param name="gameConfiguration">The game configuration.</param>
@@ -104,8 +104,8 @@ internal static class EventRework
     {
         return item.Level > 1
                && item.Definition is { } definition
-               && ((definition.Group == 14 && definition.Number == 19) // Devil's Invitation
-                   || (definition.Group == 13 && definition.Number == 18)); // Cloak of Invisibility
+               && ((definition.Group == 14 && definition.Number is 17 or 18 or 19) // Devil's Eye, Devil's Key, Devil's Invitation
+                   || (definition.Group == 13 && definition.Number is 16 or 17 or 18)); // Scroll of Archangel, Blood Bone, Cloak of Invisibility
     }
 
     private static void Configure<TPlugIn, TConfiguration>(IContext context, GameConfiguration gameConfiguration, TConfiguration defaultConfiguration, string eventName, TimeSpan cycleLength, TimeSpan offset)
