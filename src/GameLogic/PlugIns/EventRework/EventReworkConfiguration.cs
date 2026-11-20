@@ -117,6 +117,13 @@ public class EventReworkConfiguration
     public int BloodCastleAncientTierCount { get; set; } = 3;
 
     /// <summary>
+    /// Gets or sets the time before the end of Blood Castle from which the weapon can be delivered to the Archangel.
+    /// <see cref="TimeSpan.Zero"/> allows the delivery at any time, as in the original game.
+    /// </summary>
+    [Display(Name = "Blood Castle: delivery before the end", Description = "The weapon can only be delivered to the Archangel when this time or less is left until the end of Blood Castle. 0 = at any time.")]
+    public TimeSpan BloodCastleDeliveryBeforeEnd { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
     /// Gets or sets the reward item of each level of Blood Castle.
     /// </summary>
     [MemberOfAggregate]

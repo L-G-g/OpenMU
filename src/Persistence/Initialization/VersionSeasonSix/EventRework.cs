@@ -119,7 +119,7 @@ internal static class EventRework
         configuration.PreStartMessageDelay = TimeSpan.Zero;
         configuration.PreOpenAnnouncementMinutes = PreOpenAnnouncementMinutes;
         configuration.PreOpenMessage = $"Faltan {{0}} min para que abra {eventName}.";
-        configuration.EntranceOpenedMessage = $"{eventName} esta abierto, cierra en {{0}} min. Entrada unica por resets.";
+        configuration.EntranceOpenedMessage = $"{eventName} esta abierto, cierra en {{0}} min.";
         configuration.EntranceClosedMessage = $"Se cerro la entrada a {eventName}.";
         plugInConfiguration.SetConfiguration(configuration, null);
     }

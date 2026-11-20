@@ -114,6 +114,18 @@ public sealed class BloodCastleContext : MiniGameContext
             return;
         }
 
+        // With the event rework, the weapon can only be delivered shortly before the end.
+        if (PlugIns.EventRework.EventReworkPlugIn.GetBloodCastleDeliveryWindow(this.GameContext) is { } deliveryWindow
+            && this._remainingTime > deliveryWindow
+            && player.TryGetQuestItem(out _))
+        {
+            var minutes = (int)Math.Ceiling(deliveryWindow.TotalMinutes);
+            await player.ShowBlueMessageAsync(minutes == 1
+                ? "Solo podes entregar el arma cuando falte 1 minuto o menos."
+                : $"Solo podes entregar el arma cuando falten {minutes} minutos o menos.").ConfigureAwait(false);
+            return;
+        }
+
         if (!await this.TryRemoveQuestItemFromPlayerAsync(player).ConfigureAwait(false))
         {
             await player.InvokeViewPlugInAsync<IShowDialogPlugIn>(p => p.ShowDialogAsync(DialogCategoryMain, (byte)DialogNumber.EventQuestItemMissing)).ConfigureAwait(false);

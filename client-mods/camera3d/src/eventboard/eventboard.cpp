@@ -468,6 +468,110 @@ namespace
         g_nextDraw();
     }
 
+    // --- Tabla del Armor of Guardsman (Chaos Castle) por resets ---
+    // El tooltip del Armor of Guardsman muestra una tabla con el nivel de personaje de cada Chaos Castle. Con el event
+    // rework del servidor el castillo se elige por los resets, asi que la tabla muestra los resets de cada nivel, en
+    // las mismas lineas del tooltip original. La tabla de niveles solo la usa ese tooltip (para el texto y para
+    // resaltar la fila del personaje), no la entrada al castillo.
+    constexpr DWORD ChaosCastleLevels = 0x00D45790;           // 6 pares {minimo, maximo} de nivel
+    constexpr DWORD ChaosCastleSpecialLevels = 0x00D457C0;    // los mismos para MG, DL y RF
+    constexpr DWORD ChaosCastleHeaderPush = 0x007E49E9;       // push 0D45958h: "%s %s    %s      %s    "
+    constexpr DWORD ChaosCastleLastRowPush = 0x007E4B6B;      // push 0D4599Ch: fila 7, "Master Level"
+    constexpr DWORD ChaosCastleRowHighlight = 0x007E4AF1;     // jl: resalta la fila del nivel del personaje
+    constexpr DWORD ChaosCastleLastRowHighlight = 0x007E4B9D; // jne: resalta la fila 7 a los master
+    constexpr int ChaosCastleLevelCount = 7;
+
+    // Encabezado: "Chaos Castle" "Level" | "Resets" (en vez de "Min. Level") | "Cost" (el texto 936 lo usa tambien
+    // el menu de warps, que lo cambio a "Danger level"). Los %.0s consumen los textos originales sin mostrarlos.
+    const char ChaosCastleHeader[] = "%s %s    %.0s  Resets        %.0sCost    ";
+    char g_chaosCastleLastRow[64];
+
+    bool PatchByte(DWORD address, BYTE expected, BYTE value)
+    {
+        return *reinterpret_cast<const BYTE*>(address) == expected && WriteCode(address, &value, 1);
+    }
+
+    bool PatchPush(DWORD address, DWORD expected, const char* value)
+    {
+        const BYTE* code = reinterpret_cast<const BYTE*>(address);
+        if (code[0] != 0x68 || *reinterpret_cast<const DWORD*>(code + 1) != expected)
+        {
+            return false;
+        }
+
+        const DWORD pointer = reinterpret_cast<DWORD>(value);
+        return WriteCode(address + 1, &pointer, sizeof(pointer));
+    }
+
+    // Lee los resets minimos de cada nivel ([EventBoard] ChaosCastleResets, los mismos que el servidor).
+    bool ReadChaosCastleResets(const char* iniPath, int (&minimums)[ChaosCastleLevelCount])
+    {
+        char text[128];
+        GetPrivateProfileStringA("EventBoard", "ChaosCastleResets", "0,30,75,150,220,300,360", text, sizeof(text), iniPath);
+        const char* position = text;
+        for (int level = 0; level < ChaosCastleLevelCount; level++)
+        {
+            char* end = nullptr;
+            const long value = strtol(position, &end, 10);
+            if (end == position || value < 0 || (level > 0 && value <= minimums[level - 1]))
+            {
+                return false;
+            }
+
+            minimums[level] = static_cast<int>(value);
+            position = *end == ',' ? end + 1 : end;
+        }
+
+        return true;
+    }
+
+    void PatchChaosCastleTooltip(const char* iniPath)
+    {
+        if (GetPrivateProfileIntA("EventBoard", "ChaosCastleByResets", 1, iniPath) == 0)
+        {
+            return;
+        }
+
+        int minimums[ChaosCastleLevelCount];
+        if (!ReadChaosCastleResets(iniPath, minimums))
+        {
+            g_log("EventBoard: ChaosCastleResets no es valido; el tooltip del Chaos Castle queda con los niveles.");
+            return;
+        }
+
+        const int* levels = reinterpret_cast<const int*>(ChaosCastleLevels);
+        if (levels[0] != 15 || levels[1] != 49)
+        {
+            g_log("EventBoard: la tabla del Chaos Castle no coincide; el tooltip queda con los niveles.");
+            return;
+        }
+
+        int ranges[(ChaosCastleLevelCount - 1) * 2];
+        for (int level = 0; level < ChaosCastleLevelCount - 1; level++)
+        {
+            ranges[level * 2] = minimums[level];
+            ranges[level * 2 + 1] = minimums[level + 1] - 1;
+        }
+
+        // Fila 7 como las demas: "%3d~%3d" son 7 caracteres y 5 espacios, "360+" son 4 y 8 espacios.
+        sprintf_s(g_chaosCastleLastRow, "        %%d             %3d+%%.0s        %%3d,000", minimums[ChaosCastleLevelCount - 1]);
+
+        // Los resets no son el nivel: no se resalta ninguna fila (el cliente no sabe los resets).
+        if (!PatchPush(ChaosCastleHeaderPush, 0x00D45958, ChaosCastleHeader)
+            || !PatchPush(ChaosCastleLastRowPush, 0x00D4599C, g_chaosCastleLastRow)
+            || !PatchByte(ChaosCastleRowHighlight, 0x7C, 0xEB)
+            || !PatchByte(ChaosCastleLastRowHighlight, 0x75, 0xEB)
+            || !WriteCode(ChaosCastleLevels, ranges, sizeof(ranges))
+            || !WriteCode(ChaosCastleSpecialLevels, ranges, sizeof(ranges)))
+        {
+            g_log("EventBoard: no se pudo cambiar el tooltip del Chaos Castle.");
+            return;
+        }
+
+        g_log("EventBoard: tooltip del Chaos Castle por resets (%d, %d, %d, %d, %d, %d, %d).", minimums[0], minimums[1],
+            minimums[2], minimums[3], minimums[4], minimums[5], minimums[6]);
+    }
+
     // --- Instalacion ---
     DWORD CallTarget(DWORD callSite)
     {
@@ -512,6 +616,7 @@ extern "C" __declspec(dllexport) bool StartEventBoard(const EventBoardHost* host
     }
 
     g_log = host->log;
+    PatchChaosCastleTooltip(host->iniPath);
     ReadKey(host->iniPath);
     const int refresh = GetPrivateProfileIntA("EventBoard", "RefreshSeconds", 60, host->iniPath);
     g_refreshMilliseconds = (refresh < 10 ? 10 : refresh) * 1000u;

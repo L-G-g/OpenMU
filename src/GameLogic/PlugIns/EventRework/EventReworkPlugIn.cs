@@ -99,7 +99,22 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
             return name;
         }
 
-        return $"{name.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9').TrimEnd()} ({resets})";
+        return $"{TrimLevel(name)} ({resets})";
+    }
+
+    /// <summary>
+    /// Gets the name of a mini game for the golden messages. If the level of the mini game is chosen by the resets,
+    /// it's only the name of the event, e.g. "Devil Square" instead of "Devil Square 2"; the board shows the resets.
+    /// </summary>
+    /// <param name="gameContext">The game context.</param>
+    /// <param name="definition">The definition of the mini game.</param>
+    /// <returns>The name.</returns>
+    public static string GetMessageName(IGameContext gameContext, MiniGameDefinition definition)
+    {
+        var name = definition.Name.ToString() ?? string.Empty;
+        return GetConfiguration(gameContext) is { } configuration && IsLevelByResets(configuration, definition.Type)
+            ? TrimLevel(name)
+            : name;
     }
 
     /// <summary>
@@ -158,6 +173,18 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
             .Select(j => (j.Definition!, j.Weight))
             .ToList();
         return jewels.Count > 0 ? new EventJewelDropGenerator(gameContext.DropGenerator, jewels) : null;
+    }
+
+    /// <summary>
+    /// Gets the time before the end of Blood Castle from which the weapon can be delivered to the Archangel.
+    /// </summary>
+    /// <param name="gameContext">The game context.</param>
+    /// <returns>The time, or <c>null</c> if the weapon can be delivered at any time.</returns>
+    public static TimeSpan? GetBloodCastleDeliveryWindow(IGameContext gameContext)
+    {
+        return GetConfiguration(gameContext) is { BloodCastleDeliveryBeforeEnd: { } window } && window > TimeSpan.Zero
+            ? window
+            : null;
     }
 
     /// <summary>
@@ -315,6 +342,8 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
     };
 
     private static int GetResets(Player player) => (int)(player.Attributes?[Stats.Resets] ?? 0);
+
+    private static string TrimLevel(string name) => name.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9').TrimEnd();
 
     /// <summary>
     /// Tries to add an item to the vault of the account of the player.
