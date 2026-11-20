@@ -20,6 +20,8 @@ public abstract class MiniGameStartBasePlugIn<TConfiguration, TGameState> : Peri
 {
     private static readonly ConcurrentDictionary<(Type PlugInType, IGameContext GameContext), EntranceAnnouncement> Announcements = new();
 
+    private static readonly ConcurrentDictionary<(Type PlugInType, IGameContext GameContext), (DateTime OpensAtUtc, int Minutes)> PreOpenAnnouncements = new();
+
     /// <inheritdoc />
     public abstract MiniGameType Key { get; }
 
@@ -80,9 +82,9 @@ public abstract class MiniGameStartBasePlugIn<TConfiguration, TGameState> : Peri
             return ValueTask.FromResult<TimeSpan?>(null);
         }
 
-        var timeNow = new TimeOnly(DateTime.UtcNow.TimeOfDay.Ticks);
-        var nextRun = this.Configuration?.Timetable.Where(time => time > timeNow).Order().FirstOrDefault();
-        return ValueTask.FromResult(nextRun - timeNow);
+        var utcNow = DateTime.UtcNow;
+        var nextRun = this.Configuration?.GetNextStartUtc(utcNow, gameContext.ServerTimeZone);
+        return ValueTask.FromResult(nextRun - utcNow);
     }
 
     /// <inheritdoc />
@@ -109,6 +111,8 @@ public abstract class MiniGameStartBasePlugIn<TConfiguration, TGameState> : Peri
     /// <param name="gameContext">The game context.</param>
     internal async ValueTask AnnounceEntranceAsync(IGameContext gameContext)
     {
+        await this.AnnounceUpcomingOpeningAsync(gameContext).ConfigureAwait(false);
+
         var key = (this.GetType(), gameContext);
         var maxRemaining = gameContext.MiniGames.GetRunningMiniGames(this.Key)
             .Where(game => game.State == MiniGameState.Open)
@@ -148,6 +152,44 @@ public abstract class MiniGameStartBasePlugIn<TConfiguration, TGameState> : Peri
 
             Announcements.TryRemove(key, out _);
         }
+    }
+
+    /// <summary>
+    /// Announces the minutes until the entrance opens, once per minute, from
+    /// <see cref="MiniGameStartConfiguration.PreOpenAnnouncementMinutes"/> minutes before the opening.
+    /// </summary>
+    /// <param name="gameContext">The game context.</param>
+    internal async ValueTask AnnounceUpcomingOpeningAsync(IGameContext gameContext)
+    {
+        if (this.Configuration is not { PreOpenAnnouncementMinutes: > 0 } configuration
+            || string.IsNullOrWhiteSpace(configuration.PreOpenMessage.Value)
+            || !this.IsEnabledOnContext(gameContext)
+            || this.GetStateByGameContext(gameContext).State != PeriodicTaskState.NotStarted)
+        {
+            return;
+        }
+
+        var utcNow = DateTime.UtcNow;
+        if (configuration.GetNextStartUtc(utcNow, gameContext.ServerTimeZone) is not { } nextStart)
+        {
+            return;
+        }
+
+        var opensAt = nextStart + configuration.PreStartMessageDelay;
+        var minutes = (int)Math.Ceiling((opensAt - utcNow).TotalMinutes - 0.001);
+        if (minutes < 1 || minutes > configuration.PreOpenAnnouncementMinutes)
+        {
+            return;
+        }
+
+        var key = (this.GetType(), gameContext);
+        if (PreOpenAnnouncements.TryGetValue(key, out var last) && last.OpensAtUtc == opensAt && last.Minutes == minutes)
+        {
+            return;
+        }
+
+        PreOpenAnnouncements[key] = (opensAt, minutes);
+        await gameContext.SendGlobalNotificationAsync(configuration.PreOpenMessage, minutes).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

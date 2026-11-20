@@ -132,6 +132,11 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
     public bool IsEventRunning => this.State == MiniGameState.Playing;
 
     /// <summary>
+    /// Gets the time at which the game started (the state changed to <see cref="MiniGameState.Playing"/>), if it started already.
+    /// </summary>
+    public DateTime? GameStartedAtUtc { get; private set; }
+
+    /// <summary>
     /// Gets the player count.
     /// </summary>
     public int PlayerCount => this._players.CountAlive();
@@ -661,10 +666,11 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
     /// </summary>
     /// <param name="player">The player who should receive the rewards.</param>
     /// <param name="rank">The rank of the player in the current game.</param>
+    /// <param name="rewardFilter">The filter of the rewards which are given; <c>null</c> gives all applicable rewards.</param>
     /// <returns>The bonus score and the given money.</returns>
-    protected Task<(int BonusScore, int GivenMoney)> GiveRewardsAndGetBonusScoreAsync(Player player, int rank)
+    protected Task<(int BonusScore, int GivenMoney)> GiveRewardsAndGetBonusScoreAsync(Player player, int rank, Func<MiniGameReward, bool>? rewardFilter = null)
     {
-        return this._rewards.GiveRewardsAndGetBonusScoreAsync(player, rank);
+        return this._rewards.GiveRewardsAndGetBonusScoreAsync(player, rank, rewardFilter);
     }
 
     /// <summary>
@@ -735,7 +741,7 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
             {
                 if (this.Definition.MapCreationPolicy != MiniGameMapCreationPolicy.Shared)
                 {
-                    await this.ShowGoldenMessageAsync(nameof(PlayerMessage.MiniGameStartsInMinutesFormat), this.Definition.Name, (int)enterDuration.TotalMinutes).ConfigureAwait(false);
+                    await this.ShowGoldenMessageAsync(nameof(PlayerMessage.MiniGameStartsInMinutesFormat), PlugIns.EventRework.EventReworkPlugIn.GetMessageName(this._gameContext, this.Definition), (int)enterDuration.TotalMinutes).ConfigureAwait(false);
                 }
 
                 if (await this.DelayWithSkipAsync(messagePeriod, cancellationToken).ConfigureAwait(false))
@@ -815,6 +821,7 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
     private async ValueTask StartAsync()
     {
         await this._players.SetStateAsync(MiniGameState.Playing).ConfigureAwait(false);
+        this.GameStartedAtUtc = DateTime.UtcNow;
         var players = await this._players.GetSnapshotAsync().ConfigureAwait(false);
 
         await this.OnGameStartAsync(players).ConfigureAwait(false);

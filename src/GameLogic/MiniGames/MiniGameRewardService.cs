@@ -1,4 +1,4 @@
-// <copyright file="MiniGameRewardService.cs" company="MUnique">
+﻿// <copyright file="MiniGameRewardService.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
@@ -75,12 +75,13 @@ internal sealed class MiniGameRewardService
     /// </summary>
     /// <param name="player">The player who should receive the rewards.</param>
     /// <param name="rank">The rank of the player in the current game.</param>
+    /// <param name="rewardFilter">The filter of the rewards which are given; <c>null</c> gives all applicable rewards.</param>
     /// <returns>The bonus score and the given money.</returns>
-    public async Task<(int BonusScore, int GivenMoney)> GiveRewardsAndGetBonusScoreAsync(Player player, int rank)
+    public async Task<(int BonusScore, int GivenMoney)> GiveRewardsAndGetBonusScoreAsync(Player player, int rank, Func<MiniGameReward, bool>? rewardFilter = null)
     {
         int bonusScore = 0;
         int givenMoney = 0;
-        var rewards = this._definition.Rewards.Where(r => this.DoesRewardApply(player, rank, r));
+        var rewards = this._definition.Rewards.Where(r => this.DoesRewardApply(player, rank, r) && (rewardFilter?.Invoke(r) ?? true));
         foreach (var reward in rewards)
         {
             var result = await this.GiveRewardAsync(player, reward).ConfigureAwait(false);

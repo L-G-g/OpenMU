@@ -563,6 +563,28 @@ juego). La idea es pasar después a este estilo las ventanas y botones de las ot
 (`0x0065FD79`), dibujo después de la interfaz (`0x004D9CCC`), mouse de las ventanas (`0x00860998`) y el salto en
 "mouse sobre la interfaz" (`0x00860910`).
 
+## Board de los próximos eventos (eventboard.dll)
+
+La tecla `H` abre y cierra un cuadro con los próximos 10 eventos (Devil Square, Blood Castle, Chaos Castle,
+invasiones, Happy Hour...), con la cuenta regresiva hasta que abren; los que están abiertos ahora van arriba, en verde,
+con lo que falta para que cierre la entrada. Los nombres traen el nivel que le toca al personaje por sus resets
+(`Devil Square 5`). `camera3d.dll` la carga si está en la misma carpeta, después de `points.dll`
+(`src/loadeventboard.cpp`):
+
+```
+[EventBoard]
+Enabled=1                 ; 0: no se carga eventboard.dll
+Key=H                     ; tecla (una letra o 0x.. con el codigo virtual); no se usa mientras se escribe en el chat
+RefreshSeconds=60         ; con el board abierto, cada cuanto se vuelve a pedir la lista
+Top=90                    ; borde de arriba del cuadro (en 640x480)
+```
+
+Al abrirlo manda el chat `/eventos` y el servidor (OpenMU, plugin "Event board view") contesta con
+`C2 [largo] FF 50 [cantidad]` y por evento `[abierto: 0 o 1] [segundos, 4 bytes big endian] [nombre terminado en 0]`.
+El `main.exe` original lo ignora. Sin `eventboard.dll`, `/eventos chat` escribe la lista en el chat.
+`src/eventboard/eventboard.cpp` encadena el reparto de paquetes, el dibujo después de la interfaz y el mouse de las
+ventanas como `quests.dll`, y la tecla le llega por el paso de lógica de `camera3d.dll` (se la saca al juego).
+
 ## Puntos libres de más de 65535 (points.dll)
 
 El cliente original guarda los puntos libres en un número de 16 bits: no sabe de más de 65535, y al
@@ -779,6 +801,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/loadresetbutton.cpp`: carga de `resetbutton.dll` si está junto a la DLL.
 - `src/loadtokenshop.cpp`: carga de `tokenshop.dll` si está junto a la DLL.
 - `src/loadquests.cpp`: carga de `quests.dll` si está junto a la DLL.
+- `src/loadeventboard.cpp`: carga de `eventboard.dll` si está junto a la DLL.
 - `src/loadpoints.cpp`: carga de `points.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `cinematicas.dll`.
@@ -797,6 +820,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/quests/`: `quests.dll`, signos de quest sobre los NPC, ventana de la quest y seguimiento.
 - `src/ui/`: `peroniaui`, estilo de los botones nuevos (se compila dentro de cada DLL que lo usa).
 - `src/points/`: `points.dll`, puntos libres de más de 65535 en la ventana del personaje.
+- `src/eventboard/`: `eventboard.dll`, board de los próximos eventos (tecla H).
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -812,7 +836,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadtokenshop.cpp src\loadquests.cpp src\loadpoints.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadtokenshop.cpp src\loadquests.cpp src\loadpoints.cpp src\loadeventboard.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
@@ -826,6 +850,7 @@ cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cp
 cl /nologo /O2 /EHsc /LD /MT src\tokenshop\tokenshop.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\quests\quests.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\points\points.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\eventboard\eventboard.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -837,7 +862,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `tokenshop.dll`, `quests.dll` y `points.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `tokenshop.dll`, `quests.dll`, `points.dll` y `eventboard.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

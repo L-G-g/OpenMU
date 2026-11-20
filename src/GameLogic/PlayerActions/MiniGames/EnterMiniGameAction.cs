@@ -34,12 +34,19 @@ public class EnterMiniGameAction
             throw new InvalidOperationException("Character not selected or initialized.");
         }
 
+        // With the event rework, the level is chosen by the resets of the character, no matter its level and the ticket.
+        var levelByResets = PlugIns.EventRework.EventReworkPlugIn.GetGameLevelByResets(player, miniGameType);
+        if (levelByResets is { } resetLevel)
+        {
+            gameLevel = resetLevel;
+        }
+
         // The availability includes the entrance map, independently of the map requirements
         // below, which a running game may waive for rejoining players.
         var miniGameDefinition = player.GameContext.Configuration.MiniGameDefinitions
             .FirstOrDefault(def => def.Type == miniGameType && def.GameLevel == gameLevel && def.IsAvailable());
         if (miniGameDefinition is null
-            || (miniGameDefinition.RequiresMasterClass && !player.SelectedCharacter.CharacterClass.IsMasterClass)
+            || (miniGameDefinition.RequiresMasterClass && levelByResets is null && !player.SelectedCharacter.CharacterClass.IsMasterClass)
             || player.CurrentMiniGame is not null)
         {
             await player.InvokeViewPlugInAsync<IShowMiniGameEnterResultPlugIn>(p => p.ShowResultAsync(miniGameType, EnterResult.Failed)).ConfigureAwait(false);
@@ -51,6 +58,13 @@ public class EnterMiniGameAction
         var minLevel = isSpecialCharacter ? miniGameDefinition.MinimumSpecialCharacterLevel : miniGameDefinition.MinimumCharacterLevel;
         var maxLevel = isSpecialCharacter ? miniGameDefinition.MaximumSpecialCharacterLevel : miniGameDefinition.MaximumCharacterLevel;
         var requiresMasterLevel = miniGameDefinition.RequiresMasterClass;
+        if (levelByResets is not null)
+        {
+            minLevel = 0;
+            maxLevel = int.MaxValue;
+            requiresMasterLevel = false;
+        }
+
         if (characterLevel < minLevel || (requiresMasterLevel && player.SelectedCharacter?.CharacterClass?.IsMasterClass is not true))
         {
             await player.InvokeViewPlugInAsync<IShowMiniGameEnterResultPlugIn>(p => p.ShowResultAsync(miniGameType, EnterResult.CharacterLevelTooLow)).ConfigureAwait(false);
@@ -76,7 +90,7 @@ public class EnterMiniGameAction
             return;
         }
 
-        if (!this.CheckTicketItem(miniGameDefinition, player, gameTicketInventoryIndex, out var ticketItem))
+        if (!this.CheckTicketItem(miniGameDefinition, player, gameTicketInventoryIndex, levelByResets is not null, out var ticketItem))
         {
             await player.InvokeViewPlugInAsync<IShowMiniGameEnterResultPlugIn>(p => p.ShowResultAsync(miniGameType, EnterResult.Failed)).ConfigureAwait(false);
             return;
@@ -206,7 +220,7 @@ public class EnterMiniGameAction
         }
     }
 
-    private bool CheckTicketItem(MiniGameDefinition miniGameDefinition, Player player, byte gameTicketInventoryIndex, out Item? ticketItem)
+    private bool CheckTicketItem(MiniGameDefinition miniGameDefinition, Player player, byte gameTicketInventoryIndex, bool anyTicketLevel, out Item? ticketItem)
     {
         ticketItem = null;
 
@@ -218,7 +232,7 @@ public class EnterMiniGameAction
         if (gameTicketInventoryIndex != UndefinedTicketSlot)
         {
             ticketItem = player.Inventory?.GetItem(gameTicketInventoryIndex);
-            if (this.IsValidTicket(ticketItem, ticketItemDefinition, miniGameDefinition))
+            if (this.IsValidTicket(ticketItem, ticketItemDefinition, miniGameDefinition, anyTicketLevel))
             {
                 return true;
             }
@@ -226,7 +240,7 @@ public class EnterMiniGameAction
 
         foreach (var candidateItem in player.Inventory?.FindItemsByDefinition(ticketItemDefinition) ?? Enumerable.Empty<Item>())
         {
-            if (this.IsValidTicket(candidateItem, ticketItemDefinition, miniGameDefinition))
+            if (this.IsValidTicket(candidateItem, ticketItemDefinition, miniGameDefinition, anyTicketLevel))
             {
                 ticketItem = candidateItem;
                 return true;
@@ -236,12 +250,12 @@ public class EnterMiniGameAction
         return false;
     }
 
-    private bool IsValidTicket(Item? ticketItem, ItemDefinition requiredItemDefinition, MiniGameDefinition miniGameDefinition)
+    private bool IsValidTicket(Item? ticketItem, ItemDefinition requiredItemDefinition, MiniGameDefinition miniGameDefinition, bool anyTicketLevel)
     {
         return ticketItem is not null
             && requiredItemDefinition.Equals(ticketItem.Definition)
             && ticketItem.Durability > 0
-            && ticketItem.Level == miniGameDefinition.TicketItemLevel;
+            && (anyTicketLevel || ticketItem.Level == miniGameDefinition.TicketItemLevel);
     }
 
     private bool CheckEntranceFee(MiniGameDefinition miniGameDefinition, Player player, out int entranceFee)

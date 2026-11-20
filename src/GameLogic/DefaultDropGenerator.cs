@@ -468,6 +468,32 @@ public class DefaultDropGenerator : IDropGenerator
     }
 
     /// <summary>
+    /// Gets the definitions of the items which can be ancient items and drop from monsters.
+    /// </summary>
+    public IReadOnlyList<ItemDefinition> AncientItemDefinitions => this._ancientItems.AsReadOnly();
+
+    /// <summary>
+    /// Generates an ancient item of one of the specified definitions, e.g. as a reward of an event:
+    /// with skill, a random ancient set of the item and its bonus option, and random normal options like a dropped ancient item.
+    /// </summary>
+    /// <param name="definitions">The definitions, of which one is chosen randomly. They must be able to be ancient items.</param>
+    /// <returns>The ancient item, or <c>null</c> if there are no definitions.</returns>
+    public async ValueTask<Item?> GenerateAncientItemAsync(IEnumerable<ItemDefinition> definitions)
+    {
+        using var l = await this._lock.LockAsync().ConfigureAwait(false);
+        var item = this.GenerateRandomItem(definitions.ToList());
+        if (item is null)
+        {
+            return null;
+        }
+
+        item.HasSkill = item.CanHaveSkill(); // every ancient item got skill
+        this.ApplyRandomAncientOption(item);
+        item.Durability = item.GetMaximumDurabilityOfOnePiece();
+        return item;
+    }
+
+    /// <summary>
     /// Gets a random ancient item.
     /// </summary>
     /// <returns>A random ancient item.</returns>
