@@ -486,6 +486,9 @@ namespace
     const char ChaosCastleHeader[] = "%s %s    %.0s  Resets        %.0sCost    ";
     char g_chaosCastleLastRow[64];
 
+    bool RedirectCall(DWORD callSite, const void* target);
+    void PatchKalimaTooltip(const int (&minimums)[ChaosCastleLevelCount]);
+
     bool PatchByte(DWORD address, BYTE expected, BYTE value)
     {
         return *reinterpret_cast<const BYTE*>(address) == expected && WriteCode(address, &value, 1);
@@ -535,9 +538,11 @@ namespace
         int minimums[ChaosCastleLevelCount];
         if (!ReadChaosCastleResets(iniPath, minimums))
         {
-            g_log("EventBoard: ChaosCastleResets no es valido; el tooltip del Chaos Castle queda con los niveles.");
+            g_log("EventBoard: ChaosCastleResets no es valido; los tooltips de los eventos quedan con los niveles.");
             return;
         }
+
+        PatchKalimaTooltip(minimums);
 
         const int* levels = reinterpret_cast<const int*>(ChaosCastleLevels);
         if (levels[0] != 15 || levels[1] != 49)
@@ -570,6 +575,70 @@ namespace
 
         g_log("EventBoard: tooltip del Chaos Castle por resets (%d, %d, %d, %d, %d, %d, %d).", minimums[0], minimums[1],
             minimums[2], minimums[3], minimums[4], minimums[5], minimums[6]);
+    }
+
+    // --- Tabla del Lost Map (Kalima) por resets ---
+    // El tooltip del Lost Map muestra el nivel minimo de personaje de cada Kalima, resalta la fila del +nivel del mapa y
+    // avisa si el personaje no llega al nivel. Con el event rework un mapa de cualquier nivel abre la Kalima de los resets
+    // del personaje: la tabla muestra los resets de cada Kalima, sin resaltar fila y sin el aviso de nivel.
+    constexpr DWORD KalimaLevels = 0x00D4DCB8;            // 14 pares {minimo, 999}: 7 normales y 7 para MG, DL y RF
+    constexpr DWORD KalimaHeaderPush = 0x008FF38B;        // push 0D4DD2Ch: "%s %s       %s    "
+    constexpr DWORD KalimaRowCall = 0x008FF43D;           // sprintf de cada fila: "        %d             %3d~%3d     "
+    constexpr DWORD KalimaRowHighlight = 0x008FF44E;      // jne: resalta la fila del +nivel del mapa
+    constexpr DWORD KalimaLevelWarning = 0x008FF4F6;      // jge: salta el aviso "nivel muy bajo"
+    constexpr DWORD SprintfFunction = 0x009CF52A;
+
+    // Encabezado: "Kalima" "Level" | "Resets" (en vez de "Min. Level").
+    const char KalimaHeader[] = "%s %s       %.0s  Resets    ";
+
+    // Cada fila: la ultima muestra "360+" en vez de un rango.
+    int __cdecl KalimaRowPrintf(char* buffer, const char*, int row, int minimum, int maximum)
+    {
+        using SprintfType = int(__cdecl*)(char*, const char*, ...);
+        const auto print = reinterpret_cast<SprintfType>(SprintfFunction);
+        return maximum >= 999
+            ? print(buffer, "        %d             %3d+          ", row, minimum)
+            : print(buffer, "        %d             %3d~%3d     ", row, minimum, maximum);
+    }
+
+    void PatchKalimaTooltip(const int (&minimums)[ChaosCastleLevelCount])
+    {
+        const int* levels = reinterpret_cast<const int*>(KalimaLevels);
+        if (levels[0] != 40 || levels[1] != 999)
+        {
+            g_log("EventBoard: la tabla de Kalima no coincide; el tooltip del Lost Map queda con los niveles.");
+            return;
+        }
+
+        int ranges[ChaosCastleLevelCount * 2 * 2];
+        for (int level = 0; level < ChaosCastleLevelCount; level++)
+        {
+            const int maximum = level + 1 < ChaosCastleLevelCount ? minimums[level + 1] - 1 : 999;
+            for (int table = 0; table < 2; table++)
+            {
+                ranges[(table * ChaosCastleLevelCount + level) * 2] = minimums[level];
+                ranges[(table * ChaosCastleLevelCount + level) * 2 + 1] = maximum;
+            }
+        }
+
+        // El cliente limita el maximo a 400 (cmp ..., 190h): se cambia a 999 para que la ultima fila llegue como 999.
+        const BYTE warningJump = 0xEB;
+        const DWORD limit = 999;
+        if (*reinterpret_cast<const DWORD*>(0x008FF3F3) != 0x190 || *reinterpret_cast<const DWORD*>(0x008FF3FC) != 0x190
+            || *reinterpret_cast<const BYTE*>(KalimaLevelWarning) != 0x7D
+            || !PatchPush(KalimaHeaderPush, 0x00D4DD2C, KalimaHeader)
+            || !RedirectCall(KalimaRowCall, &KalimaRowPrintf)
+            || !PatchByte(KalimaRowHighlight, 0x75, 0xEB)
+            || !WriteCode(KalimaLevelWarning, &warningJump, 1)
+            || !WriteCode(0x008FF3F3, &limit, sizeof(limit))
+            || !WriteCode(0x008FF3FC, &limit, sizeof(limit))
+            || !WriteCode(KalimaLevels, ranges, sizeof(ranges)))
+        {
+            g_log("EventBoard: no se pudo cambiar el tooltip del Lost Map.");
+            return;
+        }
+
+        g_log("EventBoard: tooltip del Lost Map por resets.");
     }
 
     // --- Instalacion ---
