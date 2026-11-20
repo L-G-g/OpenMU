@@ -11,7 +11,7 @@ using MUnique.OpenMU.GameLogic.PlugIns.WanderingMerchants;
 
 /// <summary>
 /// Determines the next events of the board (eventboard.dll, key H): the events which are open now and the next starts
-/// of the active scheduled events (mini games, invasions, happy hour), with the level of the mini games which the player enters.
+/// of the active scheduled events (mini games, invasions, happy hour), with the resets of the level of the mini games which the player enters.
 /// </summary>
 public static class EventBoard
 {
@@ -106,7 +106,14 @@ public static class EventBoard
                 _ => miniGameStart.Key.ToString(),
             };
 
-            return EventReworkPlugIn.GetGameLevelByResets(player, miniGameStart.Key) is { } level ? $"{name} {level}" : name;
+            if (EventReworkPlugIn.GetGameLevelByResets(player, miniGameStart.Key) is not { } level)
+            {
+                return name;
+            }
+
+            return EventReworkPlugIn.GetConfiguration(player.GameContext)?.GetResetRangeText(level) is { } resets
+                ? $"{name} ({resets})"
+                : $"{name} {level}";
         }
 
         return plugIn switch

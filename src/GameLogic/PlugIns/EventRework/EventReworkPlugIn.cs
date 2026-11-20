@@ -63,14 +63,7 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
             return null;
         }
 
-        var byResets = miniGameType switch
-        {
-            MiniGameType.DevilSquare => configuration.DevilSquareByResets,
-            MiniGameType.BloodCastle => configuration.BloodCastleByResets,
-            MiniGameType.ChaosCastle => configuration.ChaosCastleByResets,
-            _ => false,
-        };
-        if (!byResets)
+        if (!IsLevelByResets(configuration, miniGameType))
         {
             return null;
         }
@@ -86,6 +79,26 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
 
         var level = configuration.GetLevelOfResets(GetResets(player));
         return levels.Where(l => l <= level).DefaultIfEmpty(levels.Min()).Max();
+    }
+
+    /// <summary>
+    /// Gets the name of a mini game which is shown to the players. If the level of the mini game is chosen by the resets,
+    /// it shows the resets of its level instead of the level, e.g. "Devil Square (30-74 rr)" instead of "Devil Square 2".
+    /// </summary>
+    /// <param name="gameContext">The game context.</param>
+    /// <param name="definition">The definition of the mini game.</param>
+    /// <returns>The name.</returns>
+    public static string GetDisplayName(IGameContext gameContext, MiniGameDefinition definition)
+    {
+        var name = definition.Name.ToString() ?? string.Empty;
+        if (GetConfiguration(gameContext) is not { } configuration
+            || !IsLevelByResets(configuration, definition.Type)
+            || configuration.GetResetRangeText(definition.GameLevel) is not { } resets)
+        {
+            return name;
+        }
+
+        return $"{name.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9').TrimEnd()} ({resets})";
     }
 
     /// <summary>
@@ -273,6 +286,14 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
         return configuration.DevilSquareStartExperienceMultiplier
                + ((configuration.DevilSquareEndExperienceMultiplier - configuration.DevilSquareStartExperienceMultiplier) * progress);
     }
+
+    private static bool IsLevelByResets(EventReworkConfiguration configuration, MiniGameType miniGameType) => miniGameType switch
+    {
+        MiniGameType.DevilSquare => configuration.DevilSquareByResets,
+        MiniGameType.BloodCastle => configuration.BloodCastleByResets,
+        MiniGameType.ChaosCastle => configuration.ChaosCastleByResets,
+        _ => false,
+    };
 
     private static int GetResets(Player player) => (int)(player.Attributes?[Stats.Resets] ?? 0);
 

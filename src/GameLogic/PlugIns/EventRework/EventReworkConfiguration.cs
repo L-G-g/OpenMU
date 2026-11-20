@@ -135,6 +135,24 @@ public class EventReworkConfiguration
         return Math.Max(level, 1);
     }
 
+    /// <summary>
+    /// Gets the text of the resets of an event level, e.g. "30-74 rr" or "360+ rr".
+    /// </summary>
+    /// <param name="level">The level, starting at 1.</param>
+    /// <returns>The text of the resets, or <c>null</c> if the level isn't in <see cref="MinimumResetsPerLevel"/>.</returns>
+    public string? GetResetRangeText(int level)
+    {
+        if (this.MinimumResetsPerLevel is not { Count: > 0 } minimums || level < 1 || level > minimums.Count)
+        {
+            return null;
+        }
+
+        var minimum = minimums[level - 1];
+        return level < minimums.Count
+            ? $"{minimum}-{minimums[level] - 1} rr"
+            : $"{minimum}+ rr";
+    }
+
     private static ICollection<EventJewelDrop> CreateDefaultJewels() => new List<EventJewelDrop>
     {
         new() { Name = "Jewel of Bless", Group = 14, Number = 13, Weight = 35 },

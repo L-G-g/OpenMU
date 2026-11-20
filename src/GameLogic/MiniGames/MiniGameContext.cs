@@ -733,7 +733,7 @@ public class MiniGameContext : AsyncDisposable, IEventStateProvider
             {
                 if (this.Definition.MapCreationPolicy != MiniGameMapCreationPolicy.Shared)
                 {
-                    await this.ShowGoldenMessageAsync(nameof(PlayerMessage.MiniGameStartsInMinutesFormat), this.Definition.Name, (int)enterDuration.TotalMinutes).ConfigureAwait(false);
+                    await this.ShowGoldenMessageAsync(nameof(PlayerMessage.MiniGameStartsInMinutesFormat), PlugIns.EventRework.EventReworkPlugIn.GetDisplayName(this._gameContext, this.Definition), (int)enterDuration.TotalMinutes).ConfigureAwait(false);
                 }
 
                 if (await this.DelayWithSkipAsync(messagePeriod, cancellationToken).ConfigureAwait(false))
