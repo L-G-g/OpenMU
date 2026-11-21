@@ -63,6 +63,7 @@ internal static class EventRework
 
         GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(EventBoardChatCommandPlugIn).GUID).IsActive = true;
         UseOneTicketPerEvent(gameConfiguration);
+        EventMonsterSpots.Apply(context, gameConfiguration);
     }
 
     /// <summary>

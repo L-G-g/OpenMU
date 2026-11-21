@@ -4,8 +4,10 @@
 
 namespace MUnique.OpenMU.GameLogic.PlugIns.EventRework;
 
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using MUnique.OpenMU.AttributeSystem;
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.MiniGames;
@@ -29,9 +31,48 @@ using MUnique.OpenMU.PlugIns;
 [Display(Name = "Event rework", Description = "Devil Square, Blood Castle, Chaos Castle and Kalima by resets (one entrance per event); Devil Square with rising experience and without drops; Blood Castle with an item reward per level for the player who delivers the weapon; Chaos Castle without experience and with a jewel per kill.")]
 [Guid("2B7E4D91-6A3C-4F85-9E12-7C5A0B3D8F64")]
 public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, IMonsterItemDropPlugIn, IMoneyDropCalculationPlugIn,
+    IObjectAddedToMapPlugIn, IObjectRemovedFromMapPlugIn, IAttackableGotKilledPlugIn,
     ISupportCustomConfiguration<EventReworkConfiguration>, ISupportDefaultCustomConfiguration, IDisabledByDefault
 {
     private const int ClassRetries = 30;
+
+    /// <summary>
+    /// The numbers of the maps of Kalima 1 to 7.
+    /// </summary>
+    private static readonly short[] KalimaMapNumbers = [24, 25, 26, 27, 28, 29, 36];
+
+    /// <summary>
+    /// The way through Kalima, from the entrance to Kundun. All levels of Kalima have the same layout.
+    /// </summary>
+    private static readonly (double X, double Y)[] KalimaWay =
+    [
+        (7, 19), (60, 15), (110, 12), (117, 45), (115, 95), (95, 95), (74, 76), (57, 75), (40, 75), (26, 76),
+    ];
+
+    private readonly ConcurrentDictionary<AttackableNpcBase, (SimpleElement Element, AttributeDefinition Attribute)[]> _appliedStats = new();
+
+    private readonly PlugInManager? _plugInManager;
+
+    private (EventReworkConfiguration? Configuration, MapDifficultyScalerConfiguration? Scaler, EventDifficulty? Difficulty) _difficulty;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EventReworkPlugIn"/> class.
+    /// The data initialization and the admin panel create it with this constructor for its default configuration.
+    /// </summary>
+    public EventReworkPlugIn()
+        : this(null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EventReworkPlugIn"/> class.
+    /// </summary>
+    /// <param name="plugInManager">The plugin manager, to find its game context.</param>
+    [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+    public EventReworkPlugIn(PlugInManager? plugInManager)
+    {
+        this._plugInManager = plugInManager;
+    }
 
     /// <inheritdoc />
     public EventReworkConfiguration? Configuration { get; set; }
@@ -115,6 +156,21 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
         return GetConfiguration(gameContext) is { } configuration && IsLevelByResets(configuration, definition.Type)
             ? TrimLevel(name)
             : name;
+    }
+
+    /// <summary>
+    /// Determines whether the stats of a monster are set by the resets of its event, see <see cref="EventReworkConfiguration.ScaleMonstersByResets"/>.
+    /// Then, the <see cref="MapDifficultyScaler"/> doesn't change it.
+    /// </summary>
+    /// <param name="gameContext">The game context.</param>
+    /// <param name="map">The map.</param>
+    /// <param name="npc">The monster.</param>
+    /// <returns><c>true</c>, if the stats of the monster are set by the resets.</returns>
+    public static bool IsScaledByResets(IGameContext? gameContext, GameMap map, AttackableNpcBase npc)
+    {
+        return gameContext is not null
+               && GetConfiguration(gameContext) is { ScaleMonstersByResets: true } configuration
+               && GetScaledLevel(configuration, map, npc) is not null;
     }
 
     /// <summary>
@@ -271,6 +327,95 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
     }
 
     /// <inheritdoc />
+    public ValueTask AttackableGotKilledAsync(IAttackable killed, IAttacker? killer)
+    {
+        // A monster respawns without leaving the map (GameMap.RespawnAsync), so it gets the stats of the resets of the time
+        // or the position of its respawn here, before its health is set again from its maximum health when it respawns.
+        if (killed is not AttackableNpcBase npc
+            || !this._appliedStats.TryGetValue(npc, out var elements)
+            || this.Configuration is not { ScaleMonstersByResets: true } configuration
+            || GameContextLookup.Get(this._plugInManager) is not { } gameContext
+            || GetScaledLevel(configuration, npc.CurrentMap, npc) is not { } scaled
+            || this.GetDifficulty(gameContext, configuration) is not { } difficulty)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var (start, end) = configuration.GetResetRangeOfLevel(scaled.Level);
+        var resets = start + ((end - start) * Math.Clamp(scaled.Progress, 0, 1));
+        var multipliers = difficulty.GetMultipliers(npc.CurrentMap.Definition, npc.Definition, resets);
+        var index = 0;
+        for (var stat = 0; stat < EventDifficulty.StatCount && index < elements.Length; stat++)
+        {
+            elements[index].Element.Value = multipliers[stat];
+            index += EventDifficulty.StatAttributes[stat].Length;
+        }
+
+        // TEMP TEST LOG (do not commit)
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask ObjectAddedToMapAsync(GameMap map, ILocateable addedObject)
+    {
+        if (addedObject is not AttackableNpcBase npc
+            || npc is Monster { SummonedBy: not null }
+            || this.Configuration is not { ScaleMonstersByResets: true } configuration
+            || GameContextLookup.Get(this._plugInManager) is not { } gameContext
+            || GetScaledLevel(configuration, map, npc) is not { } scaled
+            || this.GetDifficulty(gameContext, configuration) is not { } difficulty)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var (start, end) = configuration.GetResetRangeOfLevel(scaled.Level);
+        var resets = start + ((end - start) * Math.Clamp(scaled.Progress, 0, 1));
+        var multipliers = difficulty.GetMultipliers(map.Definition, npc.Definition, resets);
+        var elements = new List<(SimpleElement Element, AttributeDefinition Attribute)>();
+        for (var stat = 0; stat < EventDifficulty.StatCount; stat++)
+        {
+            var element = new SimpleElement(multipliers[stat], AggregateType.Multiplicate);
+            foreach (var attribute in EventDifficulty.StatAttributes[stat])
+            {
+                elements.Add((element, attribute));
+            }
+        }
+
+        if (!this._appliedStats.TryAdd(npc, elements.ToArray()))
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        foreach (var (element, attribute) in elements)
+        {
+            npc.Attributes.AddElement(element, attribute);
+        }
+
+        if (npc.SpawnArea.MaximumHealthOverride is null && npc.IsAlive)
+        {
+            // The health was set before the monster was added to the map.
+            npc.Health = (int)npc.Attributes[Stats.MaximumHealth];
+        }
+
+        // TEMP TEST LOG (do not commit)
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask ObjectRemovedFromMapAsync(GameMap map, ILocateable removedObject)
+    {
+        if (removedObject is AttackableNpcBase npc && this._appliedStats.TryRemove(npc, out var elements))
+        {
+            foreach (var (element, attribute) in elements)
+            {
+                npc.Attributes.RemoveElement(element, attribute);
+            }
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public ValueTask CalculateExperienceAsync(Player player, ExperienceCalculationArgs args)
     {
         if (this.Configuration is not { } configuration
@@ -331,6 +476,69 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
             : 0;
         return configuration.DevilSquareStartExperienceMultiplier
                + ((configuration.DevilSquareEndExperienceMultiplier - configuration.DevilSquareStartExperienceMultiplier) * progress);
+    }
+
+    /// <summary>
+    /// Gets the level of the event of a monster whose stats are set by the resets, and how far the event is: the time of the game
+    /// in Devil Square and Blood Castle, the way from the entrance to Kundun in Kalima (0 to 1).
+    /// </summary>
+    private static (int Level, double Progress)? GetScaledLevel(EventReworkConfiguration configuration, GameMap map, AttackableNpcBase npc)
+    {
+        if (npc.Definition.ObjectKind is not (NpcObjectKind.Monster or NpcObjectKind.Destructible))
+        {
+            return null;
+        }
+
+        if (npc.EventStateProvider is MiniGameContext { Definition: { Type: MiniGameType.DevilSquare or MiniGameType.BloodCastle } definition } miniGame)
+        {
+            var duration = definition.GameDuration.TotalSeconds;
+            var elapsed = miniGame.GameStartedAtUtc is { } startedAt ? (DateTime.UtcNow - startedAt).TotalSeconds : 0;
+            return (definition.GameLevel, duration > 0 ? elapsed / duration : 0);
+        }
+
+        if (!configuration.KalimaByResets)
+        {
+            return null;
+        }
+
+        var kalimaIndex = Array.IndexOf(KalimaMapNumbers, (short)map.MapId);
+        if (kalimaIndex < 0 || npc.EventStateProvider is not null)
+        {
+            return null;
+        }
+
+        return (kalimaIndex + 1, GetProgressOnKalimaWay(npc.Position.X, npc.Position.Y));
+    }
+
+    /// <summary>
+    /// Gets how far a position is on the way through Kalima: the length of the way up to the nearest point of it, in relation to its whole length.
+    /// </summary>
+    private static double GetProgressOnKalimaWay(double x, double y)
+    {
+        var total = 0.0;
+        var bestDistance = double.MaxValue;
+        var bestLength = 0.0;
+        for (var i = 1; i < KalimaWay.Length; i++)
+        {
+            var (ax, ay) = KalimaWay[i - 1];
+            var (bx, by) = KalimaWay[i];
+            var dx = bx - ax;
+            var dy = by - ay;
+            var length = Math.Sqrt((dx * dx) + (dy * dy));
+            var fraction = length > 0 ? Math.Clamp((((x - ax) * dx) + ((y - ay) * dy)) / (length * length), 0, 1) : 0;
+            var px = ax + (fraction * dx);
+            var py = ay + (fraction * dy);
+            var distance = ((x - px) * (x - px)) + ((y - py) * (y - py));
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestLength = total + (fraction * length);
+            }
+
+            total += length;
+        }
+
+        return total > 0 ? bestLength / total : 0;
     }
 
     private static bool IsLevelByResets(EventReworkConfiguration configuration, MiniGameType miniGameType) => miniGameType switch
@@ -443,6 +651,20 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
         }
 
         return item;
+    }
+
+    private EventDifficulty? GetDifficulty(IGameContext gameContext, EventReworkConfiguration configuration)
+    {
+        var scaler = gameContext.FeaturePlugIns.GetPlugIn<MapDifficultyScaler>()?.Configuration;
+        var current = this._difficulty;
+        if (current.Configuration == configuration && current.Scaler == scaler && current.Difficulty is not null)
+        {
+            return current.Difficulty;
+        }
+
+        var difficulty = EventDifficulty.Create(gameContext.Configuration, configuration, scaler);
+        this._difficulty = (configuration, scaler, difficulty);
+        return difficulty;
     }
 
     private bool IsDevilSquareWithoutDrops(AttackableNpcBase monster, Player killer)

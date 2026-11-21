@@ -34,7 +34,28 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
 
     private readonly ConcurrentDictionary<AttackableNpcBase, Multipliers> _appliedMultipliers = new();
 
+    private readonly PlugInManager? _plugInManager;
+
     private MapDifficultyScalerConfiguration? _configuration;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MapDifficultyScaler"/> class.
+    /// The data initialization and the admin panel create it with this constructor for its default configuration.
+    /// </summary>
+    public MapDifficultyScaler()
+        : this(null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MapDifficultyScaler"/> class.
+    /// </summary>
+    /// <param name="plugInManager">The plugin manager, to find its game context.</param>
+    [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+    public MapDifficultyScaler(PlugInManager? plugInManager)
+    {
+        this._plugInManager = plugInManager;
+    }
 
     /// <inheritdoc />
     public MapDifficultyScalerConfiguration? Configuration
@@ -61,7 +82,8 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
     {
         if (addedObject is not AttackableNpcBase npc
             || npc is Monster { SummonedBy: not null }
-            || this.Configuration is not { } configuration)
+            || this.Configuration is not { } configuration
+            || EventRework.EventReworkPlugIn.IsScaledByResets(GameContextLookup.Get(this._plugInManager), map, npc))
         {
             return ValueTask.CompletedTask;
         }
@@ -119,6 +141,18 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Gets the multipliers which apply to a monster on a map.
+    /// </summary>
+    /// <param name="configuration">The configuration.</param>
+    /// <param name="mapNumber">The number of the map.</param>
+    /// <param name="monsterNumber">The number of the monster.</param>
+    /// <returns>The multipliers, or <c>null</c> if neither the monster nor the map is configured.</returns>
+    internal static DifficultyMultipliers? GetMultipliers(MapDifficultyScalerConfiguration? configuration, short mapNumber, short monsterNumber)
+    {
+        return Find(configuration, true, monsterNumber) ?? Find(configuration, false, mapNumber);
     }
 
     private static DifficultyMultipliers? Find(MapDifficultyScalerConfiguration? configuration, bool isMonster, short number)
