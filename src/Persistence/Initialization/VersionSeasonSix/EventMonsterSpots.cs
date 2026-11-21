@@ -29,12 +29,12 @@ internal static class EventMonsterSpots
     internal const short FirstDevilSquareSpotNumber = 21000;
 
     /// <summary>
-    /// The numbers of the maps of Kalima 1 to 7.
+    /// Gets the numbers of the maps of Kalima 1 to 7.
     /// </summary>
     internal static IReadOnlyCollection<byte> KalimaMapNumbers { get; } = [24, 25, 26, 27, 28, 29, 36];
 
     /// <summary>
-    /// The numbers of the maps of Devil Square: 1 to 4, and 5 to 7.
+    /// Gets the numbers of the maps of Devil Square: 1 to 4, and 5 to 7.
     /// </summary>
     private static IReadOnlyCollection<short> DevilSquareMapNumbers { get; } = [9, 32];
 
