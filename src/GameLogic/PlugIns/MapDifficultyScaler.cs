@@ -40,9 +40,19 @@ public class MapDifficultyScaler : IFeaturePlugIn, IObjectAddedToMapPlugIn, IObj
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MapDifficultyScaler"/> class.
+    /// The data initialization and the admin panel create it with this constructor for its default configuration.
+    /// </summary>
+    public MapDifficultyScaler()
+        : this(null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MapDifficultyScaler"/> class.
     /// </summary>
     /// <param name="plugInManager">The plugin manager, to find its game context.</param>
-    public MapDifficultyScaler(PlugInManager? plugInManager = null)
+    [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+    public MapDifficultyScaler(PlugInManager? plugInManager)
     {
         this._plugInManager = plugInManager;
     }

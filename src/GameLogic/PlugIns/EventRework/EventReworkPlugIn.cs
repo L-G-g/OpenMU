@@ -57,9 +57,19 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventReworkPlugIn"/> class.
+    /// The data initialization and the admin panel create it with this constructor for its default configuration.
+    /// </summary>
+    public EventReworkPlugIn()
+        : this(null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EventReworkPlugIn"/> class.
     /// </summary>
     /// <param name="plugInManager">The plugin manager, to find its game context.</param>
-    public EventReworkPlugIn(PlugInManager? plugInManager = null)
+    [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+    public EventReworkPlugIn(PlugInManager? plugInManager)
     {
         this._plugInManager = plugInManager;
     }
@@ -358,6 +368,7 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
             npc.Health = (int)npc.Attributes[Stats.MaximumHealth];
         }
 
+        // TEMP TEST LOG (do not commit)
         return ValueTask.CompletedTask;
     }
 
