@@ -237,8 +237,14 @@ internal class MapLevelLadderTest
             var symbolOfKundunGroups = gameConfiguration.DropItemGroups
                 .Where(g => g.PossibleItems.Any(i => i is { Group: 14, Number: 29 }))
                 .OrderBy(g => g.ItemLevel)
-                .Select(g => (g.MinimumMonsterLevel!.Value, g.MaximumMonsterLevel!.Value));
-            Assert.That(symbolOfKundunGroups, Is.EqualTo(MapLevelLadder.SymbolOfKundunDropLevels));
+                .Select(g => (g.MinimumMonsterLevel!.Value, g.MaximumMonsterLevel!.Value))
+                .ToList();
+
+            // The event rework (one ticket per event) lets only the Symbol of Kundun +1 drop, from all the monsters of the ladder.
+            var oneTicketLevels = MapLevelLadder.SymbolOfKundunDropLevels
+                .Select((levels, index) => index == 0 ? (levels.MinimumLevel, (byte)byte.MaxValue) : ((byte)byte.MaxValue, (byte)0))
+                .ToList();
+            Assert.That(symbolOfKundunGroups, Is.EqualTo(MapLevelLadder.SymbolOfKundunDropLevels).Or.EqualTo(oneTicketLevels));
 
             Assert.That(gameConfiguration.WarpList.Select(w => w.Costs), Is.All.EqualTo(0));
             Assert.That(gameConfiguration.WarpList.Single(w => w.Index == 33).LevelRequirement, Is.EqualTo(270), "Swamp of Calmness");
