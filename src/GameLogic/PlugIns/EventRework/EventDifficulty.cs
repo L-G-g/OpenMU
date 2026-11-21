@@ -16,8 +16,8 @@ using MUnique.OpenMU.GameLogic.Attributes;
 /// A stat is compared by the weighted geometric mean of the normal monsters of a map (by their number of spawns),
 /// with the multipliers of the <see cref="MapDifficultyScaler"/>. Between two reference maps, the logarithm of a stat rises
 /// evenly with the resets. A normal monster of an event gets exactly the stats of the resets; a strong one (a boss, with
-/// more than <see cref="StrongMonsterHealthFactor"/> times the median health of its map) keeps its strength in relation
-/// to the normal monsters of its map.
+/// more than <see cref="StrongMonsterHealthFactor"/> times the median health of its map, or the only one of its kind) keeps its strength in relation
+/// to the normal monsters of its map, with at least <see cref="MinimumBossHealthFactor"/> times their health.
 /// </remarks>
 public sealed class EventDifficulty
 {
@@ -30,6 +30,11 @@ public sealed class EventDifficulty
     /// A monster with more than this factor of the median health of the monsters of its map is a strong monster.
     /// </summary>
     internal const double StrongMonsterHealthFactor = 2;
+
+    /// <summary>
+    /// A strong monster has at least this factor of the health of the normal monsters at the same resets.
+    /// </summary>
+    internal const double MinimumBossHealthFactor = 3;
 
     /// <summary>
     /// Monsters of a reference map with more than this factor of the median health, or less than its inverse,
@@ -126,15 +131,28 @@ public sealed class EventDifficulty
     {
         var mapStats = this._eventMaps.GetOrAdd(eventMap, EventMapStats.Create);
         var target = this.GetLogStats(resets);
-        var isStrong = GetBaseStat(monster, 0) > mapStats.MedianHealth * StrongMonsterHealthFactor;
+        var health = GetBaseStat(monster, 0);
+        var isStrong = health > mapStats.MedianHealth * StrongMonsterHealthFactor
+                       || (mapStats.SingleMonsters.Contains(monster) && health > mapStats.MedianHealth);
         var result = new float[StatCount];
         for (var stat = 0; stat < StatCount; stat++)
         {
             var baseStat = GetBaseStat(monster, stat);
             var compared = isStrong ? mapStats.LogStats[stat] : (baseStat > 0 ? Math.Log(baseStat) : double.NaN);
-            result[stat] = baseStat <= 0 || double.IsNaN(compared) || double.IsNaN(target[stat])
-                ? 1
-                : (float)Math.Exp(target[stat] - compared);
+            if (baseStat <= 0 || double.IsNaN(compared) || double.IsNaN(target[stat]))
+            {
+                result[stat] = 1;
+                continue;
+            }
+
+            var logResult = target[stat] - compared;
+            if (isStrong && stat == 0)
+            {
+                // A boss has at least this factor of the health of the normal monsters.
+                logResult = Math.Max(logResult, target[stat] + Math.Log(MinimumBossHealthFactor) - Math.Log(baseStat));
+            }
+
+            result[stat] = (float)Math.Exp(logResult);
         }
 
         return result;
@@ -257,7 +275,7 @@ public sealed class EventDifficulty
     /// <summary>
     /// The stats of the normal monsters of an event map.
     /// </summary>
-    private sealed record EventMapStats(double MedianHealth, double[] LogStats)
+    private sealed record EventMapStats(double MedianHealth, double[] LogStats, IReadOnlySet<MonsterDefinition> SingleMonsters)
     {
         public static EventMapStats Create(GameMapDefinition map)
         {
@@ -274,7 +292,14 @@ public sealed class EventDifficulty
                 logStats[stat] = GetLogMean(normal.Select(m => (GetBaseStat(m.Definition, stat), m.Weight)));
             }
 
-            return new EventMapStats(medianHealth, logStats);
+            // A monster with a single spawn of one monster on the map is a boss, e.g. Kundun.
+            var singleMonsters = map.MonsterSpawns
+                .Where(spawn => spawn.MonsterDefinition is { ObjectKind: NpcObjectKind.Monster })
+                .GroupBy(spawn => spawn.MonsterDefinition!)
+                .Where(group => group.Sum(spawn => Math.Max((int)spawn.Quantity, 1)) == 1)
+                .Select(group => group.Key)
+                .ToHashSet();
+            return new EventMapStats(medianHealth, logStats, singleMonsters);
         }
     }
 }
