@@ -31,7 +31,7 @@ using MUnique.OpenMU.PlugIns;
 [Display(Name = "Event rework", Description = "Devil Square, Blood Castle, Chaos Castle and Kalima by resets (one entrance per event); Devil Square with rising experience and without drops; Blood Castle with an item reward per level for the player who delivers the weapon; Chaos Castle without experience and with a jewel per kill.")]
 [Guid("2B7E4D91-6A3C-4F85-9E12-7C5A0B3D8F64")]
 public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, IMonsterItemDropPlugIn, IMoneyDropCalculationPlugIn,
-    IObjectAddedToMapPlugIn, IObjectRemovedFromMapPlugIn,
+    IObjectAddedToMapPlugIn, IObjectRemovedFromMapPlugIn, IAttackableGotKilledPlugIn,
     ISupportCustomConfiguration<EventReworkConfiguration>, ISupportDefaultCustomConfiguration, IDisabledByDefault
 {
     private const int ClassRetries = 30;
@@ -324,6 +324,35 @@ public class EventReworkPlugIn : IFeaturePlugIn, IExperienceCalculationPlugIn, I
         var droppedItem = new DroppedItem(item, winner.Position, winner.CurrentMap ?? map, winner, winner.GetAsEnumerable());
         await (winner.CurrentMap ?? map).AddAsync(droppedItem).ConfigureAwait(false);
         await winner.ShowGoldenMessageAsync($"Premio de Blood Castle: {name} (en el piso, inventario y baul llenos)").ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public ValueTask AttackableGotKilledAsync(IAttackable killed, IAttacker? killer)
+    {
+        // A monster respawns without leaving the map (GameMap.RespawnAsync), so it gets the stats of the resets of the time
+        // or the position of its respawn here, before its health is set again from its maximum health when it respawns.
+        if (killed is not AttackableNpcBase npc
+            || !this._appliedStats.TryGetValue(npc, out var elements)
+            || this.Configuration is not { ScaleMonstersByResets: true } configuration
+            || GameContextLookup.Get(this._plugInManager) is not { } gameContext
+            || GetScaledLevel(configuration, npc.CurrentMap, npc) is not { } scaled
+            || this.GetDifficulty(gameContext, configuration) is not { } difficulty)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var (start, end) = configuration.GetResetRangeOfLevel(scaled.Level);
+        var resets = start + ((end - start) * Math.Clamp(scaled.Progress, 0, 1));
+        var multipliers = difficulty.GetMultipliers(npc.CurrentMap.Definition, npc.Definition, resets);
+        var index = 0;
+        for (var stat = 0; stat < EventDifficulty.StatCount && index < elements.Length; stat++)
+        {
+            elements[index].Element.Value = multipliers[stat];
+            index += EventDifficulty.StatAttributes[stat].Length;
+        }
+
+        // TEMP TEST LOG (do not commit)
+        return ValueTask.CompletedTask;
     }
 
     /// <inheritdoc />
