@@ -50,6 +50,11 @@ public abstract class AttackableNpcBase : NonPlayerCharacter, IAttackable
     }
 
     /// <summary>
+    /// Gets the provider of the state of the event, e.g. the mini game, in which the monster appeared.
+    /// </summary>
+    public IEventStateProvider? EventStateProvider => this._eventStateProvider;
+
+    /// <summary>
     /// Occurs when this instance died.
     /// </summary>
     public event EventHandler<DeathInformation>? Died;

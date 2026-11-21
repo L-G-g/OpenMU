@@ -110,6 +110,7 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         MapDropsAndInvasions.Apply(this.Context, this.GameConfiguration);
         MoreDungeons.Apply(this.Context, this.GameConfiguration);
         DungeonTokenMerchants.Apply(this.Context, this.GameConfiguration);
+        EventRework.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 
         // After all items exist.

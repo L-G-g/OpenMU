@@ -22,4 +22,18 @@ public abstract class MiniGameStartConfiguration : PeriodicTaskConfiguration
     /// </summary>
     [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.MiniGameStartConfiguration_EntranceClosedMessage_Name), Order = 101)]
     public LocalizedString EntranceClosedMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many minutes before the entrance opens the <see cref="PreOpenMessage"/> is announced, once per
+    /// minute (e.g. 5: at 5, 4, 3, 2 and 1 minute before). 0 doesn't announce the opening in advance.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Name), Description = nameof(PlugInResources.MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Description), Order = 102)]
+    public int PreOpenAnnouncementMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the golden message which announces the minutes until the entrance opens ({0}: the minutes),
+    /// see <see cref="PreOpenAnnouncementMinutes"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.MiniGameStartConfiguration_PreOpenMessage_Name), Order = 103)]
+    public LocalizedString PreOpenMessage { get; set; }
 }

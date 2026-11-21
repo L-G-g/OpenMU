@@ -78,6 +78,16 @@ public class TalkNpcAction
     private async ValueTask ShowDialogOfOpenedNpcAsync(Player player)
     {
         var npcStats = player.OpenedNpc!.Definition;
+        if (PlugIns.EventRework.EventReworkPlugIn.GetDirectEntryMiniGame(player, npcStats.NpcWindow) is { } miniGameType)
+        {
+            // With the event rework, there is one ticket per event: the NPC enters the event of the resets directly,
+            // because the window of the game client only accepts a ticket of the level which is chosen in it.
+            player.OpenedNpc = null;
+            await player.PlayerState.TryAdvanceToAsync(PlayerState.EnteredWorld).ConfigureAwait(false);
+            await new MiniGames.EnterMiniGameAction().TryEnterMiniGameAsync(player, miniGameType, 1, 0xFF).ConfigureAwait(false);
+            return;
+        }
+
         switch (npcStats.NpcWindow)
         {
             case NpcWindow.Undefined:

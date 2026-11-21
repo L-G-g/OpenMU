@@ -1,0 +1,244 @@
+﻿// <copyright file="EventReworkConfiguration.cs" company="MUnique">
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+// </copyright>
+
+namespace MUnique.OpenMU.GameLogic.PlugIns.EventRework;
+
+using MUnique.OpenMU.DataModel.Composition;
+
+/// <summary>
+/// The configuration of the <see cref="EventReworkPlugIn"/>.
+/// </summary>
+public class EventReworkConfiguration
+{
+    /// <summary>
+    /// Gets or sets the minimum resets of each level of the events, starting with level 1.
+    /// A character enters the highest level whose minimum it reached, no matter its character level and the level of its ticket.
+    /// </summary>
+    [Display(Name = "Minimum resets per event level", Description = "The minimum resets of each level of the events, starting with level 1 (e.g. 0, 30, 75 means: level 1 from 0 resets, level 2 from 30, level 3 from 75). A character enters the highest level whose minimum it reached, no matter its character level and the level of its ticket.")]
+    public IList<int> MinimumResetsPerLevel { get; set; } = new List<int> { 0, 30, 75, 150, 220, 300, 360 };
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the level of Devil Square is chosen by the resets.
+    /// </summary>
+    [Display(Name = "Devil Square level by resets")]
+    public bool DevilSquareByResets { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the level of Blood Castle is chosen by the resets.
+    /// </summary>
+    [Display(Name = "Blood Castle level by resets")]
+    public bool BloodCastleByResets { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the level of Chaos Castle is chosen by the resets.
+    /// </summary>
+    [Display(Name = "Chaos Castle level by resets")]
+    public bool ChaosCastleByResets { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether talking to Charon (Devil Square) or to the Messenger of Archangel (Blood Castle)
+    /// enters the event directly with a ticket of any level, instead of opening the window of the game client, which asks
+    /// for the level and only accepts a ticket of the chosen level.
+    /// </summary>
+    [Display(Name = "Direct entry at the NPC", Description = "Talking to Charon (Devil Square) or to the Messenger of Archangel (Blood Castle) enters the event of the resets directly, with a ticket of any level, instead of opening the window of the game client, which asks for a level.")]
+    public bool DirectEntryAtNpc { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a Lost Kalima Map of any level opens the Kalima of the resets of the player who drops it.
+    /// </summary>
+    [Display(Name = "Kalima level by resets", Description = "A Lost Kalima Map of any level opens the Kalima of the resets of the player who drops it.")]
+    public bool KalimaByResets { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the monsters of Devil Square, Blood Castle and Kalima get the stats of the
+    /// monsters of the hunting maps at the resets of their level, see <see cref="DifficultyReferenceMaps"/>.
+    /// In Devil Square and Blood Castle, the resets rise from the minimum to the maximum of the level during the game
+    /// (a monster keeps the stats of the moment it appears); in Kalima, along the way from the entrance to Kundun.
+    /// It replaces the multipliers of the map difficulty scaler on these maps.
+    /// </summary>
+    [Display(Name = "Event monsters by resets", Description = "The monsters of Devil Square, Blood Castle and Kalima get the stats of the monsters of the hunting maps (table below, including the multipliers of the map difficulty scaler) at the resets of their level. In Devil Square and Blood Castle, the resets rise from the minimum to the maximum of the level during the game; in Kalima, along the way from the entrance to Kundun. The bosses keep their strength in relation to the other monsters. Chaos Castle is not changed.")]
+    public bool ScaleMonstersByResets { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the resets of the monsters at the end of the last level, which has no maximum, see <see cref="MinimumResetsPerLevel"/>.
+    /// </summary>
+    [Display(Name = "Event monsters: resets at the end of the last level", Description = "The last level has no maximum of resets. Its monsters rise up to these resets. Above the resets of the last map of the table, the stats keep rising as from the map 90 or more resets before it to the last map.")]
+    public int ResetsAtTheEndOfTheLastLevel { get; set; } = 400;
+
+    /// <summary>
+    /// Gets or sets the hunting maps with the resets which they need, see <see cref="ScaleMonstersByResets"/>.
+    /// </summary>
+    [MemberOfAggregate]
+    [ScaffoldColumn(true)]
+    [Display(Name = "Event monsters: reference maps", Description = "The hunting maps with the resets they need. A monster of an event at some resets gets the average stats of the monsters of these maps at the same resets (between two maps, rising evenly), including the multipliers of the map difficulty scaler. Elites and bosses of the maps don't count.")]
+    public ICollection<EventDifficultyReferenceMap> DifficultyReferenceMaps { get; set; } = CreateDefaultReferenceMaps();
+
+    /// <summary>
+    /// Gets or sets the experience multiplier of Devil Square when the game starts. It rises evenly up to
+    /// <see cref="DevilSquareEndExperienceMultiplier"/> at the end of the game duration.
+    /// </summary>
+    [Display(Name = "Devil Square: experience multiplier at the start", Description = "Multiplies the experience of the kills in Devil Square. It rises evenly up to the multiplier at the end of the game. 1 = normal experience.")]
+    public double DevilSquareStartExperienceMultiplier { get; set; } = 1.5;
+
+    /// <summary>
+    /// Gets or sets the experience multiplier of Devil Square at the end of the game duration.
+    /// </summary>
+    [Display(Name = "Devil Square: experience multiplier at the end")]
+    public double DevilSquareEndExperienceMultiplier { get; set; } = 3.0;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the monsters of Devil Square drop no items and no money.
+    /// </summary>
+    [Display(Name = "Devil Square: no drops", Description = "The monsters of Devil Square drop no items and no money. The rewards of the score table stay.")]
+    public bool DevilSquareWithoutDrops { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the monsters of Chaos Castle give no experience.
+    /// </summary>
+    [Display(Name = "Chaos Castle: monsters without experience")]
+    public bool ChaosCastleWithoutExperience { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether each killed monster of Chaos Castle drops one of the <see cref="ChaosCastleJewels"/>,
+    /// instead of the few jewels of the original Chaos Castle.
+    /// </summary>
+    [Display(Name = "Chaos Castle: one jewel per kill", Description = "Each killed monster of Chaos Castle drops one jewel of the table, chosen by its weight, instead of the few jewels of the original Chaos Castle.")]
+    public bool ChaosCastleJewelPerKill { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the jewels which the monsters of Chaos Castle drop, see <see cref="ChaosCastleJewelPerKill"/>.
+    /// </summary>
+    [MemberOfAggregate]
+    [ScaffoldColumn(true)]
+    [Display(Name = "Chaos Castle: jewels", Description = "The jewels which the monsters of Chaos Castle drop (item group and number), with their weights: a jewel with weight 30 drops three times as often as one with weight 10.")]
+    public ICollection<EventJewelDrop> ChaosCastleJewels { get; set; } = CreateDefaultJewels();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the player who delivers the weapon in Blood Castle gets the item of the
+    /// <see cref="BloodCastleRewards"/> of the level. It replaces the item reward of the original Blood Castle (a Jewel of Chaos for the party).
+    /// </summary>
+    [Display(Name = "Blood Castle: item reward of the table", Description = "The player who delivers the weapon to the Archangel gets the item of the table for the level of the castle. It replaces the item reward of the original Blood Castle (a Jewel of Chaos for the party). Experience and zen rewards stay.")]
+    public bool BloodCastleItemRewards { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the reward item of Blood Castle is one which the class of the winner can use.
+    /// </summary>
+    [Display(Name = "Blood Castle: item of the class of the winner")]
+    public bool BloodCastleRewardOfOwnClass { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the minimum number of excellent options of the excellent reward items of Blood Castle.
+    /// </summary>
+    [Display(Name = "Blood Castle: minimum excellent options")]
+    public int BloodCastleMinimumExcellentOptions { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the number of tiers into which the ancient armor pieces and weapons are split by their drop level,
+    /// see <see cref="BloodCastleReward.AncientTier"/>.
+    /// </summary>
+    [Display(Name = "Blood Castle: ancient tiers", Description = "Into how many tiers the ancient armor pieces and weapons are split by their drop level (lowest first).")]
+    public int BloodCastleAncientTierCount { get; set; } = 3;
+
+    /// <summary>
+    /// Gets or sets the time before the end of Blood Castle from which the weapon can be delivered to the Archangel.
+    /// <see cref="TimeSpan.Zero"/> allows the delivery at any time, as in the original game.
+    /// </summary>
+    [Display(Name = "Blood Castle: delivery before the end", Description = "The weapon can only be delivered to the Archangel when this time or less is left until the end of Blood Castle. 0 = at any time.")]
+    public TimeSpan BloodCastleDeliveryBeforeEnd { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Gets or sets the reward item of each level of Blood Castle.
+    /// </summary>
+    [MemberOfAggregate]
+    [ScaffoldColumn(true)]
+    [Display(Name = "Blood Castle: rewards", Description = "The reward item of each level of Blood Castle.")]
+    public ICollection<BloodCastleReward> BloodCastleRewards { get; set; } = CreateDefaultBloodCastleRewards();
+
+    /// <summary>
+    /// Gets the event level (1 or more) of a number of resets.
+    /// </summary>
+    /// <param name="resets">The resets.</param>
+    /// <returns>The level, starting at 1.</returns>
+    public int GetLevelOfResets(int resets)
+    {
+        var level = this.MinimumResetsPerLevel?.Count(minimum => resets >= minimum) ?? 0;
+        return Math.Max(level, 1);
+    }
+
+    /// <summary>
+    /// Gets the text of the resets of an event level, e.g. "30-74 rr" or "360+ rr".
+    /// </summary>
+    /// <param name="level">The level, starting at 1.</param>
+    /// <returns>The text of the resets, or <c>null</c> if the level isn't in <see cref="MinimumResetsPerLevel"/>.</returns>
+    public string? GetResetRangeText(int level)
+    {
+        if (this.MinimumResetsPerLevel is not { Count: > 0 } minimums || level < 1 || level > minimums.Count)
+        {
+            return null;
+        }
+
+        var minimum = minimums[level - 1];
+        return level < minimums.Count
+            ? $"{minimum}-{minimums[level] - 1} rr"
+            : $"{minimum}+ rr";
+    }
+
+    /// <summary>
+    /// Gets the resets of the monsters at the start and at the end of an event level.
+    /// </summary>
+    /// <param name="level">The level, starting at 1.</param>
+    /// <returns>The resets at the start and at the end.</returns>
+    public (int Start, int End) GetResetRangeOfLevel(int level)
+    {
+        if (this.MinimumResetsPerLevel is not { Count: > 0 } minimums)
+        {
+            return (0, 0);
+        }
+
+        var index = Math.Clamp(level, 1, minimums.Count) - 1;
+        var start = minimums[index];
+        var end = index + 1 < minimums.Count
+            ? minimums[index + 1] - 1
+            : Math.Max(start, this.ResetsAtTheEndOfTheLastLevel);
+        return (start, end);
+    }
+
+    private static ICollection<EventDifficultyReferenceMap> CreateDefaultReferenceMaps() => new List<EventDifficultyReferenceMap>
+    {
+        new() { Name = "Lorencia", MapNumber = 0, Resets = 0 },
+        new() { Name = "Devias", MapNumber = 2, Resets = 2 },
+        new() { Name = "Dungeon", MapNumber = 1, Resets = 8 },
+        new() { Name = "Lost Tower", MapNumber = 4, Resets = 19 },
+        new() { Name = "Atlans", MapNumber = 7, Resets = 33 },
+        new() { Name = "Tarkan", MapNumber = 8, Resets = 52 },
+        new() { Name = "Aida", MapNumber = 33, Resets = 75 },
+        new() { Name = "Icarus", MapNumber = 10, Resets = 102 },
+        new() { Name = "Kanturu Ruins", MapNumber = 37, Resets = 133 },
+        new() { Name = "Kanturu Relics", MapNumber = 38, Resets = 169 },
+        new() { Name = "Karutan", MapNumber = 80, Resets = 208 },
+        new() { Name = "Swamp of Calmness", MapNumber = 56, Resets = 252 },
+        new() { Name = "Raklion", MapNumber = 57, Resets = 300 },
+    };
+
+    private static ICollection<EventJewelDrop> CreateDefaultJewels() => new List<EventJewelDrop>
+    {
+        new() { Name = "Jewel of Bless", Group = 14, Number = 13, Weight = 35 },
+        new() { Name = "Jewel of Soul", Group = 14, Number = 14, Weight = 35 },
+        new() { Name = "Jewel of Life", Group = 14, Number = 16, Weight = 10 },
+        new() { Name = "Jewel of Chaos", Group = 12, Number = 15, Weight = 12 },
+        new() { Name = "Jewel of Creation", Group = 14, Number = 22, Weight = 8 },
+    };
+
+    private static ICollection<BloodCastleReward> CreateDefaultBloodCastleRewards() => new List<BloodCastleReward>
+    {
+        new() { GameLevel = 1, Kind = BloodCastleRewardKind.DungeonExcellentItem, DungeonNumber = 1 },
+        new() { GameLevel = 2, Kind = BloodCastleRewardKind.DungeonExcellentItem, DungeonNumber = 2 },
+        new() { GameLevel = 3, Kind = BloodCastleRewardKind.DungeonExcellentItem, DungeonNumber = 3 },
+        new() { GameLevel = 4, Kind = BloodCastleRewardKind.AncientArmorOrWeapon, AncientTier = 1 },
+        new() { GameLevel = 5, Kind = BloodCastleRewardKind.AncientArmorOrWeapon, AncientTier = 2 },
+        new() { GameLevel = 6, Kind = BloodCastleRewardKind.AncientArmorOrWeapon, AncientTier = 3 },
+        new() { GameLevel = 7, Kind = BloodCastleRewardKind.AncientJewelry },
+        new() { GameLevel = 8, Kind = BloodCastleRewardKind.AncientJewelry },
+    };
+}

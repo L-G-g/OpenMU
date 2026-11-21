@@ -54,6 +54,31 @@ public class PeriodicTaskConfiguration
     public IList<byte> AllowedServerIds { get; set; } = new List<byte>();
 
     /// <summary>
+    /// Gets or sets the length of a repeating cycle of the event. When it's set (more than zero), the task starts once
+    /// per cycle, at <see cref="CycleOffset"/> after the start of the cycle, and the <see cref="Timetable"/> is ignored.
+    /// The cycles are counted from <see cref="CycleEpochUtc"/>, so that the starts don't depend on the day and stay the
+    /// same after a restart. Several events with the same cycle length and different offsets follow each other.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.PeriodicTaskConfiguration_CycleLength_Name), Description = nameof(PlugInResources.PeriodicTaskConfiguration_CycleLength_Description), Order = 7)]
+    public TimeSpan CycleLength { get; set; }
+
+    /// <summary>
+    /// Gets or sets the time after the start of each cycle at which the task starts, see <see cref="CycleLength"/>.
+    /// </summary>
+    [Display(ResourceType = typeof(PlugInResources), Name = nameof(PlugInResources.PeriodicTaskConfiguration_CycleOffset_Name), Description = nameof(PlugInResources.PeriodicTaskConfiguration_CycleOffset_Description), Order = 8)]
+    public TimeSpan CycleOffset { get; set; }
+
+    /// <summary>
+    /// Gets the time from which the cycles of <see cref="CycleLength"/> are counted.
+    /// </summary>
+    public static DateTime CycleEpochUtc { get; } = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>
+    /// Gets a value indicating whether the task starts by a repeating cycle instead of the <see cref="Timetable"/>.
+    /// </summary>
+    protected bool UsesCycle => this.CycleLength > TimeSpan.Zero;
+
+    /// <summary>
     /// Generate a sequence of time points like [00:00, 00:01, ...].
     /// </summary>
     /// <param name="duration">The duration.</param>
@@ -92,6 +117,13 @@ public class PeriodicTaskConfiguration
     /// <returns>Returns true if the invasion can be started.</returns>
     public virtual bool IsItTimeToStart(TimeZoneInfo serverTimeZone)
     {
+        if (this.UsesCycle)
+        {
+            // Between the start of the cycle and 5 seconds after it.
+            var sinceStart = this.GetTimeSinceCycleStart(DateTime.UtcNow);
+            return sinceStart >= TimeSpan.Zero && sinceStart <= TimeSpan.FromSeconds(5);
+        }
+
         if (this.Timetable.Count == 0)
         {
             return false;
@@ -113,6 +145,14 @@ public class PeriodicTaskConfiguration
     /// <returns>The next start time, in UTC; or <see langword="null"/>, if the timetable is empty.</returns>
     public DateTime? GetNextStartUtc(DateTime utcNow, TimeZoneInfo serverTimeZone)
     {
+        // A context without a time zone (e.g. a mocked one) uses UTC.
+        serverTimeZone ??= TimeZoneInfo.Utc;
+        if (this.UsesCycle)
+        {
+            var sinceStart = this.GetTimeSinceCycleStart(utcNow);
+            return utcNow - sinceStart + this.CycleLength;
+        }
+
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(utcNow, serverTimeZone));
         DateTime? result = null;
 
@@ -130,5 +170,21 @@ public class PeriodicTaskConfiguration
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Gets the time since the last start of the cycle, see <see cref="CycleLength"/>: from zero up to the cycle length.
+    /// </summary>
+    /// <param name="utcNow">The current time, in UTC.</param>
+    /// <returns>The time since the last start.</returns>
+    private TimeSpan GetTimeSinceCycleStart(DateTime utcNow)
+    {
+        var ticks = (utcNow - CycleEpochUtc - this.CycleOffset).Ticks % this.CycleLength.Ticks;
+        if (ticks < 0)
+        {
+            ticks += this.CycleLength.Ticks;
+        }
+
+        return TimeSpan.FromTicks(ticks);
     }
 }

@@ -128,8 +128,20 @@ internal static class MonsterSpotGrouping
     /// <param name="gameConfiguration">The game configuration.</param>
     public static void Apply(IContext context, GameConfiguration gameConfiguration)
     {
+        Apply(context, gameConfiguration, HuntingMapNumbers);
+    }
+
+    /// <summary>
+    /// Groups the monsters of some maps into spots, and removes the most crowded spots of a map
+    /// which has more than <see cref="MaximumSpotsPerMap"/>.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="gameConfiguration">The game configuration.</param>
+    /// <param name="mapNumbers">The numbers of the maps.</param>
+    public static void Apply(IContext context, GameConfiguration gameConfiguration, IReadOnlyCollection<byte> mapNumbers)
+    {
         var maps = gameConfiguration.Maps
-            .Where(map => map.Discriminator == 0 && HuntingMapNumbers.Contains((byte)map.Number))
+            .Where(map => map.Discriminator == 0 && mapNumbers.Contains((byte)map.Number))
             .ToList();
         foreach (var map in maps)
         {

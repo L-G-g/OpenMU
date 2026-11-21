@@ -426,6 +426,7 @@ namespace
         LoadTokenShop(&Log);
         LoadQuests(&Log);
         LoadPoints(&Log);
+        LoadEventBoard(&Log);
         if (InstallFps(&Log) && InstallExtraFrames(&Log, SmoothMotionEnabled()))
         {
             if (SmoothMotionEnabled())
