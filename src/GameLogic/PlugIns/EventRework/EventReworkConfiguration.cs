@@ -51,6 +51,30 @@ public class EventReworkConfiguration
     public bool KalimaByResets { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the monsters of Devil Square, Blood Castle and Kalima get the stats of the
+    /// monsters of the hunting maps at the resets of their level, see <see cref="DifficultyReferenceMaps"/>.
+    /// In Devil Square and Blood Castle, the resets rise from the minimum to the maximum of the level during the game
+    /// (a monster keeps the stats of the moment it appears); in Kalima, along the way from the entrance to Kundun.
+    /// It replaces the multipliers of the map difficulty scaler on these maps.
+    /// </summary>
+    [Display(Name = "Event monsters by resets", Description = "The monsters of Devil Square, Blood Castle and Kalima get the stats of the monsters of the hunting maps (table below, including the multipliers of the map difficulty scaler) at the resets of their level. In Devil Square and Blood Castle, the resets rise from the minimum to the maximum of the level during the game; in Kalima, along the way from the entrance to Kundun. The bosses keep their strength in relation to the other monsters. Chaos Castle is not changed.")]
+    public bool ScaleMonstersByResets { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the resets of the monsters at the end of the last level, which has no maximum, see <see cref="MinimumResetsPerLevel"/>.
+    /// </summary>
+    [Display(Name = "Event monsters: resets at the end of the last level", Description = "The last level has no maximum of resets. Its monsters rise up to these resets. Above the resets of the last map of the table, the stats keep rising as from the map 90 or more resets before it to the last map.")]
+    public int ResetsAtTheEndOfTheLastLevel { get; set; } = 400;
+
+    /// <summary>
+    /// Gets or sets the hunting maps with the resets which they need, see <see cref="ScaleMonstersByResets"/>.
+    /// </summary>
+    [MemberOfAggregate]
+    [ScaffoldColumn(true)]
+    [Display(Name = "Event monsters: reference maps", Description = "The hunting maps with the resets they need. A monster of an event at some resets gets the average stats of the monsters of these maps at the same resets (between two maps, rising evenly), including the multipliers of the map difficulty scaler. Elites and bosses of the maps don't count.")]
+    public ICollection<EventDifficultyReferenceMap> DifficultyReferenceMaps { get; set; } = CreateDefaultReferenceMaps();
+
+    /// <summary>
     /// Gets or sets the experience multiplier of Devil Square when the game starts. It rises evenly up to
     /// <see cref="DevilSquareEndExperienceMultiplier"/> at the end of the game duration.
     /// </summary>
@@ -159,6 +183,43 @@ public class EventReworkConfiguration
             ? $"{minimum}-{minimums[level] - 1} rr"
             : $"{minimum}+ rr";
     }
+
+    /// <summary>
+    /// Gets the resets of the monsters at the start and at the end of an event level.
+    /// </summary>
+    /// <param name="level">The level, starting at 1.</param>
+    /// <returns>The resets at the start and at the end.</returns>
+    public (int Start, int End) GetResetRangeOfLevel(int level)
+    {
+        if (this.MinimumResetsPerLevel is not { Count: > 0 } minimums)
+        {
+            return (0, 0);
+        }
+
+        var index = Math.Clamp(level, 1, minimums.Count) - 1;
+        var start = minimums[index];
+        var end = index + 1 < minimums.Count
+            ? minimums[index + 1] - 1
+            : Math.Max(start, this.ResetsAtTheEndOfTheLastLevel);
+        return (start, end);
+    }
+
+    private static ICollection<EventDifficultyReferenceMap> CreateDefaultReferenceMaps() => new List<EventDifficultyReferenceMap>
+    {
+        new() { Name = "Lorencia", MapNumber = 0, Resets = 0 },
+        new() { Name = "Devias", MapNumber = 2, Resets = 2 },
+        new() { Name = "Dungeon", MapNumber = 1, Resets = 8 },
+        new() { Name = "Lost Tower", MapNumber = 4, Resets = 19 },
+        new() { Name = "Atlans", MapNumber = 7, Resets = 33 },
+        new() { Name = "Tarkan", MapNumber = 8, Resets = 52 },
+        new() { Name = "Aida", MapNumber = 33, Resets = 75 },
+        new() { Name = "Icarus", MapNumber = 10, Resets = 102 },
+        new() { Name = "Kanturu Ruins", MapNumber = 37, Resets = 133 },
+        new() { Name = "Kanturu Relics", MapNumber = 38, Resets = 169 },
+        new() { Name = "Karutan", MapNumber = 80, Resets = 208 },
+        new() { Name = "Swamp of Calmness", MapNumber = 56, Resets = 252 },
+        new() { Name = "Raklion", MapNumber = 57, Resets = 300 },
+    };
 
     private static ICollection<EventJewelDrop> CreateDefaultJewels() => new List<EventJewelDrop>
     {

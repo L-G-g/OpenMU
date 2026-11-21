@@ -74,6 +74,7 @@ public class GameContext : AsyncDisposable, IGameContext
             this.Configuration = configuration;
             this.PersistenceContextProvider = persistenceContextProvider;
             this.PlugInManager = plugInManager;
+            GameContextLookup.Register(plugInManager, this);
             this._mapInitializer = mapInitializer;
             this.LoggerFactory = loggerFactory;
             this.DropGenerator = dropGenerator;
