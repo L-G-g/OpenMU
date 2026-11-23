@@ -6,6 +6,7 @@ namespace MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 
 using MUnique.OpenMU.GameLogic.PlugIns.EventRework;
 using MUnique.OpenMU.GameLogic.PlugIns.PeriodicTasks;
+using MUnique.OpenMU.Persistence.Initialization.Updates;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
@@ -56,9 +57,9 @@ internal static class EventRework
 
         var rework = GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(EventReworkPlugIn).GUID);
         rework.IsActive = true;
-        if (rework.GetConfiguration<EventReworkConfiguration>(null) is null)
+        if (rework.GetConfiguration<EventReworkConfiguration>(ReferenceHandler()) is null)
         {
-            rework.SetConfiguration(new EventReworkConfiguration(), null);
+            rework.SetConfiguration(new EventReworkConfiguration(), ReferenceHandler());
         }
 
         GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(EventBoardChatCommandPlugIn).GUID).IsActive = true;
@@ -109,11 +110,17 @@ internal static class EventRework
                    || (definition.Group == 13 && definition.Number is 16 or 17 or 18)); // Scroll of Archangel, Blood Bone, Cloak of Invisibility
     }
 
+    /// <summary>
+    /// The configurations of the plugins are stored with ids and references (as the other plugin configurations of the initialization).
+    /// Reading them without it fails on their collections.
+    /// </summary>
+    private static ConfigureNpcTalkPlugInsPlugInBase.IdReferenceHandler ReferenceHandler() => new();
+
     private static void Configure<TPlugIn, TConfiguration>(IContext context, GameConfiguration gameConfiguration, TConfiguration defaultConfiguration, string eventName, TimeSpan cycleLength, TimeSpan offset)
         where TConfiguration : MiniGameStartConfiguration
     {
         var plugInConfiguration = GetOrCreatePlugInConfiguration(context, gameConfiguration, typeof(TPlugIn).GUID);
-        var configuration = plugInConfiguration.GetConfiguration<TConfiguration>(null) ?? defaultConfiguration;
+        var configuration = plugInConfiguration.GetConfiguration<TConfiguration>(ReferenceHandler()) ?? defaultConfiguration;
         configuration.CycleLength = cycleLength;
         configuration.CycleOffset = offset;
         configuration.Timetable = new List<TimeOnly>();
@@ -122,7 +129,7 @@ internal static class EventRework
         configuration.PreOpenMessage = $"Faltan {{0}} min para que abra {eventName}.";
         configuration.EntranceOpenedMessage = $"{eventName} esta abierto, cierra en {{0}} min.";
         configuration.EntranceClosedMessage = $"Se cerro la entrada a {eventName}.";
-        plugInConfiguration.SetConfiguration(configuration, null);
+        plugInConfiguration.SetConfiguration(configuration, ReferenceHandler());
     }
 
     /// <summary>
