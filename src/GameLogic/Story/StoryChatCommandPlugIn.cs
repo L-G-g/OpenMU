@@ -19,7 +19,7 @@ using MUnique.OpenMU.PlugIns;
 /// </summary>
 [Guid("2F8C5A17-6D3E-4B91-A7C4-5E9B1D3F8A62")]
 [PlugIn]
-[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>, /historia linea <number> and /historia salir (in a memory). Game masters: /historia paso <number>, /historia dungeon, /historia resets <number>, /historia info.")]
+[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>, /historia linea <number> and /historia salir (in a memory). Game masters: /historia paso <number>, /historia dungeon, /historia resets <number>, /historia orden (the questline). Everyone: /historia info.")]
 [ChatCommandHelp(Command, CharacterStatus.Normal)]
 public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
 {
@@ -78,6 +78,9 @@ public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
             case "info":
                 await ShowInfoAsync(player, story).ConfigureAwait(false);
                 return;
+            case "orden" when isGameMaster:
+                await ShowQuestlineAsync(player, story).ConfigureAwait(false);
+                return;
             case "linea" when arguments.Count == 2 && int.TryParse(arguments[1], out var line) && player.CurrentMiniGame is StorySceneContext stage:
                 await stage.OnLineShownAsync(player, line).ConfigureAwait(false);
                 return;
@@ -107,14 +110,31 @@ public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
         }
 
         var finished = StoryProgress.GetFinishedStep(character);
+        var (mission, entries) = story.GetCurrentMission(player);
+        if (mission >= 0)
+        {
+            await player.ShowBlueMessageAsync($"Questline: mision {mission + 1} de {entries.Count} ({entries[mission].Code}).").ConfigureAwait(false);
+        }
+
         if (story.GetNextStep(player) is not { } next)
         {
-            await player.ShowBlueMessageAsync($"Historia: terminaste la primera parte ({finished} de {StoryScript.Steps.Count} pasos).").ConfigureAwait(false);
+            await player.ShowBlueMessageAsync($"Historia: terminaste todo lo que hay por ahora ({finished} de {StoryScript.Steps.Count} pasos).").ConfigureAwait(false);
             return;
         }
 
         var missing = story.GetMissingRequirement(player, next);
         await player.ShowBlueMessageAsync($"Historia: paso {next.Number} de {StoryScript.Steps.Count}, {RemoveAccents(next.Chapter)}{(missing is null ? string.Empty : $" ({RemoveAccents(missing)})")}.").ConfigureAwait(false);
+    }
+
+    private static async ValueTask ShowQuestlineAsync(Player player, StoryModeFeaturePlugIn story)
+    {
+        var (mission, entries) = story.GetCurrentMission(player);
+        var parts = entries.Select((e, i) => $"{(i == mission ? ">" : string.Empty)}{e.Code}({e.MinimumResets}r{(e.MinimumLevel > 1 ? $" n{e.MinimumLevel}" : string.Empty)})").ToList();
+        const int perLine = 6;
+        for (var i = 0; i < parts.Count; i += perLine)
+        {
+            await player.ShowBlueMessageAsync("Orden: " + string.Join(' ', parts.Skip(i).Take(perLine))).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

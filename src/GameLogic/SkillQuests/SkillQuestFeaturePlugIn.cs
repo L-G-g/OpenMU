@@ -387,7 +387,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         return character.QuestStates.Any(s => SkillQuestGroups.IsSkillQuestGroup(s.Group) && (s.LastFinishedQuest is not null || s.ActiveQuest is not null));
     }
 
-    private SkillQuestMark GetMark(Player player, MonsterDefinition npc, StoryModeFeaturePlugIn? story)
+    private SkillQuestMark GetMark(Player player, NonPlayerCharacter npc, StoryModeFeaturePlugIn? story)
     {
         // The story first: its actors (e.g. Lumen) may also have skill quests one day.
         if (story?.GetMark(player, npc) is { } storyMark and not SkillQuestMark.None)
@@ -395,7 +395,39 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             return storyMark;
         }
 
-        return npc.Quests.Any(q => q.IsSkillQuest()) ? this.Evaluate(player, npc).Mark : SkillQuestMark.None;
+        return npc.Definition.Quests.Any(q => q.IsSkillQuest()) ? this.Evaluate(player, npc.Definition).Mark : SkillQuestMark.None;
+    }
+
+    /// <summary>
+    /// Gets the first skill quest of a tier which the player didn't finish yet, and what it misses to start it.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="tier">The number of the tier.</param>
+    /// <returns>The quest and the missing requirement (<c>null</c>: it can start it); <c>null</c> if the player finished the tier.</returns>
+    internal (QuestDefinition Quest, string? Missing)? GetOpenQuestOfTier(Player player, int tier)
+    {
+        if (player.SelectedCharacter is not { } character)
+        {
+            return null;
+        }
+
+        var quest = GetAllSkillQuests(player.GameContext.Configuration)
+            .Where(q => q.Number == tier && IsForPlayer(player, q) && !IsFinished(character, q))
+            .OrderBy(q => q.Group)
+            .FirstOrDefault();
+        return quest is null ? null : (quest, this.GetMissingRequirement(player, quest));
+    }
+
+    /// <summary>
+    /// Determines whether the player finished all skill quests of a tier which are meant for its class.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="tier">The number of the tier.</param>
+    /// <returns><c>true</c>, if nothing of the tier is left for the player.</returns>
+    internal static bool IsTierFinished(Player player, int tier)
+    {
+        return player.SelectedCharacter is { } character
+               && !GetAllSkillQuests(player.GameContext.Configuration).Any(q => q.Number == tier && IsForPlayer(player, q) && !IsFinished(character, q));
     }
 
     private static bool IsRealPlayer(Player player)
@@ -466,7 +498,12 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             .Where(s => characterClass is not null && s.QualifiedCharacters.Contains(characterClass));
     }
 
-    private static IReadOnlyList<QuestDefinition> GetAllSkillQuests(GameConfiguration configuration)
+    /// <summary>
+    /// Gets all skill quests of the game configuration.
+    /// </summary>
+    /// <param name="configuration">The game configuration.</param>
+    /// <returns>The skill quests.</returns>
+    internal static IReadOnlyList<QuestDefinition> GetAllSkillQuests(GameConfiguration configuration)
     {
         return AllSkillQuests.GetValue(configuration, c => (c.Monsters ?? Enumerable.Empty<MonsterDefinition>())
             .SelectMany(m => m.Quests ?? Enumerable.Empty<QuestDefinition>())
@@ -551,9 +588,9 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
             return "Ya superaste el nivel de esta lección.";
         }
 
-        if (StoryModeFeaturePlugIn.Get(player.GameContext)?.BlocksSkillQuests(player, HasStartedSkillQuests(character)) is true)
+        if (StoryModeFeaturePlugIn.Get(player.GameContext)?.GetSkillQuestBlock(player, quest.Number, HasStartedSkillQuests(character)) is { } storyBlock)
         {
-            return "Primero hablá con Lumen en Lorencia.";
+            return storyBlock;
         }
 
         var configuration = this.CurrentConfiguration;
@@ -781,7 +818,7 @@ public class SkillQuestFeaturePlugIn : IFeaturePlugIn, IPeriodicTaskPlugIn, IAtt
         var story = StoryModeFeaturePlugIn.Get(player.GameContext);
         var npcs = map.GetNpcsInRange(player.Position, configuration.MarkRange).Where(npc => npc is not Monster).ToList();
         var marks = npcs
-            .Select(npc => (Npc: npc, Mark: this.GetMark(player, npc.Definition, story)))
+            .Select(npc => (Npc: npc, Mark: this.GetMark(player, npc, story)))
             .Where(entry => entry.Mark != SkillQuestMark.None)
             .ToList();
         if (story is not null)

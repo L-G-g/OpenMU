@@ -41,6 +41,7 @@ public sealed class StorySceneContext : MiniGameContext
     private readonly CancellationTokenSource _cts = new();
     private StoryMemory _memory = StoryMemory.Sacrifice;
     private Func<Player, ValueTask>? _returnAsync;
+    private Func<Player, ValueTask>? _completedAsync;
     private Player? _owner;
     private int _shownLine = -1;
     private int _closing;
@@ -87,10 +88,12 @@ public sealed class StorySceneContext : MiniGameContext
     /// </summary>
     /// <param name="memory">The memory.</param>
     /// <param name="returnAsync">How the player goes back when the memory ended.</param>
-    internal void Prepare(StoryMemory memory, Func<Player, ValueTask> returnAsync)
+    /// <param name="completedAsync">What happens when the client of the player showed the last line, or <c>null</c>.</param>
+    internal void Prepare(StoryMemory memory, Func<Player, ValueTask> returnAsync, Func<Player, ValueTask>? completedAsync = null)
     {
         this._memory = memory;
         this._returnAsync = returnAsync;
+        this._completedAsync = completedAsync;
     }
 
     /// <summary>
@@ -125,6 +128,12 @@ public sealed class StorySceneContext : MiniGameContext
             {
                 await this.SpawnActorAsync(player, index, this._cts.Token).ConfigureAwait(false);
             }
+        }
+
+        if (line >= this._memory.Lines.Count - 1 && Interlocked.Exchange(ref this._completedAsync, null) is { } completedAsync)
+        {
+            // The player saw the whole memory.
+            await completedAsync(player).ConfigureAwait(false);
         }
     }
 
