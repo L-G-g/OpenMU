@@ -706,6 +706,29 @@ namespace PeroniaUi
         FillVertical(l, t, r, b, upper, lower);
     }
 
+    void SmallButton(const Rect& rect, ButtonState state)
+    {
+        const bool lit = state == ButtonState::Hover || state == ButtonState::Pressed;
+        const float line = Line();
+        const float l = rect.left, t = rect.top, r = rect.Right(), b = rect.Bottom();
+        const float edge = lit ? 1.0f : 0.8f;
+        Fill(l, t, r, b, 0.85f * edge, 0.65f * edge, 0.2f * edge, 0.95f);
+        const float upper[4] = { lit ? 0.16f : 0.1f, lit ? 0.13f : 0.085f, lit ? 0.07f : 0.05f, 0.95f };
+        const float lower[4] = { 0.02f, 0.02f, 0.02f, 0.95f };
+        FillVertical(l + line, t + line, r - line, b - line, upper, lower);
+    }
+
+    void MinimizeButton(const Rect& rect, ButtonState state)
+    {
+        SmallButton(rect, state);
+        const bool lit = state == ButtonState::Hover || state == ButtonState::Pressed;
+        const float offset = state == ButtonState::Pressed ? Line() : 0.0f;
+        const float cy = rect.top + rect.height / 2 + offset;
+        const float thick = rect.height * 0.08f > Line() ? rect.height * 0.08f : Line();
+        Fill(rect.left + rect.width * 0.25f, cy - thick, rect.Right() - rect.width * 0.25f, cy + thick,
+            1.0f, lit ? 0.93f : 0.82f, lit ? 0.6f : 0.24f, 1.0f);
+    }
+
     float SquareWidth(float height)
     {
         return height * (*WindowHeight / 480.0f) / (*WindowWidth / 640.0f);

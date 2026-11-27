@@ -5,6 +5,10 @@
 // (src\ui\peroniaui.h): marco de metal oscuro, letras doradas y un resplandor dorado detras. El click manda el chat
 // "/reset", como si el jugador lo escribiera.
 //
+// A la derecha del boton hay un botoncito de minimizar (una raya dorada): lo achica a un cuadradito con una "R",
+// arriba de la barra de habilidades, en el borde derecho de la pantalla. Un click en la "R" vuelve a mostrar el boton
+// grande (no resetea). Minimizado sigue asi hasta que se toca la "R" o se cierra el juego.
+//
 // El servidor (OpenMU, plugins "Reset button" y "Show Reset Button (resetbutton.dll)") manda C1 05 FF 00 [0 o 1]
 // cuando cambia y, mientras se puede, cada pocos segundos. El main.exe original lo ignora (su reparto de paquetes
 // devuelve 1 para los codigos mayores a 0xF9).
@@ -55,6 +59,19 @@ namespace
     char g_text[32] = "RESET";
     float g_fontSize = 13.5f; // 0: fuente negrita del juego
     constexpr DWORD ClickWait = 4000; // despues del click, esconderlo hasta que el servidor conteste
+    constexpr float MinimizeSize = 12.0f; // botoncito de minimizar, a la derecha del boton (alto en 480)
+    constexpr float MinimizeGap = 3.0f;
+    float g_miniSize = 16.0f;   // [ResetButton] MiniSize: el cuadradito con la "R" (alto en 480)
+    float g_miniBottom = 427.0f; // [ResetButton] MiniBottom: su borde de abajo (la barra empieza en 429)
+    float g_miniRight = 638.0f;  // [ResetButton] MiniRight: su borde derecho (640 = borde de la pantalla)
+
+    enum class Part
+    {
+        None,
+        Button,
+        Minimize,
+        Mini,
+    };
 
     LogFunction g_log = nullptr;
     DispatchType g_nextDispatch = nullptr;
@@ -62,13 +79,27 @@ namespace
     MouseType g_nextMouse = nullptr;
     MouseOnUiType g_nextMouseOnUi = nullptr;
     bool g_available = false;
-    bool g_mouseOver = false;
+    Part g_mouseOver = Part::None;
+    bool g_minimized = false;
     bool g_sendPending = false;
     DWORD g_clickTick = 0;
 
     PeroniaUi::Rect ButtonRect()
     {
         return { (640.0f - g_width) / 2, g_bottom - g_height, g_width, g_height };
+    }
+
+    PeroniaUi::Rect MinimizeRect()
+    {
+        const PeroniaUi::Rect button = ButtonRect();
+        return { button.Right() + MinimizeGap, button.top + (button.height - MinimizeSize) / 2,
+            PeroniaUi::SquareWidth(MinimizeSize), MinimizeSize };
+    }
+
+    PeroniaUi::Rect MiniRect()
+    {
+        const float width = PeroniaUi::SquareWidth(g_miniSize);
+        return { g_miniRight - width, g_miniBottom - g_miniSize, width, g_miniSize };
     }
 
     bool Visible()
@@ -124,8 +155,24 @@ namespace
     int __fastcall MouseHook(BYTE* manager, void* unused)
     {
         SendPendingChat();
-        g_mouseOver = Visible() && PeroniaUi::MouseInside(ButtonRect());
-        if (!g_mouseOver)
+        g_mouseOver = Part::None;
+        if (Visible())
+        {
+            if (g_minimized)
+            {
+                g_mouseOver = PeroniaUi::MouseInside(MiniRect()) ? Part::Mini : Part::None;
+            }
+            else if (PeroniaUi::MouseInside(ButtonRect()))
+            {
+                g_mouseOver = Part::Button;
+            }
+            else if (PeroniaUi::MouseInside(MinimizeRect()))
+            {
+                g_mouseOver = Part::Minimize;
+            }
+        }
+
+        if (g_mouseOver == Part::None)
         {
             return g_nextMouse(manager, unused);
         }
@@ -133,9 +180,25 @@ namespace
         *reinterpret_cast<DWORD*>(manager + WindowManagerMouse) = 0;
         if (reinterpret_cast<IsReleaseType>(IsReleaseFunction)(VK_LBUTTON))
         {
-            g_sendPending = true;
-            g_clickTick = GetTickCount();
-            g_mouseOver = false;
+            switch (g_mouseOver)
+            {
+            case Part::Button:
+                g_sendPending = true;
+                g_clickTick = GetTickCount();
+                break;
+            case Part::Minimize:
+                g_minimized = true;
+                g_log("Reset: boton minimizado.");
+                break;
+            case Part::Mini:
+                g_minimized = false;
+                g_log("Reset: boton restaurado.");
+                break;
+            default:
+                break;
+            }
+
+            g_mouseOver = Part::None;
         }
 
         return 1;
@@ -143,7 +206,7 @@ namespace
 
     char __fastcall MouseOnUiHook(BYTE** system, void* unused)
     {
-        if (g_mouseOver)
+        if (g_mouseOver != Part::None)
         {
             return 1;
         }
@@ -168,9 +231,30 @@ namespace
             PeroniaUi::Glow(rect, hover ? 1.0f : 0.8f);
             PeroniaUi::MetalButton(rect, state);
             PeroniaUi::Shine(rect);
+            PeroniaUi::MinimizeButton(MinimizeRect(), PeroniaUi::StateOf(MinimizeRect(), true));
             PeroniaUi::EndShapes();
             PeroniaUi::ButtonText(rect, g_text, hover ? PeroniaUi::GoldTextHover : PeroniaUi::GoldText, true,
                 state == PeroniaUi::ButtonState::Pressed, g_fontSize);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+        }
+    }
+
+    // Minimizado: cuadradito con una "R" y un resplandor chico, para que se note que se puede resetear.
+    void DrawMini()
+    {
+        __try
+        {
+            const PeroniaUi::Rect rect = MiniRect();
+            const PeroniaUi::ButtonState state = PeroniaUi::StateOf(rect, true);
+            const bool hover = state == PeroniaUi::ButtonState::Hover || state == PeroniaUi::ButtonState::Pressed;
+            PeroniaUi::BeginShapes();
+            PeroniaUi::Glow(rect, hover ? 0.7f : 0.45f);
+            PeroniaUi::SmallButton(rect, state);
+            PeroniaUi::EndShapes();
+            PeroniaUi::ButtonText(rect, "R", hover ? PeroniaUi::GoldTextHover : PeroniaUi::GoldText, true,
+                state == PeroniaUi::ButtonState::Pressed, g_miniSize * 0.7f);
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
@@ -181,7 +265,7 @@ namespace
     {
         if (Visible())
         {
-            DrawButton();
+            g_minimized ? DrawMini() : DrawButton();
         }
 
         g_nextDraw();
@@ -227,6 +311,9 @@ extern "C" __declspec(dllexport) bool StartResetButton(const ResetButtonHost* ho
     g_height = ReadFloat(host->iniPath, "Height", g_height);
     g_bottom = ReadFloat(host->iniPath, "Bottom", g_bottom);
     g_fontSize = ReadFloat(host->iniPath, "FontSize", g_fontSize);
+    g_miniSize = ReadFloat(host->iniPath, "MiniSize", g_miniSize);
+    g_miniBottom = ReadFloat(host->iniPath, "MiniBottom", g_miniBottom);
+    g_miniRight = ReadFloat(host->iniPath, "MiniRight", g_miniRight);
     char text[sizeof(g_text)];
     GetPrivateProfileStringA("ResetButton", "Text", "", text, sizeof(text), host->iniPath);
     if (text[0] != '\0')

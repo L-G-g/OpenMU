@@ -80,6 +80,11 @@ namespace PeroniaUi
     // Recuadro oscuro con un filo gris, para un texto corto sobre el juego (por ejemplo, un saldo o un precio).
     void Panel(const Rect& rect, float opacity);
 
+    // Boton chico cuadrado (para minimizar o un icono con una letra): recuadro oscuro con filo dorado, mas claro con el
+    // mouse encima. MinimizeButton le agrega la raya dorada de "minimizar" en el medio.
+    void SmallButton(const Rect& rect, ButtonState state);
+    void MinimizeButton(const Rect& rect, ButtonState state);
+
     // Ancho, en coordenadas de 640, que en pantalla mide lo mismo que "height" de alto en coordenadas de 480
     // (las dos escalas difieren en las ventanas que no son 4:3).
     float SquareWidth(float height);
