@@ -259,7 +259,7 @@ public static class Questline
     {
         var resets = string.Join(',', StoryScript.Steps.Select(s => story.GetMinimumResets(s.Number)));
         var skillKey = skills is null ? "-" : $"{skills.GetMinimumResets(3)},{skills.GetMinimumResets(4)},{skills.Tier4RequiresClassChange}";
-        return $"{resets}|{story.LockMaps}|{story.SkillQuestsRequireStory}|{story.InterleaveSkillQuests}|{story.ClassChangeRequiresStory}|{story.DeviasMaps}|{story.DungeonMaps}|{story.LostTowerMaps}|{story.OldWorldMaps}|{skillKey}";
+        return $"{resets}|{story.LockMaps}|{story.SkillQuestsRequireStory}|{story.InterleaveSkillQuests}|{story.ClassChangeRequiresStory}|{story.AlwaysOpenMaps}|{story.OldWorldOpensAllOtherMaps}|{story.DeviasMaps}|{story.DungeonMaps}|{story.LostTowerMaps}|{story.OldWorldMaps}|{skillKey}";
     }
 
     private sealed class CacheEntry

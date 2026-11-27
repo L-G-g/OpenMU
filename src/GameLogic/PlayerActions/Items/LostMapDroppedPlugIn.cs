@@ -86,6 +86,14 @@ public sealed class LostMapDroppedPlugIn : IItemDropPlugIn
             return;
         }
 
+        if (targetGate.Map is { } kalima
+            && Story.StoryModeFeaturePlugIn.Get(player.GameContext)?.GetMapLock(player, kalima.Number) is { } step)
+        {
+            // Kalima stays closed until the story opens it, like the maps behind the warp gates.
+            await player.ShowBlueMessageAsync($"Todavia no conoces el camino a Kalima. Segui la historia: {step.Chapter}.").ConfigureAwait(false);
+            return;
+        }
+
         var gate = new GateNpc(spawnArea, gateNpcDef, currentMap, player, targetGate, TimeSpan.FromMinutes(1));
         gate.Initialize();
         await currentMap.AddAsync(gate).ConfigureAwait(false);

@@ -64,6 +64,18 @@ public class StoryConfiguration
     public bool GameMastersIgnoreLocks { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets the numbers of the maps which are always open.
+    /// </summary>
+    [Display(Name = "Maps open from the start", Description = "The numbers of the maps which every character can enter from the start, separated by commas: Lorencia, Noria and Elbeland.")]
+    public string AlwaysOpenMaps { get; set; } = "0,3,51";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether step 7 opens every map which isn't open from the start or opened by an earlier step.
+    /// </summary>
+    [Display(Name = "Step 7 opens all other maps", Description = "If enabled, every map which isn't open from the start nor opened by steps 3, 4 or 6 stays locked until step 7 (including the maps which aren't in the list of step 7). If disabled, only the maps of the lists are locked.")]
+    public bool OldWorldOpensAllOtherMaps { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the numbers of the maps which the stranger opens after the duel (step 3).
     /// </summary>
     [Display(Name = "Maps opened by step 3 (Devias)", Description = "The numbers of the maps which the stranger opens after the duel, separated by commas.")]
@@ -157,6 +169,11 @@ public class StoryConfiguration
     /// <returns>The number of the step which the player has to finish to enter the map; 0, if the map is always open.</returns>
     public int GetUnlockingStep(short mapNumber)
     {
+        if (Contains(this.AlwaysOpenMaps, mapNumber))
+        {
+            return 0;
+        }
+
         if (Contains(this.DeviasMaps, mapNumber))
         {
             return StoryScript.Devias;
@@ -172,7 +189,7 @@ public class StoryConfiguration
             return StoryScript.SchoolOfLight;
         }
 
-        return Contains(this.OldWorldMaps, mapNumber) ? StoryScript.OldWorld : 0;
+        return this.OldWorldOpensAllOtherMaps || Contains(this.OldWorldMaps, mapNumber) ? StoryScript.OldWorld : 0;
     }
 
     private static bool Contains(string? list, short mapNumber)

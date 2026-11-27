@@ -149,6 +149,16 @@ internal class StoryModeDataTest
         Assert.That(configuration.GetUnlockingStep(1), Is.EqualTo(StoryScript.Dungeon));
         Assert.That(configuration.GetUnlockingStep(4), Is.EqualTo(StoryScript.SchoolOfLight));
         Assert.That(configuration.GetUnlockingStep(7), Is.EqualTo(StoryScript.OldWorld));
+
+        // Only Lorencia, Noria and Elbeland are open from the start: every other map opens with step 7 at the latest.
+        foreach (var map in gameConfiguration.Maps.Where(m => m.Number is not (0 or 3 or 51)))
+        {
+            Assert.That(configuration.GetUnlockingStep(map.Number), Is.GreaterThan(0), $"{map.Name} ({map.Number})");
+        }
+
+        Assert.That(configuration.GetUnlockingStep(79), Is.EqualTo(StoryScript.OldWorld), "Loren Market");
+        Assert.That(configuration.GetUnlockingStep(24), Is.EqualTo(StoryScript.OldWorld), "Kalima 1");
+        Assert.That(new StoryConfiguration { OldWorldOpensAllOtherMaps = false }.GetUnlockingStep(79), Is.Zero);
     }
 
     private static void AssertMemoryData(GameConfiguration gameConfiguration)
