@@ -312,6 +312,7 @@ public sealed class StorySceneContext : MiniGameContext
                 if (cue.Holds)
                 {
                     this._heldAnimations[cue.Actor] = cue.Animation;
+                    actor.Pose = cue.Animation == SitAnimation ? CharacterPose.Sitting : default;
                 }
                 else
                 {
@@ -337,26 +338,24 @@ public sealed class StorySceneContext : MiniGameContext
             case StoryMemoryCueKind.Leave when cue.Target is { } target:
                 this._heldAnimations.TryRemove(cue.Actor, out _);
                 actor.Pose = default;
+                var start = actor.Position;
                 await this.WalkAsync(actor, target).ConfigureAwait(false);
-                _ = Task.Run(() => this.RemoveWhenArrivedAsync(cue.Actor, actor, target, this._cts.Token));
+
+                // The position of the actor is its target from the start of the walk on: the clients need the time of the steps.
+                var steps = Math.Max(Math.Abs(target.X - start.X), Math.Abs(target.Y - start.Y));
+                var walkTime = (actor.StepDelay * steps) + TimeSpan.FromMilliseconds(800);
+                _ = Task.Run(() => this.RemoveWhenArrivedAsync(cue.Actor, actor, walkTime, this._cts.Token));
                 break;
             default:
                 break;
         }
     }
 
-    private async Task RemoveWhenArrivedAsync(int index, RivalPlayer actor, Point target, CancellationToken cancellationToken)
+    private async Task RemoveWhenArrivedAsync(int index, RivalPlayer actor, TimeSpan walkTime, CancellationToken cancellationToken)
     {
         try
         {
-            var until = DateTime.UtcNow + LeaveTimeout;
-            while (actor.Position != target && DateTime.UtcNow < until)
-            {
-                await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-            }
-
-            // A moment for the client to show the last step.
-            await Task.Delay(400, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(walkTime < LeaveTimeout ? walkTime : LeaveTimeout, cancellationToken).ConfigureAwait(false);
             if (this._actors.TryRemove(new KeyValuePair<int, RivalPlayer>(index, actor)))
             {
                 await StopActorAsync(actor).ConfigureAwait(false);
@@ -564,6 +563,8 @@ public sealed class StorySceneContext : MiniGameContext
 
         if (definition.WalksTo is { } target)
         {
+            // The clients first show the actor where it appears.
+            await Task.Delay(700, cancellationToken).ConfigureAwait(false);
             await this.WalkAsync(actor, target).ConfigureAwait(false);
         }
     }

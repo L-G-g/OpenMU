@@ -203,9 +203,9 @@ public sealed record StoryMemory(
     }
 
     /// <summary>
-    /// The animation of a character which falls on its knees.
+    /// The animation of a character which falls on its knees: the one of sitting, which on flat ground is a kneel.
     /// </summary>
-    public const byte KneelAnimation = 0x82;
+    public const byte KneelAnimation = 0x80;
 
     /// <summary>
     /// The animation of a character which cries.
