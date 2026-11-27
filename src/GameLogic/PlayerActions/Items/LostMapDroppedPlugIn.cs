@@ -59,7 +59,9 @@ public sealed class LostMapDroppedPlugIn : IItemDropPlugIn
             return;
         }
 
-        var gateNpcNumber = GateNpcStartNumber + item.Level - 1;
+        // With the event rework, a map of any level opens the Kalima of the resets of the player.
+        var kalimaLevel = PlugIns.EventRework.EventReworkPlugIn.GetKalimaLevelByResets(player, KalimaMapNumbers.Length) ?? item.Level;
+        var gateNpcNumber = GateNpcStartNumber + kalimaLevel - 1;
         var gateNpcDef = player.GameContext.Configuration.Monsters.FirstOrDefault(def => def.Number == gateNpcNumber);
         if (gateNpcDef is null)
         {
@@ -79,10 +81,18 @@ public sealed class LostMapDroppedPlugIn : IItemDropPlugIn
             Y2 = target.Y,
         };
 
-        var targetGate = player.GameContext.Configuration.Maps.FirstOrDefault(g => g.Number == KalimaMapNumbers[item.Level - 1])?.ExitGates.FirstOrDefault();
+        var targetGate = player.GameContext.Configuration.Maps.FirstOrDefault(g => g.Number == KalimaMapNumbers[kalimaLevel - 1])?.ExitGates.FirstOrDefault();
         if (targetGate is null)
         {
             await player.ShowLocalizedBlueMessageAsync(nameof(PlayerMessage.KalimaEntranceNotFound)).ConfigureAwait(false);
+            return;
+        }
+
+        if (targetGate.Map is { } kalima
+            && Story.StoryModeFeaturePlugIn.Get(player.GameContext)?.GetMapLock(player, kalima.Number) is { } step)
+        {
+            // Kalima stays closed until the story opens it, like the maps behind the warp gates.
+            await player.ShowBlueMessageAsync($"Todavia no conoces el camino a Kalima. Segui la historia: {step.Chapter}.").ConfigureAwait(false);
             return;
         }
 

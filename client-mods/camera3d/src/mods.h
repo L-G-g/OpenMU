@@ -91,6 +91,10 @@ void LoadResetButton(LogFunction log);
 void LoadTokenShop(LogFunction log);
 // Quests de skills: carga quests.dll si esta junto a camera3d.dll y camera3d.ini no la desactiva.
 void LoadQuests(LogFunction log);
+// Board de los proximos eventos (tecla H): carga eventboard.dll si esta junto a camera3d.dll y camera3d.ini no la
+// desactiva. Su tecla llega por el paso de logica (rightclick.cpp).
+void LoadEventBoard(LogFunction log);
+void SetEventBoardKeyTick(KeyTickCallback callback);
 // Puntos libres de mas de 65535 en la ventana del personaje: carga points.dll si esta junto a camera3d.dll y
 // camera3d.ini no la desactiva.
 void LoadPoints(LogFunction log);

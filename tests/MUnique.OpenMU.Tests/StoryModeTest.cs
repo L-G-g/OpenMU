@@ -1,9 +1,11 @@
-// <copyright file="StoryModeTest.cs" company="MUnique">
+﻿// <copyright file="StoryModeTest.cs" company="MUnique">
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
 namespace MUnique.OpenMU.Tests;
 
+using MUnique.OpenMU.GameLogic.Spectres;
+using MUnique.OpenMU.Pathfinding;
 using System.Text;
 using Moq;
 using MUnique.OpenMU.AttributeSystem;
@@ -90,6 +92,46 @@ public class StoryModeTest
     }
 
     /// <summary>
+    /// Tests the packet of a memory, and that the script of the first memory fits into it.
+    /// </summary>
+    [Test]
+    public void MemoryPacket()
+    {
+        var memory = new StoryMemory(
+            "Titulo",
+            new Point(10, 20),
+            new StoryMemoryCamera(new Point(11, 21), 165, -60, 48.5f, 1000),
+            [
+                new StoryMemoryActor("A", "Rey A", SpectreKind.Lord, 0, [], new Point(1, 1), new Point(1, 2)),
+                new StoryMemoryActor("B", "Mago B", SpectreKind.Mage, 0, [], new Point(2, 1), new Point(1, 2), EntersAtLine: 1),
+            ],
+            [new(0, "Hola."), new(1, "Adiós.")],
+            "Volver",
+            "a.wav");
+        var packet = StorySceneViewPlugIn.SerializeMemory(memory);
+        var expected = new byte[] { 0xC2, 0, 0, 0xFF, 0x31, 11, 21, 165, 0, 0xC4, 0xFF, 0xE5, 0x01, 0xE8, 0x03, 2 }
+            .Concat(Encoding.Latin1.GetBytes("a.wav\0Volver\0"))
+            .Concat(new byte[] { 0 }).Concat(Encoding.Latin1.GetBytes("Rey A\0Hola.\0"))
+            .Concat(new byte[] { 1 }).Concat(Encoding.Latin1.GetBytes("Mago B\0Adiós.\0"))
+            .ToArray();
+        expected[1] = (byte)(expected.Length >> 8);
+        expected[2] = (byte)expected.Length;
+        Assert.That(packet, Is.EqualTo(expected));
+
+        var sacrifice = StoryMemory.Sacrifice;
+        Assert.That(sacrifice.Lines, Has.Count.LessThanOrEqualTo(40));
+        Assert.That(sacrifice.Lines.All(l => l.Actor >= 0 && l.Actor < sacrifice.Actors.Count && l.Text.Length <= StoryScript.MaximumPageLength), Is.True);
+        Assert.That(sacrifice.Lines.All(l => l.Text.All(c => c <= 0xFF)), Is.True, "Latin-1");
+        Assert.That(sacrifice.Actors.All(a => a.Name.Length <= 10 && a.Title.Length <= 30), Is.True);
+
+        // Nobody talks before it entered the stage.
+        for (var i = 0; i < sacrifice.Lines.Count; i++)
+        {
+            Assert.That(sacrifice.Actors[sacrifice.Lines[i].Actor].EntersAtLine, Is.LessThanOrEqualTo(i));
+        }
+    }
+
+    /// <summary>
     /// Tests that the maps open step by step.
     /// </summary>
     [Test]
@@ -113,6 +155,10 @@ public class StoryModeTest
 
         StoryProgress.SetFinishedStep(player, StoryScript.OldWorld);
         Assert.That(story.GetMapLock(player, AtlansNumber), Is.Null);
+        Assert.That(story.GetMapLock(player, StoryMemory.KalimaMapNumbers[0]), Is.Null);
+        Assert.That(story.GetNextStep(player)?.Number, Is.EqualTo(StoryScript.FirstMemory));
+
+        StoryProgress.SetFinishedStep(player, StoryScript.Steps.Count);
         Assert.That(story.GetNextStep(player), Is.Null);
     }
 
@@ -199,6 +245,11 @@ public class StoryModeTest
         Assert.That(lines[1].Text, Is.EqualTo("  Hablá con Sebina (Devias)"));
 
         StoryProgress.SetFinishedStep(player, StoryScript.OldWorld);
+        lines.Clear();
+        story.AddTrackerLines(player, lines);
+        Assert.That(lines.Select(l => l.Text), Is.EqualTo(new[] { "Historia: Recuerdos de Kalima I", "  Hablá con la Vidente (entrada de Kalima 1)" }));
+
+        StoryProgress.SetFinishedStep(player, StoryScript.Steps.Count);
         lines.Clear();
         story.AddTrackerLines(player, lines);
         Assert.That(lines, Is.Empty);

@@ -64,6 +64,21 @@ public static class StoryScript
     public const int OldWorld = 7;
 
     /// <summary>
+    /// The number of the step of the first memory, which the seer of Kalima 1 shows.
+    /// </summary>
+    public const int FirstMemory = 8;
+
+    /// <summary>
+    /// The number of the last step of the first part, in which Lumen opens the old world.
+    /// </summary>
+    public const int EndOfFirstPart = OldWorld;
+
+    /// <summary>
+    /// What an actor says when the player has to finish another mission of the questline first (see <see cref="Questline"/>).
+    /// </summary>
+    public const string QuestlineLockedText = "Todavía no es el momento. Antes tienes otra tarea pendiente: termínala y vuelve a buscarme.";
+
+    /// <summary>
     /// The name of the stranger before the player knows who it is.
     /// </summary>
     public const string StrangerName = "Forastero";
@@ -182,6 +197,17 @@ public static class StoryScript
             ],
             "Sigue haciéndote fuerte. Cuando llegue el momento, tendré algo más que decirte.",
             "Se abrieron todos los caminos del viejo mundo."),
+        new(
+            FirstMemory,
+            "Recuerdos de Kalima I",
+            StoryActor.Seer,
+            StoryStepKind.Memory,
+            "Ver el recuerdo",
+            _ => StoryMemory.SeerText,
+            "Las piedras de Kalima todavía no me hablan de ti. Vuelve cuando estés listo.",
+            "Viste el primer recuerdo de Kalima.",
+            StoryMemory.Sacrifice,
+            1),
     ];
 
     /// <summary>
@@ -192,11 +218,12 @@ public static class StoryScript
     /// <returns>The text.</returns>
     public static string GetIdleText(StoryActor actor, int finishedStep) => actor switch
     {
-        StoryActor.Stranger when finishedStep >= Steps.Count => "Lumen te habrá dicho cosas sobre mí. Júzgame por lo que has visto, no por lo que te cuenten. Volveremos a hablar cuando el viejo mundo te haya mostrado sus heridas.",
+        StoryActor.Stranger when finishedStep >= EndOfFirstPart => "Lumen te habrá dicho cosas sobre mí. Júzgame por lo que has visto, no por lo que te cuenten. Volveremos a hablar cuando el viejo mundo te haya mostrado sus heridas.",
         StoryActor.Stranger when finishedStep >= Dungeon => "Hazte más fuerte. Nos queda poco tiempo, y un camino muy largo.",
         StoryActor.Stranger when finishedStep >= Devias => "El bosque de hielo te espera al norte. Vuelve cuando hayas visto a su reina.",
         StoryActor.Stranger => "No tengo nada que decirte. Todavía.",
         StoryActor.Sebina => "Que la Luz te acompañe.",
+        StoryActor.Seer => "Las piedras de este lugar todavía no me muestran nada para ti. Sigue tu camino; cuando estés listo, me hablarán.",
         _ => "Anda, que el mundo no se va a recorrer solo.",
     };
 

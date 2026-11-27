@@ -21,6 +21,11 @@ using MUnique.OpenMU.Interfaces;
 public class TalkNpcAction
 {
     /// <summary>
+    /// The number of the map of the Loren Market, where Julia warps to.
+    /// </summary>
+    private const short LorenMarketMapNumber = 79;
+
+    /// <summary>
     /// Talks to the specified Monster.
     /// </summary>
     /// <param name="player">The player.</param>
@@ -31,6 +36,15 @@ public class TalkNpcAction
         if (CrywolfPlugIn.GetContext(player.GameContext) is { } crywolf && crywolf.IsNpcHidden(npc))
         {
             // The NPCs of the crywolf fortress are hidden while it isn't in peace, so they can't be used.
+            return;
+        }
+
+        if (npcStats.NpcWindow == NpcWindow.JuliaWarpMarketServer
+            && player.CurrentMap?.Definition.Number != LorenMarketMapNumber
+            && Story.StoryModeFeaturePlugIn.Get(player.GameContext)?.GetMapLock(player, LorenMarketMapNumber) is { } step)
+        {
+            // Julia's window waits for a warp after its button; so the story keeps it closed while the market is locked.
+            await player.ShowBlueMessageAsync($"Todavia no conoces el camino a Loren Market. Segui la historia: {step.Chapter}.").ConfigureAwait(false);
             return;
         }
 
@@ -78,6 +92,16 @@ public class TalkNpcAction
     private async ValueTask ShowDialogOfOpenedNpcAsync(Player player)
     {
         var npcStats = player.OpenedNpc!.Definition;
+        if (PlugIns.EventRework.EventReworkPlugIn.GetDirectEntryMiniGame(player, npcStats.NpcWindow) is { } miniGameType)
+        {
+            // With the event rework, there is one ticket per event: the NPC enters the event of the resets directly,
+            // because the window of the game client only accepts a ticket of the level which is chosen in it.
+            player.OpenedNpc = null;
+            await player.PlayerState.TryAdvanceToAsync(PlayerState.EnteredWorld).ConfigureAwait(false);
+            await new MiniGames.EnterMiniGameAction().TryEnterMiniGameAsync(player, miniGameType, 1, 0xFF).ConfigureAwait(false);
+            return;
+        }
+
         switch (npcStats.NpcWindow)
         {
             case NpcWindow.Undefined:

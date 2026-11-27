@@ -114,6 +114,18 @@ public sealed class BloodCastleContext : MiniGameContext
             return;
         }
 
+        // With the event rework, the weapon can only be delivered shortly before the end.
+        if (PlugIns.EventRework.EventReworkPlugIn.GetBloodCastleDeliveryWindow(this.GameContext) is { } deliveryWindow
+            && this._remainingTime > deliveryWindow
+            && player.TryGetQuestItem(out _))
+        {
+            var minutes = (int)Math.Ceiling(deliveryWindow.TotalMinutes);
+            await player.ShowBlueMessageAsync(minutes == 1
+                ? "Solo podes entregar el arma cuando falte 1 minuto o menos."
+                : $"Solo podes entregar el arma cuando falten {minutes} minutos o menos.").ConfigureAwait(false);
+            return;
+        }
+
         if (!await this.TryRemoveQuestItemFromPlayerAsync(player).ConfigureAwait(false))
         {
             await player.InvokeViewPlugInAsync<IShowDialogPlugIn>(p => p.ShowDialogAsync(DialogCategoryMain, (byte)DialogNumber.EventQuestItemMissing)).ConfigureAwait(false);
@@ -223,7 +235,7 @@ public sealed class BloodCastleContext : MiniGameContext
         {
             rank++;
             state.Rank = rank;
-            var (bonusScore, givenMoney) = await this.GiveRewardsAndGetBonusScoreAsync(state.Player, rank).ConfigureAwait(false);
+            var (bonusScore, givenMoney) = await this.GiveRewardsAndGetBonusScoreAsync(state.Player, rank, reward => PlugIns.EventRework.EventReworkPlugIn.IsBloodCastleRewardGiven(this.GameContext, reward)).ConfigureAwait(false);
             state.AddScore(bonusScore);
 
             scoreList.Add((
@@ -236,6 +248,11 @@ public sealed class BloodCastleContext : MiniGameContext
         }
 
         this._highScoreTable = scoreList.AsReadOnly();
+
+        if (this._winner is { } winner && sortedFinishers.Any(state => state.Player == winner))
+        {
+            await PlugIns.EventRework.EventReworkPlugIn.GiveBloodCastleRewardAsync(winner, this.Definition, this.Map).ConfigureAwait(false);
+        }
 
         await this.SaveRankingAsync(sortedFinishers.Select(state => (state.Rank, state.Player.SelectedCharacter!, state.Score))).ConfigureAwait(false);
         await base.GameEndedAsync(finishers).ConfigureAwait(false);

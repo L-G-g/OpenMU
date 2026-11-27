@@ -5644,5 +5644,27 @@ namespace MUnique.OpenMU.GameLogic.Properties {
 
         /// <summary>Gets the localized TokensChatCommandPlugIn_Description text.</summary>
         public static string TokensChatCommandPlugIn_Description => ResourceManager.GetString("TokensChatCommandPlugIn_Description", resourceCulture)!;
+    
+
+        /// <summary>Gets the localized PeriodicTaskConfiguration_CycleLength_Name text.</summary>
+        public static string PeriodicTaskConfiguration_CycleLength_Name => ResourceManager.GetString("PeriodicTaskConfiguration_CycleLength_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized PeriodicTaskConfiguration_CycleLength_Description text.</summary>
+        public static string PeriodicTaskConfiguration_CycleLength_Description => ResourceManager.GetString("PeriodicTaskConfiguration_CycleLength_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized PeriodicTaskConfiguration_CycleOffset_Name text.</summary>
+        public static string PeriodicTaskConfiguration_CycleOffset_Name => ResourceManager.GetString("PeriodicTaskConfiguration_CycleOffset_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized PeriodicTaskConfiguration_CycleOffset_Description text.</summary>
+        public static string PeriodicTaskConfiguration_CycleOffset_Description => ResourceManager.GetString("PeriodicTaskConfiguration_CycleOffset_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Name text.</summary>
+        public static string MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Name => ResourceManager.GetString("MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Name", resourceCulture)!;
+
+        /// <summary>Gets the localized MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Description text.</summary>
+        public static string MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Description => ResourceManager.GetString("MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Description", resourceCulture)!;
+
+        /// <summary>Gets the localized MiniGameStartConfiguration_PreOpenMessage_Name text.</summary>
+        public static string MiniGameStartConfiguration_PreOpenMessage_Name => ResourceManager.GetString("MiniGameStartConfiguration_PreOpenMessage_Name", resourceCulture)!;
     }
 }

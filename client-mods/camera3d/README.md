@@ -569,6 +569,28 @@ juego). La idea es pasar después a este estilo las ventanas y botones de las ot
 (`0x0065FD79`), dibujo después de la interfaz (`0x004D9CCC`), mouse de las ventanas (`0x00860998`) y el salto en
 "mouse sobre la interfaz" (`0x00860910`).
 
+## Board de los próximos eventos (eventboard.dll)
+
+La tecla `H` abre y cierra un cuadro con los próximos 10 eventos (Devil Square, Blood Castle, Chaos Castle,
+invasiones, Happy Hour...), con la cuenta regresiva hasta que abren; los que están abiertos ahora van arriba, en verde,
+con lo que falta para que cierre la entrada. Los nombres traen el nivel que le toca al personaje por sus resets
+(`Devil Square 5`). `camera3d.dll` la carga si está en la misma carpeta, después de `points.dll`
+(`src/loadeventboard.cpp`):
+
+```
+[EventBoard]
+Enabled=1                 ; 0: no se carga eventboard.dll
+Key=H                     ; tecla (una letra o 0x.. con el codigo virtual); no se usa mientras se escribe en el chat
+RefreshSeconds=60         ; con el board abierto, cada cuanto se vuelve a pedir la lista
+Top=90                    ; borde de arriba del cuadro (en 640x480)
+```
+
+Al abrirlo manda el chat `/eventos` y el servidor (OpenMU, plugin "Event board view") contesta con
+`C2 [largo] FF 50 [cantidad]` y por evento `[abierto: 0 o 1] [segundos, 4 bytes big endian] [nombre terminado en 0]`.
+El `main.exe` original lo ignora. Sin `eventboard.dll`, `/eventos chat` escribe la lista en el chat.
+`src/eventboard/eventboard.cpp` encadena el reparto de paquetes, el dibujo después de la interfaz y el mouse de las
+ventanas como `quests.dll`, y la tecla le llega por el paso de lógica de `camera3d.dll` (se la saca al juego).
+
 ## Puntos libres de más de 65535 (points.dll)
 
 El cliente original guarda los puntos libres en un número de 16 bits: no sabe de más de 65535, y al
@@ -702,6 +724,7 @@ carpeta, después de `espectros.dll` (`src/loadcinematicas.cpp`):
 Enabled=1               ; 0: no se carga cinematicas.dll
 Frontal=1               ; escenas de la historia: la cámara se pone de frente al NPC, sin importar desde dónde se habló
 FrontAngle=0            ; grados que se suman al giro del NPC para esa cámara (por si un modelo mira torcido)
+Music=1                 ; 0: los recuerdos de la historia no cambian la música
 ```
 
 El servidor (la misma vista `ShowSpectresViewPlugIn`) marca a los rivales con `C1 06 FD 05 [objeto]` cada
@@ -709,6 +732,28 @@ pocos segundos; un click sobre uno manda `/espectro hablar [objeto]`. El diálog
 `C2 [largo] FD 04 [objeto] [se puede pelear] [clase] [bit 0: con montura]` con tres textos Latin-1 terminados en 0 (nombre, lo
 que dice y por qué no se puede pelear); "Duelo" manda `/espectro duelo [objeto]`. Los demás paquetes `FD`
 siguen a `espectros.dll`.
+
+### Recuerdos de la historia
+
+Un recuerdo es una escena del pasado que el jugador solo mira (servidor: `StoryMemory` y `StorySceneContext`): actores
+del servidor (personajes con su set, como los rivales del refugio) en una instancia de un mapa, la cámara fija y la
+misma caja de diálogo, con el nombre del que habla en cada línea. El primero ("el sacrificio") se ve con la Vidente
+de la entrada de Atlans y pasa en la sala del trono del castillo de Devias.
+
+- `C1 04 FF 32`: telón. La pantalla se va a negro hasta que llega el recuerdo (mientras el servidor lleva al jugador
+  al escenario y aparecen los actores).
+- `C2 [largo] FF 31 [x] [y] [altura] [giro] [inclinación x10] [distancia] [líneas]` y los textos Latin-1 terminados en
+  0: el sonido de fondo, el botón final y, por línea, `[avisar]`, quién habla y qué dice. `x`, `y` es la casilla a la
+  que mira la cámara y `altura` la del piso ahí (short, como el giro, la inclinación y la distancia). Giro 0 mira
+  hacia +Y y 90 hacia +X (la cámara normal del juego tiene -45); inclinación 0 mira hacia abajo y 90 al horizonte (la
+  normal, 48,5).
+- Al mostrar una línea con aviso se manda `/historia linea [número]` (el servidor hace entrar a un actor). El botón
+  final y Esc mandan `/historia salir`, y la pantalla queda en negro hasta que el jugador vuelve a su mapa.
+- El sonido de fondo es un archivo del cliente (un .wav PCM; el primer recuerdo usa `Data\Sound\RecuerdoSacrificio.wav`,
+  que no es del cliente original: va con el cliente de PeroniaMU y sin él la escena queda sin música) y suena con `PlaySound` en vez de la música del mapa: mientras dura, la tabla de mp3 del juego
+  (`0x00E609F0`) apunta a un nombre que no existe y ese nombre queda como el que suena (`0x00E8C2A8`), así el juego no
+  vuelve a poner la música del mapa; al terminar se repone la tabla y el juego la pone solo. `Music=0` en
+  `[Cinematicas]` lo apaga. Suena aunque la música del juego esté apagada.
 
 La cámara: `camera3d.dll` llama a `cinematicas.dll` después de calcular la suya en cada cuadro; durante la
 escena la DLL pone la posición (a 230 unidades del espectro, del lado del personaje, a la altura de los
@@ -763,6 +808,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/loadresetbutton.cpp`: carga de `resetbutton.dll` si está junto a la DLL.
 - `src/loadtokenshop.cpp`: carga de `tokenshop.dll` si está junto a la DLL.
 - `src/loadquests.cpp`: carga de `quests.dll` si está junto a la DLL.
+- `src/loadeventboard.cpp`: carga de `eventboard.dll` si está junto a la DLL.
 - `src/loadpoints.cpp`: carga de `points.dll` si está junto a la DLL.
 - `src/shared.h`: lo que comparten `camera3d.dll`, `muauto.dll`, `healthbars.dll`, `elites.dll`,
   `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll` y `cinematicas.dll`.
@@ -781,6 +827,7 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 - `src/quests/`: `quests.dll`, signos de quest sobre los NPC, ventana de la quest y seguimiento.
 - `src/ui/`: `peroniaui`, estilo de los botones nuevos (se compila dentro de cada DLL que lo usa).
 - `src/points/`: `points.dll`, puntos libres de más de 65535 en la ventana del personaje.
+- `src/eventboard/`: `eventboard.dll`, board de los próximos eventos (tecla H).
 - `src/muauto/`: `muauto.dll`, herramientas de prueba (modo de prueba, automatización, comandos de
   juego, diagnóstico). No se distribuye a los jugadores.
 - `src/addimport.cpp`: genera una copia de `main.exe` que importa `camera3d.dll` (sección nueva
@@ -796,20 +843,21 @@ dibujo después de la interfaz y el mouse de las ventanas. Los botones usan el e
 Con las Build Tools de Visual Studio (C++ x86), desde una consola "x86 Native Tools":
 
 ```
-cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadtokenshop.cpp src\loadquests.cpp src\loadpoints.cpp user32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\camera3d.cpp src\rightclick.cpp src\fps.cpp src\frames.cpp src\interpolation.cpp src\testtools.cpp src\minimap.cpp src\muhelper.cpp src\weaponskills.cpp src\loadhealthbars.cpp src\loadelites.cpp src\loadresets.cpp src\loadstacks.cpp src\loadloot.cpp src\loadespectros.cpp src\loadcinematicas.cpp src\loadtabmap.cpp src\loadflight.cpp src\loadresetbutton.cpp src\loadtokenshop.cpp src\loadquests.cpp src\loadpoints.cpp src\loadeventboard.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\healthbars\healthbars.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\elites\elites.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resets\resets.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\stacks\stacks.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\loot\loot.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\espectros\espectros.cpp user32.lib opengl32.lib
-cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
+cl /nologo /O2 /EHsc /LD /MT src\cinematicas\cinematicas.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib winmm.lib
 cl /nologo /O2 /EHsc /LD /MT src\tabmap\tabmap.cpp user32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\flight\flight.cpp user32.lib
 cl /nologo /O2 /EHsc /LD /MT src\resetbutton\resetbutton.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\tokenshop\tokenshop.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\quests\quests.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\points\points.cpp user32.lib
+cl /nologo /O2 /EHsc /LD /MT src\eventboard\eventboard.cpp src\ui\peroniaui.cpp user32.lib gdi32.lib opengl32.lib
 cl /nologo /O2 /EHsc /LD /MT src\muauto\muauto.cpp src\muauto\automation.cpp src\muauto\gamecommands.cpp src\muauto\testmode.cpp src\muauto\fpsdiag.cpp user32.lib
 cl /nologo /O2 /EHsc /MT src\addimport.cpp
 cl /nologo /O2 /EHsc /MT src\injector.cpp /Fe:Camera3D.exe user32.lib
@@ -821,7 +869,7 @@ Integrarla en el cliente:
 addimport.exe main.exe main_camera3d.exe
 ```
 
-y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `tokenshop.dll`, `quests.dll` y `points.dll`. `muauto.dll`
+y distribuir `main_camera3d.exe` (renombrado a `main.exe`) junto con `camera3d.dll`, `healthbars.dll`, `elites.dll`, `resets.dll`, `stacks.dll`, `loot.dll`, `espectros.dll`, `cinematicas.dll`, `tabmap.dll`, `flight.dll`, `resetbutton.dll`, `tokenshop.dll`, `quests.dll`, `points.dll` y `eventboard.dll`. `muauto.dll`
 va solo en el cliente de prueba.
 
 No se suben a este repositorio (público) los binarios compilados ni el `main.exe` (es de Webzen).

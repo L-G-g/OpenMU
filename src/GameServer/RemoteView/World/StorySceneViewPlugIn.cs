@@ -39,6 +39,16 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
     /// </summary>
     internal const byte SceneSubCode = 0x30;
 
+    /// <summary>
+    /// The sub code of the packet of a memory.
+    /// </summary>
+    internal const byte MemorySubCode = 0x31;
+
+    /// <summary>
+    /// The sub code of the packet which makes the screen black before a memory.
+    /// </summary>
+    internal const byte CurtainSubCode = 0x32;
+
     private const int HeaderLength = 9;
     private const int MaximumTitleLength = 30;
     private const int MaximumNoteLength = 90;
@@ -73,6 +83,98 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
         }
 
         await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ShowCurtainAsync()
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(4)[..4];
+            span[0] = 0xC1;
+            span[1] = 4;
+            span[2] = Code;
+            span[3] = CurtainSubCode;
+            return 4;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ShowMemoryAsync(StoryMemory memory)
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        var data = SerializeMemory(memory);
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(data.Length)[..data.Length];
+            data.CopyTo(span);
+            return data.Length;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Serializes a memory to the packet C2 FF 31.
+    /// </summary>
+    /// <param name="memory">The memory.</param>
+    /// <returns>The packet.</returns>
+    /// <remarks>
+    /// After the header: the tile at which the camera looks (x, y), the height of its ground, the yaw, the tilt in tenths
+    /// of a degree and the distance (four little endian shorts), the number of lines, and the texts (Latin-1, each ends
+    /// with 0): the sound which replaces the music of the map (may be empty), the label of the last button and, for each line, a flag (1: the client tells the server when it shows
+    /// the line, with <c>/historia linea</c>), the name of the actor and what it says.
+    /// </remarks>
+    internal static byte[] SerializeMemory(StoryMemory memory)
+    {
+        const int memoryHeaderLength = 16;
+        var sound = Encode(memory.Sound ?? string.Empty, MaximumNoteLength);
+        var endLabel = Encode(memory.EndLabel, MaximumLabelLength);
+        var lines = memory.Lines.Take(MaximumPages).Select((line, index) => (
+            // The client also tells the last line, which finishes the step of the memory.
+            Notify: index > 0 && (index == Math.Min(memory.Lines.Count, MaximumPages) - 1 || memory.Actors.Any(a => a.EntersAtLine == index)),
+            Title: Encode(memory.Actors[line.Actor].Title, MaximumTitleLength),
+            Text: Encode(line.Text, MaximumPageLength))).ToList();
+        var length = memoryHeaderLength + sound.Length + 1 + endLabel.Length + 1 + lines.Sum(l => 1 + l.Title.Length + 1 + l.Text.Length + 1);
+        var data = new byte[length];
+        data[0] = 0xC2;
+        BinaryPrimitives.WriteUInt16BigEndian(data.AsSpan(1), (ushort)length);
+        data[3] = Code;
+        data[4] = MemorySubCode;
+        data[5] = memory.Camera.Target.X;
+        data[6] = memory.Camera.Target.Y;
+        BinaryPrimitives.WriteInt16LittleEndian(data.AsSpan(7), memory.Camera.Height);
+        BinaryPrimitives.WriteInt16LittleEndian(data.AsSpan(9), memory.Camera.Yaw);
+        BinaryPrimitives.WriteInt16LittleEndian(data.AsSpan(11), (short)Math.Round(memory.Camera.Tilt * 10));
+        BinaryPrimitives.WriteInt16LittleEndian(data.AsSpan(13), memory.Camera.Distance);
+        data[15] = (byte)lines.Count;
+        var offset = memoryHeaderLength;
+        sound.CopyTo(data, offset);
+        offset += sound.Length + 1;
+        endLabel.CopyTo(data, offset);
+        offset += endLabel.Length + 1;
+        foreach (var (notify, title, text) in lines)
+        {
+            data[offset++] = notify ? (byte)1 : (byte)0;
+            title.CopyTo(data, offset);
+            offset += title.Length + 1;
+            text.CopyTo(data, offset);
+            offset += text.Length + 1;
+        }
+
+        return data;
     }
 
     /// <summary>

@@ -106,10 +106,12 @@ public class GameConfigurationInitializer : GameConfigurationInitializerBase
         SpectreHubSetup.Apply(this.Context, this.GameConfiguration);
         SkillQuestsData.ApplyAsync(this.Context, this.GameConfiguration).AsTask().GetAwaiter().GetResult();
         StoryModeData.Apply(this.Context, this.GameConfiguration);
+        StoryMemoryData.Apply(this.Context, this.GameConfiguration);
         new CrywolfInitializer(this.Context, this.GameConfiguration).Initialize();
         MapDropsAndInvasions.Apply(this.Context, this.GameConfiguration);
         MoreDungeons.Apply(this.Context, this.GameConfiguration);
         DungeonTokenMerchants.Apply(this.Context, this.GameConfiguration);
+        EventRework.Apply(this.Context, this.GameConfiguration);
         new CashShopItems(this.Context, this.GameConfiguration).Initialize();
 
         // After all items exist.

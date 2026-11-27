@@ -66,6 +66,7 @@ namespace
     KeyTickCallback g_tabMapTick = nullptr; // tabmap.dll: camina hacia el punto elegido en el mapa
     KeyTickCallback g_flightTick = nullptr; // flight.dll: su tecla (Shift+V) manda /volar
     KeyTickCallback g_cinematicasTick = nullptr; // cinematicas.dll: click en un espectro del refugio
+    KeyTickCallback g_eventBoardTick = nullptr; // eventboard.dll: su tecla (H) abre el board de eventos
 
     // Lo que hace un click derecho.
     enum Action
@@ -522,6 +523,11 @@ namespace
             g_cinematicasTick(keyStates);
         }
 
+        if (g_eventBoardTick != nullptr)
+        {
+            g_eventBoardTick(keyStates);
+        }
+
         const BYTE right = keyStates[VK_RBUTTON];
         if (g_rightConsumed)
         {
@@ -612,6 +618,11 @@ void SetFlightKeyTick(KeyTickCallback callback)
 void SetCinematicasKeyTick(KeyTickCallback callback)
 {
     g_cinematicasTick = callback;
+}
+
+void SetEventBoardKeyTick(KeyTickCallback callback)
+{
+    g_eventBoardTick = callback;
 }
 
 bool InstallRightClick(LogFunction log)

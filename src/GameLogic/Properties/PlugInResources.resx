@@ -2378,4 +2378,25 @@
   <data name="TokensChatCommandPlugIn_Description" xml:space="preserve">
     <value>Shows the dungeon tokens of the character. A game master can add tokens to its character: /tokens [dungeon number] [amount].</value>
   </data>
+  <data name="PeriodicTaskConfiguration_CycleLength_Name" xml:space="preserve">
+    <value>Cycle length</value>
+  </data>
+  <data name="PeriodicTaskConfiguration_CycleLength_Description" xml:space="preserve">
+    <value>When it's more than zero, the event starts once per cycle of this length, at the cycle offset, and the timetable is ignored. The cycles are counted from 2026-01-01 00:00 UTC, so several events with the same cycle length and different offsets follow each other and keep their times after a restart.</value>
+  </data>
+  <data name="PeriodicTaskConfiguration_CycleOffset_Name" xml:space="preserve">
+    <value>Cycle offset</value>
+  </data>
+  <data name="PeriodicTaskConfiguration_CycleOffset_Description" xml:space="preserve">
+    <value>The time after the start of each cycle at which the event starts (only with a cycle length).</value>
+  </data>
+  <data name="MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Name" xml:space="preserve">
+    <value>Announce opening minutes before</value>
+  </data>
+  <data name="MiniGameStartConfiguration_PreOpenAnnouncementMinutes_Description" xml:space="preserve">
+    <value>How many minutes before the entrance opens the opening is announced, once per minute (e.g. 5: at 5, 4, 3, 2 and 1 minute before). 0 doesn't announce it in advance.</value>
+  </data>
+  <data name="MiniGameStartConfiguration_PreOpenMessage_Name" xml:space="preserve">
+    <value>Opening announcement message ({0} = minutes)</value>
+  </data>
 </root>

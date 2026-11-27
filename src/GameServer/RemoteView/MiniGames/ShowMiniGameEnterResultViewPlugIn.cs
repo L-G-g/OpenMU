@@ -57,6 +57,7 @@ public class ShowMiniGameEnterResultViewPlugIn : IShowMiniGameEnterResultPlugIn
                 break;
             case MiniGameType.Dungeon:
             case MiniGameType.SpectreHub:
+            case MiniGameType.StoryScene:
                 // The client has no dialog for it; the game shows its own messages.
                 break;
             case MiniGameType.Undefined:
