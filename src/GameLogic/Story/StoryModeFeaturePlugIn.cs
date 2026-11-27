@@ -707,7 +707,9 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
 
         if (this.GetMissingRequirement(player, step) is { } missing)
         {
-            return new StoryScene(title, StoryScript.Paginate([step.LockedText]), [new(StoryButton.CloseId, "Cerrar")], missing);
+            // The text of the step talks about its own requirements; a mission before it has another text.
+            var text = this.GetQuestlineBlock(player, step) is null ? step.LockedText : StoryScript.QuestlineLockedText;
+            return new StoryScene(title, StoryScript.Paginate([text]), [new(StoryButton.CloseId, "Cerrar")], missing);
         }
 
         var pages = StoryScript.Paginate(step.Text(CreateTextContext(player, character)));
@@ -723,7 +725,8 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         {
             if (this.GetMissingRequirement(player, step) is { } missing)
             {
-                return new StoryScene(title, StoryScript.Paginate([step.LockedText]), [new(StoryButton.CloseId, "Cerrar")], missing);
+                var text = this.GetQuestlineBlock(player, step) is null ? step.LockedText : StoryScript.QuestlineLockedText;
+                return new StoryScene(title, StoryScript.Paginate([text]), [new(StoryButton.CloseId, "Cerrar")], missing);
             }
 
             var pages = StoryScript.Paginate(step.Text(CreateTextContext(player, character)));

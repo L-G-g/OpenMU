@@ -4,7 +4,9 @@
 
 namespace MUnique.OpenMU.GameLogic.PlayerActions;
 
+using System.ComponentModel;
 using MUnique.OpenMU.DataModel.Configuration;
+using MUnique.OpenMU.GameLogic.PlugIns;
 
 /// <summary>
 /// Action which warps a player between Lorencia and the Loren Market, triggered by the 'Warp'
@@ -53,6 +55,17 @@ public class EnterMarketPlaceAction
         {
             await player.ShowLocalizedBlueMessageAsync(nameof(PlayerMessage.MapIsNotActive)).ConfigureAwait(false);
             return;
+        }
+
+        // Like a warp of the warp list: plugins (e.g. the story mode) may keep the player out.
+        if (player.GameContext.PlugInManager.GetPlugInPoint<IWarpGateEnteringPlugIn>() is { } plugInPoint)
+        {
+            var eventArgs = new CancelEventArgs();
+            await plugInPoint.WarpGateEnteringAsync(player, targetGate, eventArgs).ConfigureAwait(false);
+            if (eventArgs.Cancel)
+            {
+                return;
+            }
         }
 
         player.OpenedNpc = null;

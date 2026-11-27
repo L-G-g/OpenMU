@@ -74,6 +74,11 @@ public static class StoryScript
     public const int EndOfFirstPart = OldWorld;
 
     /// <summary>
+    /// What an actor says when the player has to finish another mission of the questline first (see <see cref="Questline"/>).
+    /// </summary>
+    public const string QuestlineLockedText = "Todavía no es el momento. Antes tienes otra tarea pendiente: termínala y vuelve a buscarme.";
+
+    /// <summary>
     /// The name of the stranger before the player knows who it is.
     /// </summary>
     public const string StrangerName = "Forastero";
