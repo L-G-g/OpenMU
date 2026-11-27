@@ -153,7 +153,10 @@ namespace
     bool g_mouseOver = false;     // el mouse es de esta DLL (ventana o signo)
     // [Quests] TrackerTop (el seguimiento va pegado al borde derecho de la pantalla)
     float g_trackerTop = 70.0f;
-    bool g_trackerCollapsed = true; // [Quests] TrackerCollapsed: solo el borde; se despliega con el mouse encima
+    bool g_trackerCollapsed = true; // [Quests] TrackerCollapsed: con boton de minimizar (0: siempre desplegado)
+    bool g_trackerPinned = true;    // desplegado hasta que se toque minimizar (al abrir el juego, desplegado)
+    bool g_trackerWaitLeave = false; // recien minimizado: el mouse tiene que salir antes de volver a desplegarlo
+    bool g_overTrackerButton = false;
     float g_trackerOpen = 0.0f;     // 0 plegado, 1 desplegado
     DWORD g_trackerTime = 0;
     float g_markSize = 1.0f;      // [Quests] MarkSize
@@ -178,6 +181,8 @@ namespace
     constexpr float TrackerEdgeWidth = 3.0f;    // el borde de color que queda a la vista con el seguimiento plegado
     constexpr float TrackerHoverMargin = 6.0f;  // aire alrededor del borde para apuntarle con el mouse
     constexpr float TrackerOpenMilliseconds = 120.0f;
+    constexpr float TrackerButtonSize = 10.0f;  // boton de minimizar, arriba a la derecha del seguimiento
+    constexpr float TrackerButtonRoom = 14.0f;  // lo que se le saca a la primera linea para que no lo tape
     constexpr float MarkWidth = 14.0f;  // alto del signo: MarkHeight; por MarkSize
     constexpr float MarkHeight = 26.0f;
 
@@ -430,8 +435,21 @@ namespace
         return { 640.0f - TrackerWidth, g_trackerTop, TrackerWidth, 8 + g_tracker.size() * LineHeight };
     }
 
+    Rect TrackerButtonRect()
+    {
+        const Rect box = TrackerRect();
+        const float width = PeroniaUi::SquareWidth(TrackerButtonSize);
+        return { box.Right() - 4 - width, box.top + 3, width, TrackerButtonSize };
+    }
+
+    bool TrackerButtonShown()
+    {
+        return g_trackerCollapsed && !g_tracker.empty() && g_trackerOpen >= 1.0f;
+    }
+
     // Plegado solo se ve el borde de color, pegado al borde derecho de la pantalla; con el mouse sobre el borde (con un
-    // poco de aire) o, ya desplegado, sobre el cuadro, se despliega hacia la izquierda y muestra el texto.
+    // poco de aire) se despliega hacia la izquierda, muestra el texto y queda desplegado hasta que se toca el boton
+    // de minimizar (arriba a la derecha del cuadro). Al abrir el juego aparece desplegado.
     bool MouseOverTracker()
     {
         const Rect box = TrackerRect();
@@ -457,7 +475,20 @@ namespace
             return;
         }
 
-        g_trackerOpen += MouseOverTracker() ? step : -step;
+        const bool over = MouseOverTracker();
+        if (!g_trackerPinned)
+        {
+            if (g_trackerWaitLeave)
+            {
+                g_trackerWaitLeave = over;
+            }
+            else if (over)
+            {
+                g_trackerPinned = true;
+            }
+        }
+
+        g_trackerOpen += g_trackerPinned ? step : -step;
         g_trackerOpen = g_trackerOpen < 0.0f ? 0.0f : (g_trackerOpen > 1.0f ? 1.0f : g_trackerOpen);
     }
 
@@ -489,6 +520,12 @@ namespace
         }
 
         FillRect(edge, 0.85f, 0.65f, 0.2f, 0.9f);
+        if (TrackerButtonShown())
+        {
+            const Rect button = TrackerButtonRect();
+            PeroniaUi::MinimizeButton(button, PeroniaUi::StateOf(button, true));
+        }
+
         PeroniaUi::EndShapes();
 
         BYTE* const renderer = *reinterpret_cast<BYTE**>(RenderText + 4);
@@ -865,7 +902,8 @@ namespace
                 g_tracker.clear();
                 for (const Line& line : lines)
                 {
-                    Wrap(line, TrackerWidth - 14, g_tracker);
+                    // La primera linea deja lugar al boton de minimizar.
+                    Wrap(line, TrackerWidth - 14 - (g_tracker.empty() ? TrackerButtonRoom : 0.0f), g_tracker);
                 }
             }
 
@@ -928,8 +966,10 @@ namespace
         SendPendingChat();
         const bool overDialog = MouseOverDialog();
         const bool windowHasMouse = *reinterpret_cast<const DWORD*>(manager + WindowManagerMouse) != 0;
-        g_hoverMark = overDialog || windowHasMouse ? -1 : HitMark();
-        g_mouseOver = overDialog || g_hoverMark >= 0;
+        g_overTrackerButton = !overDialog && !windowHasMouse && TrackerButtonShown()
+            && PeroniaUi::MouseInside(TrackerButtonRect());
+        g_hoverMark = overDialog || windowHasMouse || g_overTrackerButton ? -1 : HitMark();
+        g_mouseOver = overDialog || g_overTrackerButton || g_hoverMark >= 0;
         if (!g_mouseOver)
         {
             return g_nextMouse(manager, unused);
@@ -942,6 +982,12 @@ namespace
             if (overDialog)
             {
                 ClickDialog();
+            }
+            else if (g_overTrackerButton)
+            {
+                g_trackerPinned = false;
+                g_trackerWaitLeave = true;
+                g_overTrackerButton = false;
             }
             else
             {

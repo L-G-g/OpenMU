@@ -530,7 +530,10 @@ Cuando el personaje puede resetear (nivel, zen, límite de resets e items: lo mi
 un botón **Reset** abajo en el centro de la pantalla, arriba de la barra de habilidades. Tiene el estilo nuevo
 de PeroniaMU: marco de metal oscuro con bisel (como los botones de la entrada a Devil Square), letras doradas con
 borde oscuro y un resplandor dorado detrás que late, con rayos que giran despacio y un reflejo que cruza el botón.
-El click manda el chat `/reset`. `camera3d.dll` la carga si está en la misma carpeta, después de `tabmap.dll`
+El click manda el chat `/reset`. A la derecha del botón hay un botoncito de minimizar (una raya dorada): lo achica
+a un cuadradito con una **R**, arriba de la barra de habilidades en el borde derecho de la pantalla; un click en la
+R vuelve a mostrar el botón grande (no resetea). Queda minimizado hasta tocar la R o cerrar el juego.
+`camera3d.dll` la carga si está en la misma carpeta, después de `tabmap.dll`
 (`src/loadresetbutton.cpp`):
 
 ```
@@ -541,6 +544,9 @@ Width=120
 Height=24
 Text=RESET
 FontSize=13.5  ; alto de las letras en coordenadas de 480 (0: la fuente negrita del juego, más chica)
+MiniSize=16    ; minimizado: alto del cuadradito con la R (coordenadas de 480)
+MiniBottom=427 ; minimizado: su borde de abajo (la barra empieza en 429)
+MiniRight=638  ; minimizado: su borde derecho (640 = borde de la pantalla)
 
 [PeroniaUi]
 ; piedra de la cara de los botones (un .OZJ del cliente; sin comentario en la misma linea)
@@ -768,7 +774,8 @@ carpeta (`src/loadquests.cpp`):
 [Quests]
 Enabled=1       ; 0: sin signos ni ventana
 TrackerTop=70    ; altura del seguimiento (640x480); va pegado al borde derecho de la pantalla
-TrackerCollapsed=1 ; 1: el seguimiento queda plegado (solo el borde dorado) y se despliega con el mouse encima
+TrackerCollapsed=1 ; 1: boton de minimizar (al abrir el juego aparece desplegado; minimizado queda solo el borde
+                   ;    dorado, y con el mouse encima se despliega y queda abierto hasta tocar minimizar). 0: siempre desplegado
 MarkSize=1      ; tamaño de los signos (0.5 a 3)
 HeadMargin=70   ; altura del signo sobre la cabeza del NPC (unidades del mundo)
 ```
