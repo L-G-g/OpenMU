@@ -269,7 +269,7 @@ public sealed record StoryMemory(
     public static StoryMemory Wedding { get; } = new(
         "Hace mil anos, en la iglesia de Devias...",
         new Point(20, 21),
-        new StoryMemoryCamera(new Point(18, 26), 165, -45, 48.5f, 1250),
+        new StoryMemoryCamera(new Point(15, 26), 165, -45, 48.5f, 1350),
         [
             // Legendary set, like in the memory of the sacrifice, but no staff at his wedding.
             new StoryMemoryActor("Mephis", "Mephis", SpectreKind.Mage, 13, [(7, 3), (8, 3), (9, 3), (10, 3), (11, 3)], new Point(29, 26), new Point(13, 26), EntersAtLine: WeddingEntrance, WalksTo: new Point(13, 26)),
@@ -277,11 +277,11 @@ public sealed record StoryMemory(
             // Guardian set.
             new StoryMemoryActor("Lemuria", "Lemuria", SpectreKind.Elf, 13, [(7, 14), (8, 14), (9, 14), (10, 14), (11, 14)], new Point(29, 25), new Point(13, 25), EntersAtLine: WeddingEntrance, WalksTo: new Point(13, 25)),
 
-            // The guests at the sides of the carpet, who whisper about the bride and the groom.
-            new StoryMemoryActor("Seliane", "Dama Seliane", SpectreKind.Elf, 9, [(7, 19), (8, 19), (9, 19), (10, 19), (11, 19)], new Point(18, 24), new Point(19, 24)),
-            new StoryMemoryActor("Daveth", "Sir Daveth", SpectreKind.Warrior, 9, [(7, 1), (8, 1), (9, 1), (10, 1), (11, 1)], new Point(19, 24), new Point(18, 24)),
-            new StoryMemoryActor("Ilsa", "Ilsa, la invocadora", SpectreKind.Summoner, 9, [(7, 40), (8, 40), (9, 40), (10, 40), (11, 40)], new Point(18, 27), new Point(19, 27)),
-            new StoryMemoryActor("Kreol", "Baron Kreol", SpectreKind.Lord, 9, [(7, 25), (8, 25), (9, 25), (10, 25), (11, 25)], new Point(19, 27), new Point(18, 27)),
+            // The guests outside the carpet, behind the pillars, who whisper about the bride and the groom.
+            new StoryMemoryActor("Seliane", "Dama Seliane", SpectreKind.Elf, 9, [(7, 19), (8, 19), (9, 19), (10, 19), (11, 19)], new Point(18, 22), new Point(19, 22)),
+            new StoryMemoryActor("Daveth", "Sir Daveth", SpectreKind.Warrior, 9, [(7, 1), (8, 1), (9, 1), (10, 1), (11, 1)], new Point(19, 22), new Point(18, 22)),
+            new StoryMemoryActor("Ilsa", "Ilsa, la invocadora", SpectreKind.Summoner, 9, [(7, 40), (8, 40), (9, 40), (10, 40), (11, 40)], new Point(18, 29), new Point(19, 29)),
+            new StoryMemoryActor("Kreol", "Baron Kreol", SpectreKind.Lord, 9, [(7, 25), (8, 25), (9, 25), (10, 25), (11, 25)], new Point(19, 29), new Point(18, 29)),
 
             // The bishop behind the altar: an NPC with the look of the Seed Master.
             new StoryMemoryActor("Obispo", "Obispo", SpectreKind.Mage, 0, [], new Point(11, 26), new Point(13, 26), NpcNumber: BishopLookNumber),
@@ -299,7 +299,7 @@ public sealed record StoryMemory(
             new(Bishop, "Lemuria, ¿aceptas a Mephis como esposo, para caminar a su lado en la luz y en la oscuridad, hasta el final de tus días?"),
             new(Bride, "Acepto. Hoy, mañana y siempre."),
             new(Bishop, "Mephis, ¿aceptas a Lemuria como esposa, para caminar a su lado en la luz y en la oscuridad, hasta el final de tus días?"),
-            new(Groom, "Yo... ¡Ngh!", "Data\\Sound\\BodaPresencia.wav", LoopsSound: false),
+            new(Groom, "Yo... ¡Ngh!", "Data\\Sound\\BodaPresencia.wav"),
             new(Bride, "¡Mephis! ¿Qué te pasa? ¡Mírame!"),
             new(Groom, "Esa presencia... La siento bajo la tierra, como una marea negra que sube. Es Secneum. Está despertando."),
             new(Groom, "Lemuria... perdóname, mi amor. Tengo un deber que cumplir, y no puede esperar."),

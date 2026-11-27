@@ -332,12 +332,12 @@ public sealed class StorySceneContext : MiniGameContext
             case StoryMemoryCueKind.Walk when cue.Target is { } target:
                 this._heldAnimations.TryRemove(cue.Actor, out _);
                 actor.Pose = default;
-                await new MovementHandler(actor, null).WalkToPositionAsync(target).ConfigureAwait(false);
+                await this.WalkAsync(actor, target).ConfigureAwait(false);
                 break;
             case StoryMemoryCueKind.Leave when cue.Target is { } target:
                 this._heldAnimations.TryRemove(cue.Actor, out _);
                 actor.Pose = default;
-                await new MovementHandler(actor, null).WalkToPositionAsync(target).ConfigureAwait(false);
+                await this.WalkAsync(actor, target).ConfigureAwait(false);
                 _ = Task.Run(() => this.RemoveWhenArrivedAsync(cue.Actor, actor, target, this._cts.Token));
                 break;
             default:
@@ -369,6 +369,59 @@ public sealed class StorySceneContext : MiniGameContext
         catch (Exception ex)
         {
             this.Logger.LogError(ex, "{context}: Error while an actor left the stage.", this);
+        }
+    }
+
+    /// <summary>
+    /// Lets an actor walk to a target. The path finder of the monsters avoids the safezones, like the church of Devias,
+    /// so the actor walks the straight line (in parts, as long as the client accepts) if it finds no path.
+    /// </summary>
+    private async ValueTask WalkAsync(RivalPlayer actor, Point target)
+    {
+        if (await new MovementHandler(actor, null).WalkToPositionAsync(target).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        _ = Task.Run(() => this.WalkStraightAsync(actor, target, this._cts.Token));
+    }
+
+    private async Task WalkStraightAsync(RivalPlayer actor, Point target, CancellationToken cancellationToken)
+    {
+        const int maximumSteps = 15;
+        try
+        {
+            var until = DateTime.UtcNow + LeaveTimeout;
+            while (actor.Position != target && actor.CurrentMap == this.Map && DateTime.UtcNow < until)
+            {
+                if (actor.IsWalking)
+                {
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                var steps = new List<WalkingStep>();
+                var position = actor.Position;
+                while (position != target && steps.Count < maximumSteps)
+                {
+                    var next = new Point(
+                        (byte)(position.X + Math.Sign(target.X - position.X)),
+                        (byte)(position.Y + Math.Sign(target.Y - position.Y)));
+                    steps.Add(new WalkingStep(position, next, position.GetDirectionTo(next)));
+                    position = next;
+                }
+
+                await actor.WalkToAsync(position, steps.ToArray()).ConfigureAwait(false);
+                await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The stage is closed.
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Error while an actor walked.", this);
         }
     }
 
@@ -511,7 +564,7 @@ public sealed class StorySceneContext : MiniGameContext
 
         if (definition.WalksTo is { } target)
         {
-            await new MovementHandler(actor, null).WalkToPositionAsync(target).ConfigureAwait(false);
+            await this.WalkAsync(actor, target).ConfigureAwait(false);
         }
     }
 
