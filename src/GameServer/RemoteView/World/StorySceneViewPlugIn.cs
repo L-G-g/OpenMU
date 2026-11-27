@@ -135,7 +135,8 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
     /// After the header: the tile at which the camera looks (x, y), the height of its ground, the yaw, the tilt in tenths
     /// of a degree and the distance (four little endian shorts), the number of lines, and the texts (Latin-1, each ends
     /// with 0): the sound which replaces the music of the map (may be empty), the label of the last button and, for each line, a flag (1: the client tells the server when it shows
-    /// the line, with <c>/historia linea</c>), the name of the actor and what it says.
+    /// the line, with <c>/historia linea</c>), the name of the actor and what it says. If lines change the sound, the
+    /// number of them follows, and for each: the index of the line, 1 if the sound loops (0: it plays once), and the sound.
     /// </remarks>
     internal static byte[] SerializeMemory(StoryMemory memory)
     {
@@ -144,10 +145,16 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
         var endLabel = Encode(memory.EndLabel, MaximumLabelLength);
         var lines = memory.Lines.Take(MaximumPages).Select((line, index) => (
             // The client also tells the last line, which finishes the step of the memory.
-            Notify: index > 0 && (index == Math.Min(memory.Lines.Count, MaximumPages) - 1 || memory.Actors.Any(a => a.EntersAtLine == index)),
+            Notify: index > 0 && (index == Math.Min(memory.Lines.Count, MaximumPages) - 1 || memory.Actors.Any(a => a.EntersAtLine == index) || (memory.Cues?.Any(c => c.Line == index) ?? false)),
             Title: Encode(memory.Actors[line.Actor].Title, MaximumTitleLength),
             Text: Encode(line.Text, MaximumPageLength))).ToList();
-        var length = memoryHeaderLength + sound.Length + 1 + endLabel.Length + 1 + lines.Sum(l => 1 + l.Title.Length + 1 + l.Text.Length + 1);
+        var lineSounds = memory.Lines.Take(MaximumPages)
+            .Select((line, index) => (Index: index, line.Sound, line.LoopsSound))
+            .Where(l => l.Index > 0 && l.Sound is not null)
+            .Select(l => (Index: (byte)l.Index, Loops: l.LoopsSound, Path: Encode(l.Sound!, MaximumNoteLength)))
+            .ToList();
+        var length = memoryHeaderLength + sound.Length + 1 + endLabel.Length + 1 + lines.Sum(l => 1 + l.Title.Length + 1 + l.Text.Length + 1)
+            + (lineSounds.Count > 0 ? 1 + lineSounds.Sum(l => 2 + l.Path.Length + 1) : 0);
         var data = new byte[length];
         data[0] = 0xC2;
         BinaryPrimitives.WriteUInt16BigEndian(data.AsSpan(1), (ushort)length);
@@ -172,6 +179,19 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
             offset += title.Length + 1;
             text.CopyTo(data, offset);
             offset += text.Length + 1;
+        }
+
+        if (lineSounds.Count > 0)
+        {
+            // Older clients stop reading after the lines.
+            data[offset++] = (byte)lineSounds.Count;
+            foreach (var (index, loops, path) in lineSounds)
+            {
+                data[offset++] = index;
+                data[offset++] = loops ? (byte)1 : (byte)0;
+                path.CopyTo(data, offset);
+                offset += path.Length + 1;
+            }
         }
 
         return data;

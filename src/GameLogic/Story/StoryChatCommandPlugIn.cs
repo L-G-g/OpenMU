@@ -19,7 +19,7 @@ using MUnique.OpenMU.PlugIns;
 /// </summary>
 [Guid("2F8C5A17-6D3E-4B91-A7C4-5E9B1D3F8A62")]
 [PlugIn]
-[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>, /historia linea <number> and /historia salir (in a memory). Game masters: /historia paso <number>, /historia dungeon, /historia resets <number>, /historia orden (the questline). Everyone: /historia info.")]
+[Display(Name = "Chat command: /historia", Description = "The chat command of the story mode, which cinematicas.dll sends: /historia <button id> <npc id>, /historia hablar <npc id>, /historia linea <number> and /historia salir (in a memory). Game masters: /historia paso <number>, /historia dungeon, /historia resets <number>, /historia orden (the questline), /historia anim <actor> <hex> (in a memory: an actor plays an animation). Everyone: /historia info.")]
 [ChatCommandHelp(Command, CharacterStatus.Normal)]
 public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
 {
@@ -83,6 +83,12 @@ public sealed class StoryChatCommandPlugIn : IChatCommandPlugIn
                 return;
             case "linea" when arguments.Count == 2 && int.TryParse(arguments[1], out var line) && player.CurrentMiniGame is StorySceneContext stage:
                 await stage.OnLineShownAsync(player, line).ConfigureAwait(false);
+                return;
+            case "anim" when isGameMaster && arguments.Count == 3 && player.CurrentMiniGame is StorySceneContext animStage
+                             && int.TryParse(arguments[1], out var animActor)
+                             && byte.TryParse(arguments[2], System.Globalization.NumberStyles.HexNumber, null, out var animation):
+                // To try the animations of the actors: /historia anim <actor> <animation in hex>.
+                await animStage.PlayCueAsync(new StoryMemoryCue(0, animActor, StoryMemoryCueKind.Animate, Animation: animation, Holds: true)).ConfigureAwait(false);
                 return;
             case "salir" when player.CurrentMiniGame is StorySceneContext leftStage:
                 await leftStage.LeaveAsync(player).ConfigureAwait(false);

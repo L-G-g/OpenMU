@@ -118,17 +118,51 @@ public class StoryModeTest
         expected[2] = (byte)expected.Length;
         Assert.That(packet, Is.EqualTo(expected));
 
-        var sacrifice = StoryMemory.Sacrifice;
-        Assert.That(sacrifice.Lines, Has.Count.LessThanOrEqualTo(40));
-        Assert.That(sacrifice.Lines.All(l => l.Actor >= 0 && l.Actor < sacrifice.Actors.Count && l.Text.Length <= StoryScript.MaximumPageLength), Is.True);
-        Assert.That(sacrifice.Lines.All(l => l.Text.All(c => c <= 0xFF)), Is.True, "Latin-1");
-        Assert.That(sacrifice.Actors.All(a => a.Name.Length <= 10 && a.Title.Length <= 30), Is.True);
-
-        // Nobody talks before it entered the stage.
-        for (var i = 0; i < sacrifice.Lines.Count; i++)
+        foreach (var script in new[] { StoryMemory.Sacrifice, StoryMemory.Wedding })
         {
-            Assert.That(sacrifice.Actors[sacrifice.Lines[i].Actor].EntersAtLine, Is.LessThanOrEqualTo(i));
+            Assert.That(script.Lines, Has.Count.LessThanOrEqualTo(40));
+            Assert.That(script.Lines.All(l => l.Actor >= 0 && l.Actor < script.Actors.Count && l.Text.Length <= StoryScript.MaximumPageLength), Is.True);
+            Assert.That(script.Lines.All(l => l.Text.All(c => c <= 0xFF)), Is.True, "Latin-1");
+            Assert.That(script.Actors.All(a => a.Name.Length <= 10 && a.Title.Length <= 30), Is.True);
+            Assert.That(script.Actors.Count(a => !a.IsNpc), Is.LessThanOrEqualTo(6), "characters per owner");
+            Assert.That((script.Cues ?? []).All(c => c.Actor >= 0 && c.Actor < script.Actors.Count && c.Line > 0 && c.Line < script.Lines.Count), Is.True);
+
+            // Nobody talks or acts before it entered the stage.
+            for (var i = 0; i < script.Lines.Count; i++)
+            {
+                Assert.That(script.Actors[script.Lines[i].Actor].EntersAtLine, Is.LessThanOrEqualTo(i));
+            }
+
+            Assert.That((script.Cues ?? []).All(c => script.Actors[c.Actor].EntersAtLine <= c.Line), Is.True);
         }
+    }
+
+    /// <summary>
+    /// Tests that the lines which change the sound and the lines with cues are in the packet of a memory.
+    /// </summary>
+    [Test]
+    public void MemoryPacketWithSoundsAndCues()
+    {
+        var memory = new StoryMemory(
+            "T",
+            new Point(10, 20),
+            new StoryMemoryCamera(new Point(11, 21), 165, -60, 48.5f, 1000),
+            [new StoryMemoryActor("A", "A", SpectreKind.Lord, 0, [], new Point(1, 1), new Point(1, 2))],
+            [new(0, "1"), new(0, "2", "b.wav", LoopsSound: false), new(0, "3")],
+            "V",
+            "a.wav",
+            [new(2, 0, StoryMemoryCueKind.StandUp)]);
+        var packet = StorySceneViewPlugIn.SerializeMemory(memory);
+        var expected = new byte[] { 0xC2, 0, 0, 0xFF, 0x31, 11, 21, 165, 0, 0xC4, 0xFF, 0xE5, 0x01, 0xE8, 0x03, 3 }
+            .Concat(Encoding.Latin1.GetBytes("a.wav\0V\0"))
+            .Concat(new byte[] { 0 }).Concat(Encoding.Latin1.GetBytes("A\01\0"))
+            .Concat(new byte[] { 0 }).Concat(Encoding.Latin1.GetBytes("A\02\0"))
+            .Concat(new byte[] { 1 }).Concat(Encoding.Latin1.GetBytes("A\03\0"))
+            .Concat(new byte[] { 1, 1, 0 }).Concat(Encoding.Latin1.GetBytes("b.wav\0"))
+            .ToArray();
+        expected[1] = (byte)(expected.Length >> 8);
+        expected[2] = (byte)expected.Length;
+        Assert.That(packet, Is.EqualTo(expected));
     }
 
     /// <summary>

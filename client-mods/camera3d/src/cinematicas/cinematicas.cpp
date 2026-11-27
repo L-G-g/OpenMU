@@ -30,6 +30,8 @@
 //     nombre del que habla y lo que dice. Al mostrar una linea con aviso se manda /historia linea [numero]: el servidor
 //     hace entrar a un actor. El boton final y Escape mandan /historia salir; la pantalla queda en negro hasta que el
 //     jugador vuelve a su mapa.
+//     Despues de las lineas puede venir [cantidad] y, por cada una, [linea] [se repite, 0 o 1] [sonido]: al mostrar esa
+//     linea el sonido reemplaza al que suena (ver ChangeMusic). Los clientes viejos no leen esa parte.
 //   - El sonido de fondo reemplaza a la musica del mapa mientras dura el recuerdo (ver StartMusic).
 //
 // Como funciona:
@@ -204,6 +206,9 @@ namespace
     float g_stageTarget[3] = {};      // a donde mira la camara del recuerdo
     float g_stageYaw = 0.0f, g_stageTilt = 48.5f, g_stageDistance = 1000.0f;
     std::string g_stageSound;
+    bool g_stageLoops = true;         // el sonido actual se repite (si no, suena una vez)
+    std::vector<std::string> g_pageSounds; // sonido que empieza en cada pagina (vacio: sigue el que suena)
+    std::vector<bool> g_pageLoops;
     bool g_curtainForScene = false;   // el telon espera el recuerdo (si no, espera el cambio de mapa)
     int g_curtainMap = -1;
     bool g_musicReplaced = false;
@@ -456,8 +461,32 @@ namespace
             }
         }
 
-        PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
+        PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | (g_stageLoops ? SND_LOOP : 0) | SND_NODEFAULT);
         g_log("Cinematicas: sonido del recuerdo %s.", g_stageSound.c_str());
+    }
+
+    bool IsSafeSoundPath(const std::string& path)
+    {
+        return path.find("..") == std::string::npos && path.find(':') == std::string::npos;
+    }
+
+    // Una linea del recuerdo que cambia la musica: reemplaza a la que suena.
+    void ChangeMusic(const std::string& path, bool loops)
+    {
+        if (!g_musicOption || !IsSafeSoundPath(path) || GetFileAttributesA(path.c_str()) == INVALID_FILE_ATTRIBUTES)
+        {
+            return; // sigue la que suena
+        }
+
+        g_stageSound = path;
+        g_stageLoops = loops;
+        if (g_musicReplaced)
+        {
+            PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | (loops ? SND_LOOP : 0) | SND_NODEFAULT);
+            g_log("Cinematicas: sonido del recuerdo %s.", g_stageSound.c_str());
+        }
+
+        // Si todavia no empezo, StartMusic lo arranca en el proximo cuadro.
     }
 
     void EndSceneNow()
@@ -481,6 +510,10 @@ namespace
         if (g_staged && g_page < g_pageTitles.size())
         {
             g_title = g_pageTitles[g_page];
+            if (g_page < g_pageSounds.size() && !g_pageSounds[g_page].empty())
+            {
+                ChangeMusic(g_pageSounds[g_page], g_pageLoops[g_page]);
+            }
 
             // Cada aviso una sola vez, en orden.
             for (; g_notifiedPages <= g_page; g_notifiedPages++)
@@ -724,6 +757,30 @@ namespace
             pages.push_back(text);
         }
 
+        // Opcional: lineas que cambian la musica ([cantidad], y por cada una [linea] [se repite] [sonido]).
+        std::vector<std::string> pageSounds(lineCount);
+        std::vector<bool> pageLoops(lineCount, true);
+        if (offset < size)
+        {
+            const int soundCount = packet[offset++];
+            for (int i = 0; i < soundCount && offset + 2 <= size; i++)
+            {
+                const int line = packet[offset++];
+                const bool loops = packet[offset++] != 0;
+                std::string path;
+                if (!ReadText(packet, size, offset, path))
+                {
+                    break;
+                }
+
+                if (line < lineCount)
+                {
+                    pageSounds[line] = path;
+                    pageLoops[line] = loops;
+                }
+            }
+        }
+
         StopMusic();
         g_stageTarget[0] = packet[5] * 100.0f + 50.0f;
         g_stageTarget[1] = packet[6] * 100.0f + 50.0f;
@@ -731,7 +788,10 @@ namespace
         g_stageYaw = readShort(9);
         g_stageTilt = readShort(11) / 10.0f;
         g_stageDistance = readShort(13);
-        g_stageSound = sound.find("..") == std::string::npos && sound.find(':') == std::string::npos ? sound : "";
+        g_stageSound = IsSafeSoundPath(sound) ? sound : "";
+        g_stageLoops = true;
+        g_pageSounds = pageSounds;
+        g_pageLoops = pageLoops;
         g_staged = true;
         g_frontal = false;
         g_rivalMounted = false;

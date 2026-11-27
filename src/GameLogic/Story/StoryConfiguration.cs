@@ -46,6 +46,12 @@ public class StoryConfiguration
     public int FirstMemoryMinimumResets { get; set; } = 20;
 
     /// <summary>
+    /// Gets or sets the minimum resets of step 9, in which the seer of Kalima 2 shows the second memory.
+    /// </summary>
+    [Display(Name = "Step 9 (seer of Kalima 2, second memory): minimum resets", Description = "The minimum resets to watch the second memory (the wedding) with the seer at the entrance of Kalima 2. The seers of the deeper levels of Kalima show it too.")]
+    public int SecondMemoryMinimumResets { get; set; } = 30;
+
+    /// <summary>
     /// Gets or sets a value indicating whether the story and the skill quests are one questline.
     /// </summary>
     [Display(Name = "One questline with the skill quests", Description = "If enabled, the steps of the story and the tiers of the skill quests are one line of missions: each one starts only when the ones before it are done. The order comes from the requirements (resets above, level and resets of the skill quests, the maps of their monsters, the first class change). Game masters see it with /historia orden.")]
@@ -159,6 +165,7 @@ public class StoryConfiguration
         StoryScript.OldPacts => this.SebinaMinimumResets,
         StoryScript.OldWorld => this.OldWorldMinimumResets,
         StoryScript.FirstMemory => this.FirstMemoryMinimumResets,
+        StoryScript.SecondMemory => this.SecondMemoryMinimumResets,
         _ => 0,
     };
 
