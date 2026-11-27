@@ -155,6 +155,10 @@ public class StoryModeTest
 
         StoryProgress.SetFinishedStep(player, StoryScript.OldWorld);
         Assert.That(story.GetMapLock(player, AtlansNumber), Is.Null);
+        Assert.That(story.GetMapLock(player, StoryMemory.KalimaMapNumbers[0]), Is.Null);
+        Assert.That(story.GetNextStep(player)?.Number, Is.EqualTo(StoryScript.FirstMemory));
+
+        StoryProgress.SetFinishedStep(player, StoryScript.Steps.Count);
         Assert.That(story.GetNextStep(player), Is.Null);
     }
 
@@ -241,6 +245,11 @@ public class StoryModeTest
         Assert.That(lines[1].Text, Is.EqualTo("  Hablá con Sebina (Devias)"));
 
         StoryProgress.SetFinishedStep(player, StoryScript.OldWorld);
+        lines.Clear();
+        story.AddTrackerLines(player, lines);
+        Assert.That(lines.Select(l => l.Text), Is.EqualTo(new[] { "Historia: Recuerdos de Kalima I", "  Hablá con la Vidente (entrada de Kalima 1)" }));
+
+        StoryProgress.SetFinishedStep(player, StoryScript.Steps.Count);
         lines.Clear();
         story.AddTrackerLines(player, lines);
         Assert.That(lines, Is.Empty);

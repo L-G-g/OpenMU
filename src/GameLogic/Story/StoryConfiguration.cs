@@ -40,6 +40,18 @@ public class StoryConfiguration
     public int OldWorldMinimumResets { get; set; } = 20;
 
     /// <summary>
+    /// Gets or sets the minimum resets of step 8, in which the seer of Kalima 1 shows the first memory.
+    /// </summary>
+    [Display(Name = "Step 8 (seer of Kalima 1, first memory): minimum resets", Description = "The minimum resets to watch the first memory (the sacrifice) with the seer at the entrance of Kalima 1. The seers of the deeper levels of Kalima show it too, for players whose resets already took them further.")]
+    public int FirstMemoryMinimumResets { get; set; } = 20;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the story and the skill quests are one questline.
+    /// </summary>
+    [Display(Name = "One questline with the skill quests", Description = "If enabled, the steps of the story and the tiers of the skill quests are one line of missions: each one starts only when the ones before it are done. The order comes from the requirements (resets above, level and resets of the skill quests, the maps of their monsters, the first class change). Game masters see it with /historia orden.")]
+    public bool InterleaveSkillQuests { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets a value indicating whether the maps are locked until the story opens them.
     /// </summary>
     [Display(Name = "Lock maps", Description = "If enabled, the players can't warp or walk to the maps below until the story opens them.")]
@@ -134,6 +146,7 @@ public class StoryConfiguration
         StoryScript.Dungeon => this.DungeonMinimumResets,
         StoryScript.OldPacts => this.SebinaMinimumResets,
         StoryScript.OldWorld => this.OldWorldMinimumResets,
+        StoryScript.FirstMemory => this.FirstMemoryMinimumResets,
         _ => 0,
     };
 

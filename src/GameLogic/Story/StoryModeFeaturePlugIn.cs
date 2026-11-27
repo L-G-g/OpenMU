@@ -210,7 +210,84 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     }
 
     /// <summary>
+    /// Gets why a player can't start a skill quest yet because of the story: with the questline
+    /// (<see cref="StoryConfiguration.InterleaveSkillQuests"/>), a story step before the tier of the quest isn't done yet;
+    /// otherwise, the player didn't talk to Lumen yet (see <see cref="BlocksSkillQuests"/>).
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="tier">The number of the skill quest, which is its tier.</param>
+    /// <param name="hasStartedSkillQuests">If set to <c>true</c>, the character finished or started a skill quest before.</param>
+    /// <returns>The message for the quest window; <c>null</c>, if the story doesn't block the quest.</returns>
+    public string? GetSkillQuestBlock(Player player, int tier, bool hasStartedSkillQuests)
+    {
+        if (!this.CurrentConfiguration.InterleaveSkillQuests)
+        {
+            return this.BlocksSkillQuests(player, hasStartedSkillQuests) ? "Primero hablá con Lumen en Lorencia." : null;
+        }
+
+        if (!IsStoryPlayer(player)
+            || player.SelectedCharacter is not { } character
+            || !StoryProgress.IsAvailable(player.GameContext.Configuration))
+        {
+            return null;
+        }
+
+        var entries = this.GetQuestline(player.GameContext);
+        var index = Questline.IndexOf(entries, QuestlineEntryKind.SkillTier, tier);
+        var first = Questline.GetFirstOpenEntry(entries, e => IsDone(player, e));
+        if (index < 0 || first < 0 || first >= index || entries[first].Kind != QuestlineEntryKind.Story
+            || StoryScript.GetStep(entries[first].Number) is not { } step)
+        {
+            // A skill tier before it is open: the skill quests tell that themselves.
+            return null;
+        }
+
+        return $"Primero seguí la historia: hablá con {GetActorName(step.Actor, StoryProgress.GetFinishedStep(character), true)} ({GetActorPlace(step)}).";
+    }
+
+    /// <summary>
+    /// Gets the questline: the steps of the story and the tiers of the skill quests in their order.
+    /// </summary>
+    /// <param name="gameContext">The game context.</param>
+    /// <returns>The entries of the questline.</returns>
+    public IReadOnlyList<QuestlineEntry> GetQuestline(IGameContext gameContext)
+    {
+        var skills = gameContext.FeaturePlugIns.GetPlugIn<SkillQuestFeaturePlugIn>();
+        return Questline.Get(gameContext.Configuration, this.CurrentConfiguration, skills is null ? null : skills.Configuration ?? new SkillQuestConfiguration());
+    }
+
+    /// <summary>
+    /// Gets the current mission of a player in the questline.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <returns>The index of the first entry which the player didn't do, and the questline; the index is -1 if it did all.</returns>
+    public (int Index, IReadOnlyList<QuestlineEntry> Entries) GetCurrentMission(Player player)
+    {
+        var entries = this.GetQuestline(player.GameContext);
+        return (Questline.GetFirstOpenEntry(entries, e => IsDone(player, e)), entries);
+    }
+
+    /// <summary>
     /// Gets the mark above an NPC for a player: the actor of the next step of the player has one.
+    /// </summary>
+    /// <param name="player">The player.</param>
+    /// <param name="npc">The NPC.</param>
+    /// <returns>The mark.</returns>
+    public SkillQuestMark GetMark(Player player, NonPlayerCharacter npc)
+    {
+        if (GetActor(npc.Definition) == StoryActor.Seer
+            && this.GetNextStep(player) is { } step
+            && !ShowsMemoryOf(npc, step))
+        {
+            // A seer of a level of Kalima above the one of the memory.
+            return SkillQuestMark.None;
+        }
+
+        return this.GetMark(player, npc.Definition);
+    }
+
+    /// <summary>
+    /// Gets the mark above an NPC for a player, without regard to the map where it stands.
     /// </summary>
     /// <param name="player">The player.</param>
     /// <param name="npc">The definition of the NPC.</param>
@@ -242,13 +319,24 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     {
         if (this.GetNextStep(player) is not { } step || player.SelectedCharacter is not { } character)
         {
+            this.AddSkillTierTrackerLines(player, lines);
+            return;
+        }
+
+        if (this.CurrentConfiguration.InterleaveSkillQuests
+            && this.GetCurrentMission(player) is var (index, entries)
+            && index >= 0
+            && entries[index] is { Kind: QuestlineEntryKind.SkillTier })
+        {
+            // The current mission is a skill tier: the skill quests show it (active or available), or the line below.
+            this.AddSkillTierTrackerLines(player, lines);
             return;
         }
 
         var missing = this.GetMissingRequirement(player, step);
         lines.Add(new(missing is null ? SkillQuestTextColor.Gold : SkillQuestTextColor.Gray, $"Historia: {step.Chapter}"));
         lines.Add(missing is null
-            ? new(SkillQuestTextColor.White, $"  Hablá con {GetActorName(step.Actor, StoryProgress.GetFinishedStep(character), true)} ({GetActorPlace(step.Actor)})")
+            ? new(SkillQuestTextColor.White, $"  Hablá con {GetActorName(step.Actor, StoryProgress.GetFinishedStep(character), true)} ({GetActorPlace(step)})")
             : new(SkillQuestTextColor.Gray, $"  {missing}"));
     }
 
@@ -314,7 +402,7 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
             return true;
         }
 
-        var scene = this.CreateScene(player, character, actor, step);
+        var scene = this.CreateScene(player, character, npc, actor, step);
         player.InvulnerableUntilUtc = DateTime.UtcNow.AddSeconds(Math.Clamp(this.CurrentConfiguration.SceneProtectionSeconds, 0, 3600));
         await player.InvokeViewPlugInAsync<IStorySceneViewPlugIn>(p => p.ShowSceneAsync(npc, scene)).ConfigureAwait(false);
         return true;
@@ -341,9 +429,20 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
 
         if (actor == StoryActor.Seer)
         {
-            if (buttonId == StoryButton.MemoryId)
+            if (buttonId != StoryButton.MemoryId || player.SelectedCharacter is not { } viewer)
             {
-                await this.StartMemoryAsync(player, npc, StoryMemory.Sacrifice).ConfigureAwait(false);
+                return;
+            }
+
+            if (this.GetNextStep(player) is { Kind: StoryStepKind.Memory, Memory: { } memory } memoryStep
+                && ShowsMemoryOf(npc, memoryStep)
+                && this.GetMissingRequirement(player, memoryStep) is null)
+            {
+                await this.StartMemoryAsync(player, npc, memory, memoryStep).ConfigureAwait(false);
+            }
+            else if (GetWatchedMemory(StoryProgress.GetFinishedStep(viewer), GetKalimaLevel(npc)) is { Memory: { } watched })
+            {
+                await this.StartMemoryAsync(player, npc, watched, null).ConfigureAwait(false);
             }
 
             return;
@@ -438,6 +537,11 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     public string? GetMissingRequirement(Player player, StoryStep step)
     {
         var configuration = this.CurrentConfiguration;
+        if (this.GetQuestlineBlock(player, step) is { } block)
+        {
+            return block;
+        }
+
         var minimumResets = configuration.GetMinimumResets(step.Number);
         var resets = (int)(player.Attributes?[Stats.Resets] ?? 0);
         if (resets < minimumResets)
@@ -456,6 +560,91 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
         return null;
     }
 
+    /// <summary>
+    /// Adds the next skill quest to the tracker when it's the current mission of the questline but the player can't start
+    /// it yet (the skill quests only show the quests which are active or can be started).
+    /// </summary>
+    private void AddSkillTierTrackerLines(Player player, List<SkillQuestLine> lines)
+    {
+        if (!this.CurrentConfiguration.InterleaveSkillQuests
+            || player.SelectedCharacter is not { } character
+            || player.GameContext.FeaturePlugIns.GetPlugIn<SkillQuestFeaturePlugIn>() is not { } skills)
+        {
+            return;
+        }
+
+        var (index, entries) = this.GetCurrentMission(player);
+        if (index < 0
+            || entries[index] is not { Kind: QuestlineEntryKind.SkillTier } entry
+            || skills.GetOpenQuestOfTier(player, entry.Number) is not var (quest, missing)
+            || missing is null
+            || character.QuestStates.Any(s => s.ActiveQuest == quest))
+        {
+            return;
+        }
+
+        lines.Add(new(SkillQuestTextColor.Gray, $"Próxima misión: {quest.Name.GetTranslation(player.Culture)}"));
+        lines.Add(new(SkillQuestTextColor.Gray, $"  {missing}"));
+    }
+
+    /// <summary>
+    /// Determines whether a player did an entry of the questline.
+    /// </summary>
+    private static bool IsDone(Player player, QuestlineEntry entry) => entry.Kind switch
+    {
+        QuestlineEntryKind.Story => player.SelectedCharacter is { } character && StoryProgress.GetFinishedStep(character) >= entry.Number,
+        _ => SkillQuestFeaturePlugIn.IsTierFinished(player, entry.Number),
+    };
+
+    /// <summary>
+    /// Gets the level of Kalima of the map of an NPC.
+    /// </summary>
+    private static int GetKalimaLevel(NonPlayerCharacter npc) => npc.CurrentMap is { } map ? StoryMemory.GetKalimaLevel((short)map.MapId) : 0;
+
+    /// <summary>
+    /// Determines whether a seer shows the memory of a step: it stands on the level of Kalima of the step, or deeper.
+    /// </summary>
+    private static bool ShowsMemoryOf(NonPlayerCharacter npc, StoryStep step)
+    {
+        var level = GetKalimaLevel(npc);
+        return step.Kind == StoryStepKind.Memory && level > 0 && level >= step.KalimaLevel;
+    }
+
+    /// <summary>
+    /// Gets the deepest memory which a player already saw and which a seer of a level of Kalima can show again.
+    /// </summary>
+    private static StoryStep? GetWatchedMemory(int finishedStep, int kalimaLevel)
+    {
+        return StoryScript.Steps
+            .Where(s => s.Kind == StoryStepKind.Memory && s.Memory is not null && s.Number <= finishedStep && s.KalimaLevel <= kalimaLevel && kalimaLevel > 0)
+            .OrderByDescending(s => s.KalimaLevel)
+            .ThenByDescending(s => s.Number)
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Gets which skill quest of the questline a player has to finish before a step of the story.
+    /// </summary>
+    private string? GetQuestlineBlock(Player player, StoryStep step)
+    {
+        if (!this.CurrentConfiguration.InterleaveSkillQuests
+            || player.GameContext.FeaturePlugIns.GetPlugIn<SkillQuestFeaturePlugIn>() is not { } skills)
+        {
+            return null;
+        }
+
+        var (first, entries) = this.GetCurrentMission(player);
+        var index = Questline.IndexOf(entries, QuestlineEntryKind.Story, step.Number);
+        if (first < 0 || index < 0 || first >= index || entries[first].Kind != QuestlineEntryKind.SkillTier
+            || skills.GetOpenQuestOfTier(player, entries[first].Number) is not var (quest, _))
+        {
+            return null;
+        }
+
+        var giver = quest.QuestGiver?.Designation.GetTranslation(player.Culture) ?? "tu maestro";
+        return $"Primero terminá \"{quest.Name.GetTranslation(player.Culture)}\" con {giver}";
+    }
+
     private static bool IsStoryPlayer(Player player)
     {
         return player is not OfflinePlayer
@@ -467,12 +656,17 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     {
         StoryActor.Lumen => "Lumen",
         StoryActor.Sebina => "Sebina",
-        StoryActor.Seer => StoryMemory.SeerName,
+        StoryActor.Seer => withArticle ? "la " + StoryMemory.SeerName : StoryMemory.SeerName,
         _ when finishedStep >= StoryScript.Dungeon => StoryScript.StrangerRealName,
         _ => withArticle ? "el " + StoryScript.StrangerName : StoryScript.StrangerName,
     };
 
-    private static string GetActorPlace(StoryActor actor) => actor == StoryActor.Sebina ? "Devias" : "Lorencia";
+    private static string GetActorPlace(StoryStep step) => step.Actor switch
+    {
+        StoryActor.Sebina => "Devias",
+        StoryActor.Seer => $"entrada de Kalima {Math.Max(step.KalimaLevel, 1)}",
+        _ => "Lorencia",
+    };
 
     private static async ValueTask RefreshAsync(Player player)
     {
@@ -497,13 +691,13 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     private static bool HasClassChange(CharacterClass? characterClass)
         => GetFamily(characterClass) is StoryClassFamily.Wizard or StoryClassFamily.Knight or StoryClassFamily.Elf or StoryClassFamily.Summoner;
 
-    private StoryScene CreateScene(Player player, Character character, StoryActor actor, StoryStep? step)
+    private StoryScene CreateScene(Player player, Character character, NonPlayerCharacter npc, StoryActor actor, StoryStep? step)
     {
         var finishedStep = StoryProgress.GetFinishedStep(character);
         var title = GetActorName(actor, finishedStep, false);
         if (actor == StoryActor.Seer)
         {
-            return new StoryScene(title, StoryScript.Paginate(StoryMemory.SeerText), [new(StoryButton.MemoryId, "Ver el recuerdo"), new(StoryButton.CloseId, "Más tarde")], null);
+            return this.CreateSeerScene(player, character, npc, step, title);
         }
 
         if (step is null || step.Actor != actor)
@@ -521,6 +715,27 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
             ? [new(StoryButton.DuelId, step.AcceptLabel), new(StoryButton.CloseId, "Volver más tarde")]
             : [new(StoryButton.FinishId, step.AcceptLabel)];
         return new StoryScene(title, pages, buttons, null);
+    }
+
+    private StoryScene CreateSeerScene(Player player, Character character, NonPlayerCharacter npc, StoryStep? step, string title)
+    {
+        if (step is { Actor: StoryActor.Seer } && ShowsMemoryOf(npc, step))
+        {
+            if (this.GetMissingRequirement(player, step) is { } missing)
+            {
+                return new StoryScene(title, StoryScript.Paginate([step.LockedText]), [new(StoryButton.CloseId, "Cerrar")], missing);
+            }
+
+            var pages = StoryScript.Paginate(step.Text(CreateTextContext(player, character)));
+            return new StoryScene(title, pages, [new(StoryButton.MemoryId, step.AcceptLabel), new(StoryButton.CloseId, "Más tarde")], null);
+        }
+
+        if (GetWatchedMemory(StoryProgress.GetFinishedStep(character), GetKalimaLevel(npc)) is not null)
+        {
+            return new StoryScene(title, StoryScript.Paginate(StoryMemory.SeerAgainText), [new(StoryButton.MemoryId, "Verlo otra vez"), new(StoryButton.CloseId, "Cerrar")], null);
+        }
+
+        return new StoryScene(title, StoryScript.Paginate([StoryScript.GetIdleText(StoryActor.Seer, StoryProgress.GetFinishedStep(character))]), [new(StoryButton.CloseId, "Cerrar")], null);
     }
 
     private async ValueTask FinishStepAsync(Player player, StoryStep step)
@@ -553,7 +768,7 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
                 await player.ShowBlueMessageAsync("Sebina ya puede ponerte a prueba para tu cambio de clase.").ConfigureAwait(false);
                 break;
             case StoryScript.OldWorld:
-                await player.ShowBlueMessageAsync("Fin de la primera parte de la historia.").ConfigureAwait(false);
+                await player.ShowBlueMessageAsync("Fin de la primera parte de la historia. Una vidente te espera en la entrada de Kalima 1.").ConfigureAwait(false);
                 break;
             default:
                 break;
@@ -597,7 +812,11 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
     /// Starts a memory: the player goes to the stage of the memory (<see cref="StorySceneContext"/>), and comes back to
     /// the NPC afterwards.
     /// </summary>
-    private async ValueTask StartMemoryAsync(Player player, NonPlayerCharacter npc, StoryMemory memory)
+    /// <param name="player">The player.</param>
+    /// <param name="npc">The seer.</param>
+    /// <param name="memory">The memory.</param>
+    /// <param name="step">The step which is finished when the player saw the last line, or <c>null</c> if the player watches it again.</param>
+    private async ValueTask StartMemoryAsync(Player player, NonPlayerCharacter npc, StoryMemory memory, StoryStep? step)
     {
         var definition = player.GameContext.Configuration.MiniGameDefinitions.FirstOrDefault(d => d.Type == MiniGameType.StoryScene);
         if (definition?.Entrance is not { } entrance
@@ -628,7 +847,8 @@ public class StoryModeFeaturePlugIn : IFeaturePlugIn, IWarpGateEnteringPlugIn, I
             return;
         }
 
-        stage.Prepare(memory, owner => owner.WarpToAsync(returnGate));
+        Func<Player, ValueTask>? completedAsync = step is null ? null : owner => this.FinishStepAsync(owner, step);
+        stage.Prepare(memory, owner => owner.WarpToAsync(returnGate), completedAsync);
         var result = await game.TryEnterAsync(player).ConfigureAwait(false);
         if (result != EnterResult.Success)
         {

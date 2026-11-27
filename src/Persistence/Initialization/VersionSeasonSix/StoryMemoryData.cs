@@ -8,8 +8,8 @@ using MUnique.OpenMU.DataModel.Configuration;
 using MUnique.OpenMU.GameLogic.Story;
 
 /// <summary>
-/// The data of the memories of the story mode (see <see cref="StoryMemory"/>): the seer, an NPC at the entrance of Atlans
-/// who shows them, and the mini game <see cref="MiniGameType.StoryScene"/> with one instance of Devias per player, which
+/// The data of the memories of the story mode (see <see cref="StoryMemory"/>): the seer, an NPC at the entrance of each
+/// level of Kalima who shows them, and the mini game <see cref="MiniGameType.StoryScene"/> with one instance of Devias per player, which
 /// is the stage of the first memory.
 /// </summary>
 internal static class StoryMemoryData
@@ -24,14 +24,18 @@ internal static class StoryMemoryData
     /// </summary>
     internal const short SeerIdNumber = 3000 + SeerLookNumber;
 
+    /// <summary>
+    /// The map of the first version, where the seer stood before she moved to Kalima.
+    /// </summary>
     private const short AtlansNumber = 7;
 
     private const byte GameLevel = 1;
 
     /// <summary>
-    /// The coordinates of the seer, in the safezone at the entrance of Atlans.
+    /// The coordinates of the seer at the entrance of a level of Kalima: at the edge of the arrival area (10..17 / 16..22),
+    /// a few steps from Oracle Layla (7 / 19), who has the same look.
     /// </summary>
-    private static readonly (byte X, byte Y) SeerPosition = (24, 20);
+    private static readonly (byte X, byte Y) SeerPosition = (13, 22);
 
     /// <summary>
     /// Applies the data to the game configuration.
@@ -40,10 +44,15 @@ internal static class StoryMemoryData
     /// <param name="gameConfiguration">The game configuration.</param>
     internal static void Apply(IContext context, GameConfiguration gameConfiguration)
     {
+        var seer = GetOrCreateSeer(context, gameConfiguration);
         if (gameConfiguration.Maps.FirstOrDefault(m => m.Number == AtlansNumber && m.Discriminator == 0) is { } atlans)
         {
-            var seer = GetOrCreateSeer(context, gameConfiguration);
-            AddSeerSpawn(context, atlans, seer);
+            RemoveSeerSpawn(atlans);
+        }
+
+        foreach (var kalima in gameConfiguration.Maps.Where(m => m.Discriminator == 0 && StoryMemory.GetKalimaLevel(m.Number) > 0))
+        {
+            AddSeerSpawn(context, kalima, seer);
         }
 
         if (gameConfiguration.Maps.FirstOrDefault(m => m.Number == StoryMemory.SacrificeMapNumber && m.Discriminator == 0) is { } devias)
@@ -76,26 +85,35 @@ internal static class StoryMemoryData
         return seer;
     }
 
-    private static void AddSeerSpawn(IContext context, GameMapDefinition atlans, MonsterDefinition seer)
+    private static void RemoveSeerSpawn(GameMapDefinition map)
     {
-        var id = GuidHelper.CreateGuid<MonsterSpawnArea>(atlans.Number, SeerIdNumber);
-        if (atlans.MonsterSpawns.Any(spawn => spawn.GetId() == id))
+        var id = GuidHelper.CreateGuid<MonsterSpawnArea>(map.Number, SeerIdNumber);
+        foreach (var spawn in map.MonsterSpawns.Where(spawn => spawn.GetId() == id).ToList())
+        {
+            map.MonsterSpawns.Remove(spawn);
+        }
+    }
+
+    private static void AddSeerSpawn(IContext context, GameMapDefinition map, MonsterDefinition seer)
+    {
+        var id = GuidHelper.CreateGuid<MonsterSpawnArea>(map.Number, SeerIdNumber);
+        if (map.MonsterSpawns.Any(spawn => spawn.GetId() == id))
         {
             return;
         }
 
         var spawn = context.CreateNew<MonsterSpawnArea>();
         spawn.SetGuid(id);
-        spawn.GameMap = atlans;
+        spawn.GameMap = map;
         spawn.MonsterDefinition = seer;
         spawn.SpawnTrigger = SpawnTrigger.Automatic;
-        spawn.Direction = Direction.SouthWest;
+        spawn.Direction = Direction.South;
         spawn.X1 = SeerPosition.X;
         spawn.X2 = SeerPosition.X;
         spawn.Y1 = SeerPosition.Y;
         spawn.Y2 = SeerPosition.Y;
         spawn.Quantity = 1;
-        atlans.MonsterSpawns.Add(spawn);
+        map.MonsterSpawns.Add(spawn);
     }
 
     private static ExitGate GetOrCreateGate(IContext context, GameMapDefinition map, byte x, byte y)
