@@ -25,7 +25,8 @@ public enum StoryActor
     Sebina,
 
     /// <summary>
-    /// The seer of Atlans, who shows the memories (see <see cref="StoryMemory"/>). She has no step of the story.
+    /// The seer, who stands at the entrance of each level of Kalima and shows the memories of the old world (see
+    /// <see cref="StoryMemory"/>): a step of the kind <see cref="StoryStepKind.Memory"/>.
     /// </summary>
     Seer,
 }
@@ -44,6 +45,11 @@ public enum StoryStepKind
     /// The player listens to the actor and duels it; the step is finished by winning the duel.
     /// </summary>
     Duel,
+
+    /// <summary>
+    /// The seer shows a memory (<see cref="StoryStep.Memory"/>); the step is finished when the player saw its last line.
+    /// </summary>
+    Memory,
 }
 
 /// <summary>
@@ -112,6 +118,9 @@ public sealed record StoryTextContext(string PlayerName, StoryClassFamily Family
 /// <param name="Text">The paragraphs which the actor says.</param>
 /// <param name="LockedText">What the actor says when the player doesn't meet the requirements yet.</param>
 /// <param name="Reward">The message when the step is finished (without accents: it's a message of the chat), or <c>null</c>.</param>
+/// <param name="Memory">The memory which the seer shows in a step of the kind <see cref="StoryStepKind.Memory"/>.</param>
+/// <param name="KalimaLevel">The level of Kalima (1 to 7) where the seer shows the <paramref name="Memory"/>; the seers of
+/// the deeper levels show it too, for players whose resets already took them further.</param>
 public sealed record StoryStep(
     int Number,
     string Chapter,
@@ -120,7 +129,9 @@ public sealed record StoryStep(
     string AcceptLabel,
     Func<StoryTextContext, IReadOnlyList<string>> Text,
     string LockedText,
-    string? Reward);
+    string? Reward,
+    StoryMemory? Memory = null,
+    int KalimaLevel = 0);
 
 /// <summary>
 /// A button of a <see cref="StoryScene"/>.

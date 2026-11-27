@@ -72,7 +72,7 @@ public sealed record StoryMemory(
     string? Sound = null)
 {
     /// <summary>
-    /// The name of the NPC of Atlans which shows the memories.
+    /// The name of the NPC at the entrance of each level of Kalima which shows the memories.
     /// </summary>
     public const string SeerName = "Vidente";
 
@@ -86,13 +86,45 @@ public sealed record StoryMemory(
     private const int Mephis = 2;
 
     /// <summary>
+    /// The numbers of the maps of Kalima 1 to 7: the seer stands at the entrance of each level, and the memory of a step
+    /// is shown on its level (<see cref="StoryStep.KalimaLevel"/>) and on the deeper ones.
+    /// </summary>
+    public static IReadOnlyList<short> KalimaMapNumbers { get; } = [24, 25, 26, 27, 28, 29, 36];
+
+    /// <summary>
     /// Gets what the seer says before it shows the <see cref="Sacrifice"/>.
     /// </summary>
     public static IReadOnlyList<string> SeerText { get; } =
     [
-        "Las aguas de Atlans guardan recuerdos más viejos que cualquier reino que conozcas. Yo solo aprendí a escucharlas.",
-        "Hay uno que no deja de volver: una sala de piedra en el norte helado, un rey en su trono y una decisión que cambió el destino del continente. Puedo mostrártelo, si quieres verlo.",
+        "Kalima no es un lugar: es una herida. Son las tierras que el sello arrancó del mundo hace mil años, y sus piedras todavía recuerdan lo que vieron. Cuanto más hondo bajes, más viejos serán los recuerdos que guardan. Yo solo aprendí a escucharlos.",
+        "En este primer nivel hay uno que no deja de volver: una sala de piedra en el norte helado, un rey en su trono y una decisión que cambió el destino del continente. Puedo mostrártelo, si quieres verlo.",
     ];
+
+    /// <summary>
+    /// Gets what the seer says when the player watches a memory again.
+    /// </summary>
+    public static IReadOnlyList<string> SeerAgainText { get; } =
+    [
+        "Los recuerdos no se gastan. Si quieres, las piedras de Kalima pueden mostrártelo otra vez.",
+    ];
+
+    /// <summary>
+    /// Gets the level of Kalima (1 to 7) of a map.
+    /// </summary>
+    /// <param name="mapNumber">The number of the map.</param>
+    /// <returns>The level, or 0 if the map isn't Kalima.</returns>
+    public static int GetKalimaLevel(short mapNumber)
+    {
+        for (var i = 0; i < KalimaMapNumbers.Count; i++)
+        {
+            if (KalimaMapNumbers[i] == mapNumber)
+            {
+                return i + 1;
+            }
+        }
+
+        return 0;
+    }
 
     /// <summary>
     /// Gets the first memory: in the throne room of the castle of Devias, a thousand years ago, Emperor Muren Rexmillon and
@@ -132,6 +164,6 @@ public sealed record StoryMemory(
             new(Mephis, "Sé lo que exige el rito. Y sé que soy el único capaz de evitar la devastación."),
             new(Mephis, "Estoy listo para el sacrificio."),
         ],
-        "Volver a Atlans",
+        "Volver a Kalima",
         "Data\\Sound\\RecuerdoSacrificio.wav"); // a file of the PeroniaMU client, not of the original one
 }

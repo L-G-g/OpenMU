@@ -143,7 +143,8 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
         var sound = Encode(memory.Sound ?? string.Empty, MaximumNoteLength);
         var endLabel = Encode(memory.EndLabel, MaximumLabelLength);
         var lines = memory.Lines.Take(MaximumPages).Select((line, index) => (
-            Notify: memory.Actors.Any(a => a.EntersAtLine == index && index > 0),
+            // The client also tells the last line, which finishes the step of the memory.
+            Notify: index > 0 && (index == Math.Min(memory.Lines.Count, MaximumPages) - 1 || memory.Actors.Any(a => a.EntersAtLine == index)),
             Title: Encode(memory.Actors[line.Actor].Title, MaximumTitleLength),
             Text: Encode(line.Text, MaximumPageLength))).ToList();
         var length = memoryHeaderLength + sound.Length + 1 + endLabel.Length + 1 + lines.Sum(l => 1 + l.Title.Length + 1 + l.Text.Length + 1);

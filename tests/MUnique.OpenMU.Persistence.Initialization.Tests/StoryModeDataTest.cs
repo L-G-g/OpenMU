@@ -46,6 +46,64 @@ internal class StoryModeDataTest
         AssertData(gameConfiguration);
     }
 
+    /// <summary>
+    /// Tests that an old database with the seer in Atlans gets her in Kalima with the second version of the update.
+    /// </summary>
+    [Test]
+    public async Task SeerMovesFromAtlansToKalimaAsync()
+    {
+        var contextProvider = new InMemoryPersistenceContextProvider();
+        var dataInitialization = new VersionSeasonSix.DataInitialization(contextProvider, new NullLoggerFactory());
+        await dataInitialization.CreateInitialDataAsync(1, true).ConfigureAwait(false);
+        using var context = contextProvider.CreateNewContext();
+        var gameConfiguration = (await context.GetAsync<GameConfiguration>().ConfigureAwait(false)).First();
+
+        // The state of the first version: the seer only in Atlans.
+        var seer = gameConfiguration.Monsters.Single(m => StoryModeFeaturePlugIn.GetActor(m) == StoryActor.Seer);
+        foreach (var map in gameConfiguration.Maps)
+        {
+            foreach (var spawn in map.MonsterSpawns.Where(s => s.MonsterDefinition == seer).ToList())
+            {
+                map.MonsterSpawns.Remove(spawn);
+            }
+        }
+
+        var atlans = gameConfiguration.Maps.Single(m => m.Number == 7);
+        var old = context.CreateNew<MonsterSpawnArea>();
+        old.SetGuid(GuidHelper.CreateGuid<MonsterSpawnArea>(atlans.Number, VersionSeasonSix.StoryMemoryData.SeerIdNumber));
+        old.GameMap = atlans;
+        old.MonsterDefinition = seer;
+        old.X1 = old.X2 = 24;
+        old.Y1 = old.Y2 = 20;
+        old.Quantity = 1;
+        atlans.MonsterSpawns.Add(old);
+
+        await new StoryMemoryUpdatePlugIn().ApplyUpdateAsync(contextProvider.CreateNewContext(), gameConfiguration).ConfigureAwait(false);
+        AssertMemoryData(gameConfiguration);
+    }
+
+    /// <summary>
+    /// Tests the order of the questline with the default configurations: it comes from the requirements.
+    /// </summary>
+    [Test]
+    public async Task QuestlineOrderAsync()
+    {
+        var contextProvider = new InMemoryPersistenceContextProvider();
+        var dataInitialization = new VersionSeasonSix.DataInitialization(contextProvider, new NullLoggerFactory());
+        await dataInitialization.CreateInitialDataAsync(1, true).ConfigureAwait(false);
+        using var context = contextProvider.CreateNewContext();
+        var gameConfiguration = (await context.GetAsync<GameConfiguration>().ConfigureAwait(false)).First();
+
+        var entries = Questline.Build(gameConfiguration, new StoryConfiguration(), new SkillQuestConfiguration());
+        Assert.That(string.Join(' ', entries.Select(e => e.Code)), Is.EqualTo("H1 S1 S2 H2 H3 H4 S3 H5 H6 H7 H8 S4"));
+
+        // Another configuration, another order: the third tier at 3 resets still waits for the Dungeon (step 4).
+        var entries2 = Questline.Build(gameConfiguration, new StoryConfiguration { DungeonMinimumResets = 5 }, new SkillQuestConfiguration { Tier3MinimumResets = 3 });
+        Assert.That(string.Join(' ', entries2.Select(e => e.Code)), Is.EqualTo("H1 S1 S2 H2 H3 H4 S3 H5 H6 H7 H8 S4"));
+        var entries3 = Questline.Build(gameConfiguration, new StoryConfiguration { SebinaMinimumResets = 8 }, new SkillQuestConfiguration());
+        Assert.That(string.Join(' ', entries3.Select(e => e.Code)), Is.EqualTo("H1 S1 S2 H2 H3 H4 H5 H6 S3 H7 H8 S4"));
+    }
+
     private static void AssertData(GameConfiguration gameConfiguration)
     {
         Assert.That(StoryProgress.IsAvailable(gameConfiguration), Is.True);
@@ -91,18 +149,33 @@ internal class StoryModeDataTest
         Assert.That(configuration.GetUnlockingStep(1), Is.EqualTo(StoryScript.Dungeon));
         Assert.That(configuration.GetUnlockingStep(4), Is.EqualTo(StoryScript.SchoolOfLight));
         Assert.That(configuration.GetUnlockingStep(7), Is.EqualTo(StoryScript.OldWorld));
+
+        // Only Lorencia, Noria and Elbeland are open from the start: every other map opens with step 7 at the latest.
+        foreach (var map in gameConfiguration.Maps.Where(m => m.Number is not (0 or 3 or 51)))
+        {
+            Assert.That(configuration.GetUnlockingStep(map.Number), Is.GreaterThan(0), $"{map.Name} ({map.Number})");
+        }
+
+        Assert.That(configuration.GetUnlockingStep(79), Is.EqualTo(StoryScript.OldWorld), "Loren Market");
+        Assert.That(configuration.GetUnlockingStep(24), Is.EqualTo(StoryScript.OldWorld), "Kalima 1");
+        Assert.That(new StoryConfiguration { OldWorldOpensAllOtherMaps = false }.GetUnlockingStep(79), Is.Zero);
     }
 
     private static void AssertMemoryData(GameConfiguration gameConfiguration)
     {
-        // The seer stands alone on a free tile of the safezone at the entrance of Atlans.
+        // The seer stands alone on a free tile at the entrance of each level of Kalima, and not in Atlans anymore.
         var seer = gameConfiguration.Monsters.Single(m => StoryModeFeaturePlugIn.GetActor(m) == StoryActor.Seer);
         var atlans = gameConfiguration.Maps.Single(m => m.Number == 7);
-        var seerSpawn = atlans.MonsterSpawns.Single(s => s.MonsterDefinition == seer);
-        var atlansTerrain = new GameMapTerrain(atlans);
-        Assert.That(atlansTerrain.WalkMap[seerSpawn.X1, seerSpawn.Y1], Is.True);
-        Assert.That(atlansTerrain.SafezoneMap[seerSpawn.X1, seerSpawn.Y1], Is.True);
-        Assert.That(atlans.MonsterSpawns.Where(s => s != seerSpawn).Any(s => s.X1 <= seerSpawn.X1 && s.X2 >= seerSpawn.X1 && s.Y1 <= seerSpawn.Y1 && s.Y2 >= seerSpawn.Y1 && s.MonsterDefinition?.ObjectKind != NpcObjectKind.Monster), Is.False);
+        Assert.That(atlans.MonsterSpawns.Any(s => s.MonsterDefinition == seer), Is.False);
+        foreach (var mapNumber in StoryMemory.KalimaMapNumbers)
+        {
+            var kalima = gameConfiguration.Maps.Single(m => m.Number == mapNumber && m.Discriminator == 0);
+            var seerSpawn = kalima.MonsterSpawns.Single(s => s.MonsterDefinition == seer);
+            var kalimaTerrain = new GameMapTerrain(kalima);
+            Assert.That(kalimaTerrain.WalkMap[seerSpawn.X1, seerSpawn.Y1], Is.True, $"Kalima {mapNumber}");
+            Assert.That(kalima.MonsterSpawns.Where(s => s != seerSpawn).Any(s => s.X1 <= seerSpawn.X1 && s.X2 >= seerSpawn.X1 && s.Y1 <= seerSpawn.Y1 && s.Y2 >= seerSpawn.Y1), Is.False, $"Kalima {mapNumber}");
+            Assert.That(kalima.MonsterSpawns.Any(s => s.MonsterDefinition?.ObjectKind == NpcObjectKind.Monster && Math.Abs(s.X1 - seerSpawn.X1) < 10 && Math.Abs(s.Y1 - seerSpawn.Y1) < 10), Is.False, $"no monster next to the seer in Kalima {mapNumber}");
+        }
 
         // The stage: one definition, whose entrance is the spot of the viewer.
         var memory = StoryMemory.Sacrifice;

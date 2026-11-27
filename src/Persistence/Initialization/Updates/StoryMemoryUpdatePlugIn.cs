@@ -9,7 +9,8 @@ using MUnique.OpenMU.Persistence.Initialization.VersionSeasonSix;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// Adds the seer of Atlans and the stage of the memories of the story mode, see <see cref="StoryMemoryData"/>.
+/// Adds the seer (at the entrance of each level of Kalima) and the stage of the memories of the story mode, see <see cref="StoryMemoryData"/>.
+/// Version 2 moves the seer from Atlans to Kalima.
 /// </summary>
 /// <remarks>
 /// It's optional, because it changes how the game plays instead of correcting data.
@@ -27,7 +28,7 @@ public class StoryMemoryUpdatePlugIn : UpdatePlugInBase
     /// <summary>
     /// The plugin description.
     /// </summary>
-    internal const string PlugInDescription = "The data of the memories of the story mode (plugin 'Story mode', cinematicas.dll in the client): the seer, an NPC at the entrance of Atlans, and the stage of the first memory, an instance of the throne room of the castle of Devias per player.";
+    internal const string PlugInDescription = "The data of the memories of the story mode (plugin 'Story mode', cinematicas.dll in the client): the seer, an NPC at the entrance of each level of Kalima (version 2 moves her there from Atlans), and the stage of the first memory, an instance of the throne room of the castle of Devias per player.";
 
     /// <inheritdoc />
     public override string DataInitializationKey => VersionSeasonSix.DataInitialization.Id;
@@ -43,6 +44,12 @@ public class StoryMemoryUpdatePlugIn : UpdatePlugInBase
 
     /// <inheritdoc />
     public override DateTime CreatedAt => new(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <inheritdoc />
+    public override int Version => 2;
+
+    /// <inheritdoc />
+    public override DateTime UpdatedAt => new(2026, 11, 27, 0, 0, 0, DateTimeKind.Utc);
 
     /// <inheritdoc />
     protected override ValueTask ApplyAsync(IContext context, GameConfiguration gameConfiguration)
