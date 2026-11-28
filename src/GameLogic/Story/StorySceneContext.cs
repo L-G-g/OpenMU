@@ -40,7 +40,7 @@ public sealed class StorySceneContext : MiniGameContext
     /// <summary>
     /// The time of a step of an actor which runs out of the stage (cinematicas.dll lets the actors run in a safezone).
     /// </summary>
-    private static readonly TimeSpan RunStepTime = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan RunStepTime = TimeSpan.FromMilliseconds(200);
 
     /// <summary>
     /// The time which the client needs at least for a step of an actor which walks (the delay of the server may be 0 for actors).
@@ -359,7 +359,7 @@ public sealed class StorySceneContext : MiniGameContext
 
                 // The position of the actor is its target from the start of the walk on: the clients need the time of the steps.
                 var steps = Math.Max(Math.Abs(target.X - start.X), Math.Abs(target.Y - start.Y));
-                var walkTime = (RunStepTime * steps) + TimeSpan.FromMilliseconds(700);
+                var walkTime = (RunStepTime * steps) + TimeSpan.FromMilliseconds(300);
                 _ = Task.Run(() => this.RemoveWhenArrivedAsync(cue.Actor, actor, walkTime, this._cts.Token));
                 break;
             default:
