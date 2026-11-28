@@ -264,7 +264,7 @@ public sealed record StoryMemory(
     /// </summary>
     /// <remarks>
     /// The church: the nave at 13..29 / 24..27 of Devias, between two rows of pillars (y 23 and 28). The altar is at
-    /// 12 / 24..27 with room for the bishop behind it (10..11 / 25..26), the door is at its other end (30 / 24..27).
+    /// 12 / 24..27 with room for the bishop behind it (10..11 / 25..26; 11 / 25 is the middle of the altar on the screen), the door is at its other end (30 / 24..27).
     /// </remarks>
     public static StoryMemory Wedding { get; } = new(
         "Hace mil anos, en la iglesia de Devias...",
@@ -284,7 +284,7 @@ public sealed record StoryMemory(
             new StoryMemoryActor("Kreol", "Baron Kreol", SpectreKind.Lord, 9, [(7, 25), (8, 25), (9, 25), (10, 25), (11, 25)], new Point(19, 29), new Point(18, 29)),
 
             // The bishop behind the altar: an NPC with the look of the Seed Master.
-            new StoryMemoryActor("Obispo", "Obispo", SpectreKind.Mage, 0, [], new Point(11, 26), new Point(13, 26), NpcNumber: BishopLookNumber),
+            new StoryMemoryActor("Obispo", "Obispo", SpectreKind.Mage, 0, [], new Point(11, 25), new Point(13, 25), NpcNumber: BishopLookNumber),
         ],
         [
             new(Seliane, "¿Ya lo viste? Dicen que el novio es Mephis en persona."),

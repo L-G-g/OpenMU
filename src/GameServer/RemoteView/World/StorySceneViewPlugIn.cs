@@ -49,6 +49,11 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
     /// </summary>
     internal const byte CurtainSubCode = 0x32;
 
+    /// <summary>
+    /// The sub code of the packet which tells that an actor of a memory runs from now on.
+    /// </summary>
+    internal const byte RunSubCode = 0x33;
+
     private const int HeaderLength = 9;
     private const int MaximumTitleLength = 30;
     private const int MaximumNoteLength = 90;
@@ -101,6 +106,30 @@ public class StorySceneViewPlugIn : IStorySceneViewPlugIn
             span[2] = Code;
             span[3] = CurtainSubCode;
             return 4;
+        }
+
+        await connection.SendAsync(Write).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ShowActorRunsAsync(MUnique.OpenMU.GameLogic.IIdentifiable actor)
+    {
+        if (this._player.Connection is not { } connection)
+        {
+            return;
+        }
+
+        var id = actor.GetId(this._player);
+
+        int Write()
+        {
+            var span = connection.Output.GetSpan(6)[..6];
+            span[0] = 0xC1;
+            span[1] = 6;
+            span[2] = Code;
+            span[3] = RunSubCode;
+            BinaryPrimitives.WriteUInt16BigEndian(span[4..], id);
+            return 6;
         }
 
         await connection.SendAsync(Write).ConfigureAwait(false);

@@ -349,6 +349,12 @@ public sealed class StorySceneContext : MiniGameContext
                 this._heldAnimations.TryRemove(cue.Actor, out _);
                 actor.Pose = default;
                 var start = actor.Position;
+                if (this._owner is { } owner)
+                {
+                    // The actor runs out of the stage.
+                    await owner.InvokeViewPlugInAsync<IStorySceneViewPlugIn>(p => p.ShowActorRunsAsync(actor)).ConfigureAwait(false);
+                }
+
                 await this.WalkAsync(actor, target).ConfigureAwait(false);
 
                 // The position of the actor is its target from the start of the walk on: the clients need the time of the steps.
