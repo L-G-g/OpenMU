@@ -33,4 +33,12 @@ public interface IStorySceneViewPlugIn : IViewPlugIn
     /// <param name="memory">The memory.</param>
     /// <returns>The task.</returns>
     ValueTask ShowMemoryAsync(StoryMemory memory);
+
+    /// <summary>
+    /// Tells the client that an actor of the memory runs when it moves from now on (the client lets characters only walk
+    /// in a safezone), until the memory ends.
+    /// </summary>
+    /// <param name="actor">The actor.</param>
+    /// <returns>The task.</returns>
+    ValueTask ShowActorRunsAsync(IIdentifiable actor);
 }

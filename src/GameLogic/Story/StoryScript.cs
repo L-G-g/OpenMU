@@ -69,6 +69,11 @@ public static class StoryScript
     public const int FirstMemory = 8;
 
     /// <summary>
+    /// The number of the step of the second memory (the wedding), which the seer of Kalima 2 shows.
+    /// </summary>
+    public const int SecondMemory = 9;
+
+    /// <summary>
     /// The number of the last step of the first part, in which Lumen opens the old world.
     /// </summary>
     public const int EndOfFirstPart = OldWorld;
@@ -208,6 +213,17 @@ public static class StoryScript
             "Viste el primer recuerdo de Kalima.",
             StoryMemory.Sacrifice,
             1),
+        new(
+            SecondMemory,
+            "Recuerdos de Kalima II",
+            StoryActor.Seer,
+            StoryStepKind.Memory,
+            "Ver el recuerdo",
+            _ => StoryMemory.WeddingSeerText,
+            "Las piedras de este nivel todavía no me hablan de ti. Vuelve cuando estés listo.",
+            "Viste el segundo recuerdo de Kalima.",
+            StoryMemory.Wedding,
+            2),
     ];
 
     /// <summary>

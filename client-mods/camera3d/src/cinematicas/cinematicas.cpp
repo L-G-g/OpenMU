@@ -30,6 +30,8 @@
 //     nombre del que habla y lo que dice. Al mostrar una linea con aviso se manda /historia linea [numero]: el servidor
 //     hace entrar a un actor. El boton final y Escape mandan /historia salir; la pantalla queda en negro hasta que el
 //     jugador vuelve a su mapa.
+//     Despues de las lineas puede venir [cantidad] y, por cada una, [linea] [se repite, 0 o 1] [sonido]: al mostrar esa
+//     linea el sonido reemplaza al que suena (ver ChangeMusic). Los clientes viejos no leen esa parte.
 //   - El sonido de fondo reemplaza a la musica del mapa mientras dura el recuerdo (ver StartMusic).
 //
 // Como funciona:
@@ -95,6 +97,8 @@ namespace
     constexpr DWORD CharacterSize = 0x598;
     constexpr DWORD CharKey = 0x7E, CharObject = 0x308, CharLive = 0x30C;
     constexpr DWORD CharVisible = 0x314; // el juego solo dibuja a los personajes con este byte en 1
+    constexpr DWORD CharSafeZone = 0x0E, CharRun = 0x25; // zona segura; contador de correr (0x0054F710)
+    constexpr BYTE RunCounter = 40;                       // con 40 o mas, 0x0054F710 elige correr
     constexpr DWORD ObjLive = 0x04, ObjAlpha = 0x98, ObjPosition = 0xFC, ObjAngle = 0x108;
 
     // Monturas y mascotas: se dibujan aparte del personaje y no miran su byte Visible, pero si el alfa de su objeto.
@@ -109,7 +113,7 @@ namespace
     constexpr DWORD RivalMarkDuration = 10000; // la marca se repite cada 4 segundos
     constexpr int CodeInterface = 0xFF;        // interfaz de PeroniaMU
     constexpr BYTE SubCodeStoryScene = 0x30;
-    constexpr BYTE SubCodeMemory = 0x31, SubCodeCurtain = 0x32;
+    constexpr BYTE SubCodeMemory = 0x31, SubCodeCurtain = 0x32, SubCodeRunner = 0x33;
     constexpr DWORD CurtainSceneTimeout = 15000; // ms de telon esperando el recuerdo
     constexpr DWORD CurtainExitTimeout = 8000;   // ms de telon esperando volver al mapa
     constexpr float MemoryLookHeight = 60.0f;    // la camara del recuerdo mira a esta altura sobre el piso
@@ -198,12 +202,16 @@ namespace
     bool g_frontCaptured = false;
     float g_frontAngle = 0.0f;        // el giro del NPC cuando empezo la escena
     bool g_staged = false;            // recuerdo: camara fija, cada pagina con su titulo
+    std::vector<WORD> g_runners;      // recuerdo: actores que se van corriendo (C1 06 FF 33)
     std::vector<std::string> g_pageTitles;
     std::vector<bool> g_pageNotify;   // paginas que se avisan al servidor
     size_t g_notifiedPages = 0;       // paginas ya avisadas
     float g_stageTarget[3] = {};      // a donde mira la camara del recuerdo
     float g_stageYaw = 0.0f, g_stageTilt = 48.5f, g_stageDistance = 1000.0f;
     std::string g_stageSound;
+    bool g_stageLoops = true;         // el sonido actual se repite (si no, suena una vez)
+    std::vector<std::string> g_pageSounds; // sonido que empieza en cada pagina (vacio: sigue el que suena)
+    std::vector<bool> g_pageLoops;
     bool g_curtainForScene = false;   // el telon espera el recuerdo (si no, espera el cambio de mapa)
     int g_curtainMap = -1;
     bool g_musicReplaced = false;
@@ -456,8 +464,32 @@ namespace
             }
         }
 
-        PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
+        PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | (g_stageLoops ? SND_LOOP : 0) | SND_NODEFAULT);
         g_log("Cinematicas: sonido del recuerdo %s.", g_stageSound.c_str());
+    }
+
+    bool IsSafeSoundPath(const std::string& path)
+    {
+        return path.find("..") == std::string::npos && path.find(':') == std::string::npos;
+    }
+
+    // Una linea del recuerdo que cambia la musica: reemplaza a la que suena.
+    void ChangeMusic(const std::string& path, bool loops)
+    {
+        if (!g_musicOption || !IsSafeSoundPath(path) || GetFileAttributesA(path.c_str()) == INVALID_FILE_ATTRIBUTES)
+        {
+            return; // sigue la que suena
+        }
+
+        g_stageSound = path;
+        g_stageLoops = loops;
+        if (g_musicReplaced)
+        {
+            PlaySoundA(g_stageSound.c_str(), nullptr, SND_FILENAME | SND_ASYNC | (loops ? SND_LOOP : 0) | SND_NODEFAULT);
+            g_log("Cinematicas: sonido del recuerdo %s.", g_stageSound.c_str());
+        }
+
+        // Si todavia no empezo, StartMusic lo arranca en el proximo cuadro.
     }
 
     void EndSceneNow()
@@ -469,6 +501,7 @@ namespace
 
         StopMusic();
         g_staged = false;
+        g_runners.clear();
         SetPhase(Phase::Idle);
         g_loggedCamera = false;
     }
@@ -481,6 +514,10 @@ namespace
         if (g_staged && g_page < g_pageTitles.size())
         {
             g_title = g_pageTitles[g_page];
+            if (g_page < g_pageSounds.size() && !g_pageSounds[g_page].empty())
+            {
+                ChangeMusic(g_pageSounds[g_page], g_pageLoops[g_page]);
+            }
 
             // Cada aviso una sola vez, en orden.
             for (; g_notifiedPages <= g_page; g_notifiedPages++)
@@ -684,6 +721,21 @@ namespace
         g_log("Cinematicas: telon.");
     }
 
+    // C1 06 FF 33 [id alto] [id bajo]: en un recuerdo, el actor con ese id se va corriendo.
+    void OnRunner(const BYTE* packet)
+    {
+        const WORD id = static_cast<WORD>((packet[4] << 8 | packet[5]) & IdMask);
+        for (const WORD runner : g_runners)
+        {
+            if (runner == id)
+            {
+                return;
+            }
+        }
+
+        g_runners.push_back(id);
+    }
+
     // C2 [largo] FF 31: un recuerdo (ver arriba).
     void OnMemory(const BYTE* packet, int size)
     {
@@ -691,6 +743,8 @@ namespace
         {
             return;
         }
+
+        g_runners.clear();
 
         auto readShort = [packet](int offset)
         {
@@ -724,6 +778,30 @@ namespace
             pages.push_back(text);
         }
 
+        // Opcional: lineas que cambian la musica ([cantidad], y por cada una [linea] [se repite] [sonido]).
+        std::vector<std::string> pageSounds(lineCount);
+        std::vector<bool> pageLoops(lineCount, true);
+        if (offset < size)
+        {
+            const int soundCount = packet[offset++];
+            for (int i = 0; i < soundCount && offset + 2 <= size; i++)
+            {
+                const int line = packet[offset++];
+                const bool loops = packet[offset++] != 0;
+                std::string path;
+                if (!ReadText(packet, size, offset, path))
+                {
+                    break;
+                }
+
+                if (line < lineCount)
+                {
+                    pageSounds[line] = path;
+                    pageLoops[line] = loops;
+                }
+            }
+        }
+
         StopMusic();
         g_stageTarget[0] = packet[5] * 100.0f + 50.0f;
         g_stageTarget[1] = packet[6] * 100.0f + 50.0f;
@@ -731,7 +809,10 @@ namespace
         g_stageYaw = readShort(9);
         g_stageTilt = readShort(11) / 10.0f;
         g_stageDistance = readShort(13);
-        g_stageSound = sound.find("..") == std::string::npos && sound.find(':') == std::string::npos ? sound : "";
+        g_stageSound = IsSafeSoundPath(sound) ? sound : "";
+        g_stageLoops = true;
+        g_pageSounds = pageSounds;
+        g_pageLoops = pageLoops;
         g_staged = true;
         g_frontal = false;
         g_rivalMounted = false;
@@ -787,6 +868,12 @@ namespace
             && packet[3] == SubCodeCurtain)
         {
             OnCurtain();
+            return 1;
+        }
+        else if (code == CodeInterface && packet != nullptr && size >= 6 && packet[0] == 0xC1
+            && packet[3] == SubCodeRunner)
+        {
+            OnRunner(packet);
             return 1;
         }
 
@@ -1418,9 +1505,39 @@ namespace
         }
     }
 
+    // En un recuerdo, los actores que se van (C1 06 FF 33) corren aunque el escenario sea zona segura: 0x0054F710 (la
+    // accion al caminar) solo elige correr con el byte de zona segura en 0 y el contador de correr en 40 o mas.
+    void ForceRunnersToRun()
+    {
+        __try
+        {
+            const DWORD hero = *HeroPointer;
+            for (const WORD id : g_runners)
+            {
+                BYTE* character = FindCharacter(id);
+                if (character != nullptr && reinterpret_cast<DWORD>(character) != hero)
+                {
+                    character[CharSafeZone] = 0;
+                    if (character[CharRun] < RunCounter)
+                    {
+                        character[CharRun] = RunCounter;
+                    }
+                }
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+        }
+    }
+
     void __cdecl DrawHook()
     {
         RestoreHeroSafely();
+        if (g_staged)
+        {
+            ForceRunnersToRun();
+        }
+
         if (g_phase != Phase::Idle && g_phase != Phase::Waiting)
         {
             DrawScene();

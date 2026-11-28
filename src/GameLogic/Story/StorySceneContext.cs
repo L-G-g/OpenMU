@@ -7,6 +7,7 @@ namespace MUnique.OpenMU.GameLogic.Story;
 using System.Collections.Concurrent;
 using System.Threading;
 using MUnique.OpenMU.GameLogic.MiniGames;
+using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.Offline;
 using MUnique.OpenMU.GameLogic.Spectres;
 using MUnique.OpenMU.GameLogic.Views.World;
@@ -27,6 +28,26 @@ public sealed class StorySceneContext : MiniGameContext
     private const byte SitAnimation = 0x80;
 
     /// <summary>
+    /// The animation of a character which stands, which ends a pose and turns the character.
+    /// </summary>
+    private const byte StandAnimation = 0x7A;
+
+    /// <summary>
+    /// How long an actor which leaves the stage may walk before it disappears.
+    /// </summary>
+    private static readonly TimeSpan LeaveTimeout = TimeSpan.FromSeconds(20);
+
+    /// <summary>
+    /// The time of a step of an actor which runs out of the stage (cinematicas.dll lets the actors run in a safezone).
+    /// </summary>
+    private static readonly TimeSpan RunStepTime = TimeSpan.FromMilliseconds(260);
+
+    /// <summary>
+    /// The time which the client needs at least for a step of an actor which walks (the delay of the server may be 0 for actors).
+    /// </summary>
+    private static readonly TimeSpan MinimumStepTime = TimeSpan.FromMilliseconds(330);
+
+    /// <summary>
     /// How long the stage waits after the actors appeared before the client shows it, so that the client loaded the map
     /// and the actors.
     /// </summary>
@@ -38,6 +59,8 @@ public sealed class StorySceneContext : MiniGameContext
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(4);
 
     private readonly ConcurrentDictionary<int, RivalPlayer> _actors = new();
+    private readonly ConcurrentDictionary<int, NonPlayerCharacter> _npcs = new();
+    private readonly ConcurrentDictionary<int, byte> _heldAnimations = new();
     private readonly CancellationTokenSource _cts = new();
     private StoryMemory _memory = StoryMemory.Sacrifice;
     private Func<Player, ValueTask>? _returnAsync;
@@ -127,6 +150,15 @@ public sealed class StorySceneContext : MiniGameContext
             if (entersAt > Math.Max(shown, 0) && entersAt <= line)
             {
                 await this.SpawnActorAsync(player, index, this._cts.Token).ConfigureAwait(false);
+            }
+        }
+
+        // The cues of the lines in between too, if the client skipped a notification.
+        foreach (var cue in this._memory.Cues ?? [])
+        {
+            if (cue.Line > Math.Max(shown, 0) && cue.Line <= line)
+            {
+                await this.PlayCueAsync(cue).ConfigureAwait(false);
             }
         }
 
@@ -255,7 +287,202 @@ public sealed class StorySceneContext : MiniGameContext
                 await StopActorAsync(actor).ConfigureAwait(false);
             }
         }
+
+        foreach (var index in this._npcs.Keys.ToList())
+        {
+            if (this._npcs.TryRemove(index, out var npc))
+            {
+                try
+                {
+                    await this.Map.RemoveAsync(npc).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await npc.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+        }
     }
+
+    /// <summary>
+    /// Lets an actor play a cue.
+    /// </summary>
+    /// <param name="cue">The cue.</param>
+    /// <returns>The task.</returns>
+    internal async ValueTask PlayCueAsync(StoryMemoryCue cue)
+    {
+        if (!this._actors.TryGetValue(cue.Actor, out var actor) || actor.CurrentMap != this.Map)
+        {
+            return;
+        }
+
+        switch (cue.Kind)
+        {
+            case StoryMemoryCueKind.Animate:
+                if (cue.Holds)
+                {
+                    this._heldAnimations[cue.Actor] = cue.Animation;
+                    actor.Pose = cue.Animation == SitAnimation ? CharacterPose.Sitting : default;
+                }
+                else
+                {
+                    this._heldAnimations.TryRemove(cue.Actor, out _);
+                }
+
+                await ShowAnimationAsync(actor, cue.Animation).ConfigureAwait(false);
+                break;
+            case StoryMemoryCueKind.StandUp:
+                this._heldAnimations.TryRemove(cue.Actor, out _);
+                actor.Pose = default;
+                await ShowAnimationAsync(actor, StandAnimation).ConfigureAwait(false);
+                break;
+            case StoryMemoryCueKind.Turn when cue.Target is { } target:
+                actor.Rotation = actor.Position.GetDirectionTo(target);
+                await ShowAnimationAsync(actor, this._heldAnimations.TryGetValue(cue.Actor, out var held) ? held : StandAnimation).ConfigureAwait(false);
+                break;
+            case StoryMemoryCueKind.Walk when cue.Target is { } target:
+                this._heldAnimations.TryRemove(cue.Actor, out _);
+                actor.Pose = default;
+                await this.WalkAsync(actor, target).ConfigureAwait(false);
+                break;
+            case StoryMemoryCueKind.Leave when cue.Target is { } target:
+                this._heldAnimations.TryRemove(cue.Actor, out _);
+                actor.Pose = default;
+                var start = actor.Position;
+                if (this._owner is { } owner)
+                {
+                    // The actor runs out of the stage.
+                    await owner.InvokeViewPlugInAsync<IStorySceneViewPlugIn>(p => p.ShowActorRunsAsync(actor)).ConfigureAwait(false);
+                }
+
+                await this.WalkAsync(actor, target).ConfigureAwait(false);
+
+                // The position of the actor is its target from the start of the walk on: the clients need the time of the steps.
+                var steps = Math.Max(Math.Abs(target.X - start.X), Math.Abs(target.Y - start.Y));
+                var walkTime = (RunStepTime * steps) + TimeSpan.FromMilliseconds(300);
+                _ = Task.Run(() => this.RemoveWhenArrivedAsync(cue.Actor, actor, walkTime, this._cts.Token));
+                break;
+            default:
+                break;
+        }
+    }
+
+    private async Task RemoveWhenArrivedAsync(int index, RivalPlayer actor, TimeSpan walkTime, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(walkTime < LeaveTimeout ? walkTime : LeaveTimeout, cancellationToken).ConfigureAwait(false);
+            if (this._actors.TryRemove(new KeyValuePair<int, RivalPlayer>(index, actor)))
+            {
+                await StopActorAsync(actor).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The stage is closed; the actor is stopped there.
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Error while an actor left the stage.", this);
+        }
+    }
+
+    /// <summary>
+    /// Lets an actor walk to a target. The path finder of the monsters avoids the safezones, like the church of Devias,
+    /// so the actor walks the straight line (in parts, as long as the client accepts) if it finds no path.
+    /// </summary>
+    private async ValueTask WalkAsync(RivalPlayer actor, Point target)
+    {
+        if (await new MovementHandler(actor, null).WalkToPositionAsync(target).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        _ = Task.Run(() => this.WalkStraightAsync(actor, target, this._cts.Token));
+    }
+
+    private async Task WalkStraightAsync(RivalPlayer actor, Point target, CancellationToken cancellationToken)
+    {
+        const int maximumSteps = 15;
+        try
+        {
+            var until = DateTime.UtcNow + LeaveTimeout;
+            while (actor.Position != target && actor.CurrentMap == this.Map && DateTime.UtcNow < until)
+            {
+                if (actor.IsWalking)
+                {
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                var steps = new List<WalkingStep>();
+                var position = actor.Position;
+                while (position != target && steps.Count < maximumSteps)
+                {
+                    var next = new Point(
+                        (byte)(position.X + Math.Sign(target.X - position.X)),
+                        (byte)(position.Y + Math.Sign(target.Y - position.Y)));
+                    steps.Add(new WalkingStep(position, next, position.GetDirectionTo(next)));
+                    position = next;
+                }
+
+                await actor.WalkToAsync(position, steps.ToArray()).ConfigureAwait(false);
+
+                // The walk of the server may end at once (actors have no step delay), but the client walks the steps at its
+                // pace: the next part waits for it, or the client would jump to its start.
+                await Task.Delay(GetStepTime(actor) * steps.Count, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The stage is closed.
+        }
+        catch (Exception ex)
+        {
+            this.Logger.LogError(ex, "{context}: Error while an actor walked.", this);
+        }
+    }
+
+    private static TimeSpan GetStepTime(Player actor) => actor.StepDelay > MinimumStepTime ? actor.StepDelay : MinimumStepTime;
+
+    private static ValueTask ShowAnimationAsync(RivalPlayer actor, byte animation)
+        => actor.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(actor, animation, null, actor.Rotation), false);
+
+    private async ValueTask SpawnNpcAsync(int index)
+    {
+        var definition = this._memory.Actors[index];
+        if (this._npcs.ContainsKey(index)
+            || this.GameContext.Configuration.Monsters.FirstOrDefault(m => m.Number == definition.NpcNumber) is not { } look)
+        {
+            return;
+        }
+
+        var area = new MonsterSpawnArea
+        {
+            MonsterDefinition = look,
+            GameMap = this.Map.Definition,
+            X1 = definition.Spot.X,
+            X2 = definition.Spot.X,
+            Y1 = definition.Spot.Y,
+            Y2 = definition.Spot.Y,
+            Direction = definition.Spot.GetDirectionTo(definition.LooksAt),
+            Quantity = 1,
+        };
+        var npc = new NonPlayerCharacter(area, look, this.Map);
+        if (!this._npcs.TryAdd(index, npc))
+        {
+            await npc.DisposeAsync().ConfigureAwait(false);
+            return;
+        }
+
+        npc.Initialize();
+        await this.Map.AddAsync(npc).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gets the index of the character of an actor among the characters of the memory: the NPCs need none.
+    /// </summary>
+    private int GetCharacterIndex(int index) => this._memory.Actors.Take(index).Count(a => !a.IsNpc);
 
     private async Task RunAsync(Player owner, CancellationToken cancellationToken)
     {
@@ -302,12 +529,23 @@ public sealed class StorySceneContext : MiniGameContext
     private ValueTask<string?> GetOrCreateCharacterAsync(Player owner, int index)
     {
         var definition = this._memory.Actors[index];
-        return SpectreRivals.GetOrCreateSceneActorAsync(owner, index, definition.Name, definition.Kind, definition.ItemLevel, definition.Equipment);
+        if (definition.IsNpc)
+        {
+            return ValueTask.FromResult<string?>(null);
+        }
+
+        return SpectreRivals.GetOrCreateSceneActorAsync(owner, this.GetCharacterIndex(index), definition.Name, definition.Kind, definition.ItemLevel, definition.Equipment);
     }
 
     private async ValueTask SpawnActorAsync(Player owner, int index, CancellationToken cancellationToken)
     {
         var definition = this._memory.Actors[index];
+        if (definition.IsNpc)
+        {
+            await this.SpawnNpcAsync(index).ConfigureAwait(false);
+            return;
+        }
+
         if (owner.Account is not { } account
             || this._actors.ContainsKey(index)
             || await this.GetOrCreateCharacterAsync(owner, index).ConfigureAwait(false) is not { } characterName)
@@ -346,7 +584,9 @@ public sealed class StorySceneContext : MiniGameContext
 
         if (definition.WalksTo is { } target)
         {
-            await new MovementHandler(actor, null).WalkToPositionAsync(target).ConfigureAwait(false);
+            // The clients first show the actor where it appears.
+            await Task.Delay(700, cancellationToken).ConfigureAwait(false);
+            await this.WalkAsync(actor, target).ConfigureAwait(false);
         }
     }
 
@@ -365,10 +605,14 @@ public sealed class StorySceneContext : MiniGameContext
     {
         var definition = this._memory.Actors[index];
         await actor.ForEachWorldObserverAsync<IShowSpectresPlugIn>(p => p.ShowTitleAsync(actor, definition.Title), false).ConfigureAwait(false);
-        if (definition.IsSitting)
+        if (this._heldAnimations.TryGetValue(index, out var held))
+        {
+            await ShowAnimationAsync(actor, held).ConfigureAwait(false);
+        }
+        else if (definition.IsSitting)
         {
             actor.Pose = CharacterPose.Sitting;
-            await actor.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(actor, SitAnimation, null, actor.Rotation), false).ConfigureAwait(false);
+            await ShowAnimationAsync(actor, SitAnimation).ConfigureAwait(false);
         }
     }
 }
