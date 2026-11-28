@@ -38,6 +38,11 @@ public sealed class StorySceneContext : MiniGameContext
     private static readonly TimeSpan LeaveTimeout = TimeSpan.FromSeconds(20);
 
     /// <summary>
+    /// The time which the client needs at least for a step of an actor (the delay of the server may be 0 for actors).
+    /// </summary>
+    private static readonly TimeSpan MinimumStepTime = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>
     /// How long the stage waits after the actors appeared before the client shows it, so that the client loaded the map
     /// and the actors.
     /// </summary>
@@ -343,7 +348,8 @@ public sealed class StorySceneContext : MiniGameContext
 
                 // The position of the actor is its target from the start of the walk on: the clients need the time of the steps.
                 var steps = Math.Max(Math.Abs(target.X - start.X), Math.Abs(target.Y - start.Y));
-                var walkTime = (actor.StepDelay * steps) + TimeSpan.FromMilliseconds(800);
+                var stepTime = actor.StepDelay > MinimumStepTime ? actor.StepDelay : MinimumStepTime;
+                var walkTime = (stepTime * steps) + TimeSpan.FromSeconds(1);
                 _ = Task.Run(() => this.RemoveWhenArrivedAsync(cue.Actor, actor, walkTime, this._cts.Token));
                 break;
             default:

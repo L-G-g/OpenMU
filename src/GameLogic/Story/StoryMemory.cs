@@ -330,9 +330,8 @@ public sealed record StoryMemory(
             new(15, Groom, StoryMemoryCueKind.StandUp),
             new(17, Groom, StoryMemoryCueKind.Leave, new Point(32, 26)),
 
-            // She falls on her knees and cries, then gets up and follows him.
+            // She falls on her knees and cries there (the animation of crying would get her up), then gets up and follows him.
             new(18, Bride, StoryMemoryCueKind.Animate, Animation: KneelAnimation, Holds: true),
-            new(19, Bride, StoryMemoryCueKind.Animate, Animation: CryAnimation),
             new(20, Bride, StoryMemoryCueKind.StandUp),
             new(21, Bride, StoryMemoryCueKind.Leave, new Point(32, 25)),
         ]);
