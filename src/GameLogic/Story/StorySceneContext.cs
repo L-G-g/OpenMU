@@ -40,7 +40,7 @@ public sealed class StorySceneContext : MiniGameContext
     /// <summary>
     /// The time of a step of an actor which runs out of the stage (cinematicas.dll lets the actors run in a safezone).
     /// </summary>
-    private static readonly TimeSpan RunStepTime = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan RunStepTime = TimeSpan.FromMilliseconds(260);
 
     /// <summary>
     /// The time which the client needs at least for a step of an actor which walks (the delay of the server may be 0 for actors).
