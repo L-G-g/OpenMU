@@ -272,10 +272,10 @@ public sealed record StoryMemory(
         new StoryMemoryCamera(new Point(15, 26), 165, -45, 48.5f, 1350),
         [
             // Legendary set, like in the memory of the sacrifice, but no staff at his wedding.
-            new StoryMemoryActor("Mephis", "Mephis", SpectreKind.Mage, 13, [(7, 3), (8, 3), (9, 3), (10, 3), (11, 3)], new Point(29, 26), new Point(13, 26), EntersAtLine: WeddingEntrance, WalksTo: new Point(13, 26)),
+            new StoryMemoryActor("Mephis", "Mephis", SpectreKind.Mage, 13, [(7, 3), (8, 3), (9, 3), (10, 3), (11, 3)], new Point(29, 26), new Point(13, 26), EntersAtLine: WeddingEntrance, WalksTo: new Point(15, 26)),
 
             // Guardian set.
-            new StoryMemoryActor("Lemuria", "Lemuria", SpectreKind.Elf, 13, [(7, 14), (8, 14), (9, 14), (10, 14), (11, 14)], new Point(29, 25), new Point(13, 25), EntersAtLine: WeddingEntrance, WalksTo: new Point(13, 25)),
+            new StoryMemoryActor("Lemuria", "Lemuria", SpectreKind.Elf, 13, [(7, 14), (8, 14), (9, 14), (10, 14), (11, 14)], new Point(29, 25), new Point(13, 25), EntersAtLine: WeddingEntrance, WalksTo: new Point(15, 25)),
 
             // The guests outside the carpet, behind the pillars, who whisper about the bride and the groom.
             new StoryMemoryActor("Seliane", "Dama Seliane", SpectreKind.Elf, 9, [(7, 19), (8, 19), (9, 19), (10, 19), (11, 19)], new Point(18, 22), new Point(19, 22)),
@@ -320,19 +320,19 @@ public sealed record StoryMemory(
             new(WeddingEntrance, Kreol, StoryMemoryCueKind.Turn, new Point(19, 25)),
 
             // When the groom falls, the guests look at the altar.
-            new(12, Seliane, StoryMemoryCueKind.Turn, new Point(13, 25)),
-            new(12, Daveth, StoryMemoryCueKind.Turn, new Point(13, 25)),
-            new(12, Ilsa, StoryMemoryCueKind.Turn, new Point(13, 26)),
-            new(12, Kreol, StoryMemoryCueKind.Turn, new Point(13, 26)),
+            new(12, Seliane, StoryMemoryCueKind.Turn, new Point(15, 25)),
+            new(12, Daveth, StoryMemoryCueKind.Turn, new Point(15, 25)),
+            new(12, Ilsa, StoryMemoryCueKind.Turn, new Point(15, 26)),
+            new(12, Kreol, StoryMemoryCueKind.Turn, new Point(15, 26)),
 
             // He falls on his knees, then gets up, takes a breath and leaves the church.
             new(12, Groom, StoryMemoryCueKind.Animate, Animation: KneelAnimation, Holds: true),
             new(15, Groom, StoryMemoryCueKind.StandUp),
-            new(17, Groom, StoryMemoryCueKind.Leave, new Point(32, 26)),
+            new(17, Groom, StoryMemoryCueKind.Leave, new Point(30, 26)),
 
             // She falls on her knees and cries there (the animation of crying would get her up), then gets up and follows him.
             new(18, Bride, StoryMemoryCueKind.Animate, Animation: KneelAnimation, Holds: true),
             new(20, Bride, StoryMemoryCueKind.StandUp),
-            new(21, Bride, StoryMemoryCueKind.Leave, new Point(32, 25)),
+            new(21, Bride, StoryMemoryCueKind.Leave, new Point(30, 25)),
         ]);
 }

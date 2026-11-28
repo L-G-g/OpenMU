@@ -38,9 +38,14 @@ public sealed class StorySceneContext : MiniGameContext
     private static readonly TimeSpan LeaveTimeout = TimeSpan.FromSeconds(20);
 
     /// <summary>
-    /// The time which the client needs at least for a step of an actor (the delay of the server may be 0 for actors).
+    /// The time of a step of an actor which runs out of the stage (cinematicas.dll lets the actors run in a safezone).
     /// </summary>
-    private static readonly TimeSpan MinimumStepTime = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan RunStepTime = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>
+    /// The time which the client needs at least for a step of an actor which walks (the delay of the server may be 0 for actors).
+    /// </summary>
+    private static readonly TimeSpan MinimumStepTime = TimeSpan.FromMilliseconds(330);
 
     /// <summary>
     /// How long the stage waits after the actors appeared before the client shows it, so that the client loaded the map
@@ -348,8 +353,7 @@ public sealed class StorySceneContext : MiniGameContext
 
                 // The position of the actor is its target from the start of the walk on: the clients need the time of the steps.
                 var steps = Math.Max(Math.Abs(target.X - start.X), Math.Abs(target.Y - start.Y));
-                var stepTime = actor.StepDelay > MinimumStepTime ? actor.StepDelay : MinimumStepTime;
-                var walkTime = (stepTime * steps) + TimeSpan.FromSeconds(1);
+                var walkTime = (RunStepTime * steps) + TimeSpan.FromMilliseconds(700);
                 _ = Task.Run(() => this.RemoveWhenArrivedAsync(cue.Actor, actor, walkTime, this._cts.Token));
                 break;
             default:
@@ -417,7 +421,10 @@ public sealed class StorySceneContext : MiniGameContext
                 }
 
                 await actor.WalkToAsync(position, steps.ToArray()).ConfigureAwait(false);
-                await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+
+                // The walk of the server may end at once (actors have no step delay), but the client walks the steps at its
+                // pace: the next part waits for it, or the client would jump to its start.
+                await Task.Delay(GetStepTime(actor) * steps.Count, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -429,6 +436,8 @@ public sealed class StorySceneContext : MiniGameContext
             this.Logger.LogError(ex, "{context}: Error while an actor walked.", this);
         }
     }
+
+    private static TimeSpan GetStepTime(Player actor) => actor.StepDelay > MinimumStepTime ? actor.StepDelay : MinimumStepTime;
 
     private static ValueTask ShowAnimationAsync(RivalPlayer actor, byte animation)
         => actor.ForEachWorldObserverAsync<IShowAnimationPlugIn>(p => p.ShowAnimationAsync(actor, animation, null, actor.Rotation), false);
