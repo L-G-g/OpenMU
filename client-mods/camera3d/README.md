@@ -754,6 +754,10 @@ de la entrada de Atlans y pasa en la sala del trono del castillo de Devias.
 - Al mostrar una línea con aviso se manda `/historia linea [número]` (el servidor hace entrar a un actor, o un actor
   se arrodilla, se levanta, se da vuelta o camina y sale). El botón
   final y Esc mandan `/historia salir`, y la pantalla queda en negro hasta que el jugador vuelve a su mapa.
+- `C1 06 FF 33 [id alto] [id bajo]`: el actor con ese id se va corriendo. Aunque el escenario sea zona segura, mientras
+  dura el recuerdo el cliente le pone en cada cuadro la zona segura (`+0x0E`) en 0 y el contador de correr (`+0x25`)
+  en 40, con lo que `0x0054F710` elige correr; los demás actores caminan. La lista se vacía con cada recuerdo nuevo y
+  al terminar la escena.
 - El sonido de fondo es un archivo del cliente (un .wav PCM; el primer recuerdo usa `Data\Sound\RecuerdoSacrificio.wav`,
   que no es del cliente original: va con el cliente de PeroniaMU y sin él la escena queda sin música) y suena con `PlaySound` en vez de la música del mapa: mientras dura, la tabla de mp3 del juego
   (`0x00E609F0`) apunta a un nombre que no existe y ese nombre queda como el que suena (`0x00E8C2A8`), así el juego no
